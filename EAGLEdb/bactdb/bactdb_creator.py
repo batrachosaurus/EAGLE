@@ -15,27 +15,28 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
     j = 0
     while True:
         if genbank_list[j] < refseq_list[i]:
-            bacteria_list.append(get_bacterium(genbank_bacteria_link, genbank_list[j], bactdb_dir))
+            bacteria_list.append(get_bacterium(genbank_bacteria_link, genbank_list[j], bactdb_dir, "genbank"))
             j += 1
         elif genbank_list[j] == refseq_list[i]:
-            bacteria_list.append(get_bacterium(refseq_bacteria_link, refseq_list[i], bactdb_dir))
+            bacteria_list.append(get_bacterium(refseq_bacteria_link, refseq_list[i], bactdb_dir, "refseq"))
             i += 1
             j += 1
         else:
-            bacteria_list.append(get_bacterium(refseq_bacteria_link, refseq_list[i], bactdb_dir))
+            bacteria_list.append(get_bacterium(refseq_bacteria_link, refseq_list[i], bactdb_dir, "refseq"))
             i += 1
         if i == len(refseq_list) and j == len(genbank_list):
             break
     return bacteria_list
 
 
-def get_bacterium(ncbi_db_link, bacterium_name, db_dir):
+def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None):
     bacterium_info = {"family": None,
                       "genus": None,
                       "species": None,
                       "strain": None,
                       "download_prefix": None,
                       "16S_rRNA_file": None,
+                      "source_db": source_db,
                       "repr": False}
     bacterium_link = ncbi_db_link + "/" + bacterium_name
     bacterium_list = get_links_from_html(urllib2.urlopen(bacterium_link))
