@@ -91,7 +91,7 @@ def get_taxonomy(f_name, f_dir):
             species = genus + "_" + line_list[2]
             strain = "_".join(line_list[1:])
         elif org:
-            tax_list += prepare_tax_line(line)
+            tax_list += list(prepare_tax_line(line))
     os.remove(f_path)
     return family, genus, species, strain
 
