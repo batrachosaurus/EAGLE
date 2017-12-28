@@ -1,5 +1,6 @@
 import os
 import urllib2
+import gzip
 import subprocess
 
 from EAGLEdb.lib import get_links_from_html
@@ -40,6 +41,7 @@ def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None):
                       "source_db": source_db,
                       "repr": False}
     bacterium_link = ncbi_db_link + "/" + bacterium_name
+    print bacterium_link
     bacterium_list = get_links_from_html(urllib2.urlopen(bacterium_link))
     if "representative" in bacterium_list:
         next_page = bacterium_link + "/" + "representative"
@@ -52,6 +54,7 @@ def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None):
     download_bacterium_files(bacterium_prefix, ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"], db_dir)
     bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
         get_taxonomy(assemblies_list[-1] + "_wgsmaster.gbff.gz", db_dir)
+    print bacterium_info
     bacterium_info["16S_rRNA_file"] = get_16S_fasta(assemblies_list[-1] + "_rna_from_genomic.fna.gz",
                                                     db_dir,
                                                     bacterium_info["strain"])
@@ -77,11 +80,12 @@ def get_taxonomy(f_name, f_dir):
     org = False
     tax_list = []
     f_path = os.path.join(f_dir, f_name)
-    f = open (f_path)
+    f = gzip.open(f_path, 'rb')
     for line_ in f:
         line = None
-        line = line_.strip()
+        line = line_.decode("utf-8").strip()
         if not line: continue
+        print line
         if line[:9] == "REFERENCE":
             family = get_family(tax_list, genus, species, strain)
             break
@@ -126,10 +130,10 @@ def get_16S_fasta(f_name, f_dir, strain):
     f_path = os.path.join(f_dir, f_name)
     rRNA = False
     seq_list = []
-    f = open(f_path)
+    f = gzip.open(f_path, 'rb')
     for line_ in f:
         line = None
-        line = line_.strip()
+        line = line_.decode("utf-8").strip()
         if not line: continue
         if line[0] == ">":
             if rRNA:
