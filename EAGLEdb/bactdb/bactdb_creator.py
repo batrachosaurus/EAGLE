@@ -7,7 +7,8 @@ from EAGLEdb.lib import get_links_from_html
 
 def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria",
                            genbank_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/genbank/bacteria",
-                           bactdb_dir="./EAGLE_bacteria_db"):
+                           bactdb_dir="EAGLEdb/bacteria"):
+    subprocess.call("mkdir -p " + bactdb_dir, shell=True)
     bacteria_list = []
     refseq_list = get_links_from_html(urllib2.urlopen(refseq_bacteria_link))
     genbank_list = get_links_from_html(urllib2.urlopen(genbank_bacteria_link))
