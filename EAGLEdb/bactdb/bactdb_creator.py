@@ -1,33 +1,45 @@
 import os
+import sys
 import urllib2
 import gzip
-import subprocess
+import wget
 
 from EAGLEdb.lib import get_links_from_html
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria",
                            genbank_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/genbank/bacteria",
-                           bactdb_dir="EAGLEdb/bacteria"):
-    subprocess.call("mkdir -p " + bactdb_dir, shell=True)
+                           bactdb_dir="EAGLEdb/bacteria",
+                           n_first_bact=None):
+    try:
+        os.makedirs(bactdb_dir)
+    except OSError:
+        print "bactdb directory exists"
     bacteria_list = []
     refseq_list = get_links_from_html(urllib2.urlopen(refseq_bacteria_link))
     genbank_list = get_links_from_html(urllib2.urlopen(genbank_bacteria_link))
+    n = 0
     i = 0
     j = 0
-    while True:
+    while i < len(refseq_list) or j < len(genbank_list):
+        if n_first_bact:
+            if n >= n_first_bact:
+                break
+            n += 1
         if genbank_list[j] < refseq_list[i]:
-            bacteria_list.append(get_bacterium(genbank_bacteria_link, genbank_list[j], bactdb_dir, "genbank"))
-            j += 1
-        elif genbank_list[j] == refseq_list[i]:
-            bacteria_list.append(get_bacterium(refseq_bacteria_link, refseq_list[i], bactdb_dir, "refseq"))
-            i += 1
+            try:
+                bacteria_list.append(get_bacterium(genbank_bacteria_link, genbank_list[j], bactdb_dir, "genbank"))
+            except:
+                print "%s is not prepared: %s" % (genbank_list[j], sys.exc_info())
             j += 1
         else:
-            bacteria_list.append(get_bacterium(refseq_bacteria_link, refseq_list[i], bactdb_dir, "refseq"))
+            try:
+                bacteria_list.append(get_bacterium(refseq_bacteria_link, refseq_list[i], bactdb_dir, "refseq"))
+            except:
+                print "%s is not prepared: %s" % (refseq_list[i], sys.exc_info())
             i += 1
-        if i == len(refseq_list) and j == len(genbank_list):
-            break
+        if genbank_list[j] == refseq_list[i-1]:
+            j += 1
     return bacteria_list
 
 
@@ -54,10 +66,11 @@ def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None):
     download_bacterium_files(bacterium_prefix, ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"], db_dir)
     bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
         get_taxonomy(assemblies_list[-1] + "_wgsmaster.gbff.gz", db_dir)
-    print bacterium_info
+    print "got %s taxonomy" % bacterium_info["strain"]
     bacterium_info["16S_rRNA_file"] = get_16S_fasta(assemblies_list[-1] + "_rna_from_genomic.fna.gz",
                                                     db_dir,
                                                     bacterium_info["strain"])
+    print "got %s 16S rRNA" % bacterium_info["strain"]
     return bacterium_info
 
 
@@ -69,10 +82,10 @@ def download_bacterium_files(bact_prefix, suffixes, download_dir="./"):
     for suffix in suffixes_list:
         file_link = None
         file_link = bact_prefix + suffix
-        subprocess.call("wget -P " + download_dir + "/ " + file_link, shell=True)
+        wget.download(file_link, out=download_dir)
 
 
-def get_taxonomy(f_name, f_dir):
+def get_taxonomy(f_name, f_dir, remove_tax_f=True):
     family = None
     genus = None
     species = None
@@ -85,7 +98,6 @@ def get_taxonomy(f_name, f_dir):
         line = None
         line = line_.decode("utf-8").strip()
         if not line: continue
-        print line
         if line[:9] == "REFERENCE":
             family = get_family(tax_list, genus, species, strain)
             break
@@ -97,7 +109,9 @@ def get_taxonomy(f_name, f_dir):
             strain = "_".join(line_list[1:])
         elif org:
             tax_list += list(prepare_tax_line(line))
-    os.remove(f_path)
+    f.close()
+    if remove_tax_f:
+        os.remove(f_path)
     return family, genus, species, strain
 
 
@@ -124,8 +138,8 @@ def prepare_tax_line(tax_line):
         if elm: yield elm
 
 
-def get_16S_fasta(f_name, f_dir, strain):
-    fasta_path = os.path.join(f_dir, strain + ".fasta")
+def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
+    fasta_path = os.path.join(f_dir, strain + "_16S_rRNA.fasta")
     fasta_f = open(fasta_path, 'w')
     f_path = os.path.join(f_dir, f_name)
     rRNA = False
@@ -138,15 +152,19 @@ def get_16S_fasta(f_name, f_dir, strain):
         if line[0] == ">":
             if rRNA:
                 fasta_f.write("".join(seq_list) + "\n")
-                break
+                rRNA = False
             if "[product=16S ribosomal RNA]" in line:
+                rRNA = True
                 fasta_f.write(line + "\n")
         elif rRNA:
             seq_list.append(line)
-    if not rRNA:
-        print ("No 16 rRNA has been found")
+    if rRNA:
+        fasta_f.write("".join(seq_list) + "\n")
+        rRNA = False
     fasta_f.close()
-    os.remove(f_path)
+    f.close()
+    if remove_rna_f:
+        os.remove(f_path)
     return fasta_path
 
 
