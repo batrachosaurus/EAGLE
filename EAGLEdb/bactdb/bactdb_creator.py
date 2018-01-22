@@ -2,6 +2,7 @@ import os
 import sys
 import urllib2
 import gzip
+import pickle
 import wget
 
 from EAGLEdb.lib import get_links_from_html
@@ -10,7 +11,8 @@ from EAGLEdb.lib import get_links_from_html
 def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria",
                            genbank_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/genbank/bacteria",
                            bactdb_dir="EAGLEdb/bacteria",
-                           n_first_bact=None):
+                           n_first_bact=None,
+                           save_parts=None):
     try:
         os.makedirs(bactdb_dir)
     except OSError:
@@ -40,6 +42,12 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
             i += 1
         if genbank_list[j] == refseq_list[i-1]:
             j += 1
+        if save_parts:
+            if n % save_parts == 0:
+                f = open(os.path.join(bactdb_dir, "bacteria_list-" + str(n) + ".p"), 'wb')
+                pickle.dump(bacteria_list, f)
+                f.close()
+                bacteria_list = []
     return bacteria_list
 
 
