@@ -24,10 +24,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
     i = 0
     j = 0
     while i < len(refseq_list) or j < len(genbank_list):
-        if n_first_bact:
-            if n >= n_first_bact:
-                break
-            n += 1
+        if n_first_bact and n >= n_first_bact: break
         if genbank_list[j] < refseq_list[i]:
             try:
                 bacteria_list.append(get_bacterium(genbank_bacteria_link, genbank_list[j], bactdb_dir, "genbank"))
@@ -42,6 +39,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
             i += 1
         if genbank_list[j] == refseq_list[i-1]:
             j += 1
+        n += 1
         if save_parts:
             if n % save_parts == 0:
                 f = open(os.path.join(bactdb_dir, "bacteria_list-" + str(n) + ".p"), 'wb')
