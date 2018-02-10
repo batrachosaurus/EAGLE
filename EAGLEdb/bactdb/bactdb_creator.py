@@ -1,55 +1,70 @@
 import os
 import sys
-import urllib2
 import gzip
 import pickle
 import wget
+import multiprocessing as mp
 
 from EAGLEdb.lib import get_links_from_html
+from EAGLE.lib import worker, load_list_from_file
+from EAGLEdb.constants import bacteria_list_f_name
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria",
                            genbank_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/genbank/bacteria",
                            bactdb_dir="EAGLEdb/bacteria",
-                           n_first_bact=None,
-                           save_parts=None):
+                           num_threads=4,
+                           first_bact=None,
+                           last_bact=None,
+                           remove_bact_list_f=True):
     try:
         os.makedirs(bactdb_dir)
     except OSError:
         print "bactdb directory exists"
-    bacteria_list = []
-    refseq_list = get_links_from_html(urllib2.urlopen(refseq_bacteria_link))
-    genbank_list = get_links_from_html(urllib2.urlopen(genbank_bacteria_link))
-    n = 0
+    refseq_list = get_links_from_html(refseq_bacteria_link, num_threads=num_threads)
+    genbank_list = get_links_from_html(genbank_bacteria_link, num_threads=num_threads)
+    print "20 first redseq bacteria: ", "; ".join(refseq_list[:20])
+    print "20 first genbank bacteria: ", "; ".join(genbank_list[:20])
+    n = 1
     i = 0
     j = 0
+    proc_list = list()
     while i < len(refseq_list) or j < len(genbank_list):
-        if n_first_bact and n >= n_first_bact: break
+        if first_bact and n < first_bact: continue
+        if last_bact and n > last_bact: break
         if genbank_list[j] < refseq_list[i]:
-            try:
-                bacteria_list.append(get_bacterium(genbank_bacteria_link, genbank_list[j], bactdb_dir, "genbank"))
-            except:
-                print "%s is not prepared: %s" % (genbank_list[j], sys.exc_info())
+            p = mp.Process(target=worker,
+                           args=({'function': get_bacterium,
+                                  'ncbi_db_link': genbank_bacteria_link,
+                                  'bacterium_name': genbank_list[j],
+                                  'db_dir': bactdb_dir,
+                                  'source_db': "genbank",
+                                  'try_err_message': "%s is not prepared: " % genbank_list[j]},
+                                 ))
             j += 1
         else:
-            try:
-                bacteria_list.append(get_bacterium(refseq_bacteria_link, refseq_list[i], bactdb_dir, "refseq"))
-            except:
-                print "%s is not prepared: %s" % (refseq_list[i], sys.exc_info())
+            p = mp.Process(target=worker,
+                           args=({'function': get_bacterium,
+                                  'ncbi_db_link': refseq_bacteria_link,
+                                  'bacterium_name': refseq_list[i],
+                                  'db_dir': bactdb_dir,
+                                  'source_db': "refseq",
+                                  'try_err_message': "%s is not prepared: " % refseq_list[i]},
+                                 ))
             i += 1
         if genbank_list[j] == refseq_list[i-1]:
             j += 1
+        p.start()
+        proc_list.append(p)
         n += 1
-        if save_parts:
-            if n % save_parts == 0:
-                f = open(os.path.join(bactdb_dir, "bacteria_list-" + str(n) + ".p"), 'wb')
-                pickle.dump(bacteria_list, f)
-                f.close()
-                bacteria_list = []
-    return bacteria_list
+        if n % num_threads == 0:
+            for proc in proc_list:
+                proc.join()
+            proc_list = list()
+    return load_list_from_file(os.path.join(bactdb_dir, bacteria_list_f_name), remove_list_f=remove_bact_list_f)
 
 
-def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None):
+def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None, **kwargs):
     bacterium_info = {"family": None,
                       "genus": None,
                       "species": None,
@@ -60,27 +75,38 @@ def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None):
                       "repr": False}
     bacterium_link = ncbi_db_link + "/" + bacterium_name
     print bacterium_link
-    bacterium_list = get_links_from_html(urllib2.urlopen(bacterium_link))
+    bacterium_list = get_links_from_html(bacterium_link)
     if "representative" in bacterium_list:
         next_page = bacterium_link + "/" + "representative"
         bacterium_info["repr"] = True
     else:
         next_page = bacterium_link + "/" + "latest_assembly_versions"
-    assemblies_list = get_links_from_html(urllib2.urlopen(next_page))
+    assemblies_list = get_links_from_html(next_page)
+    print assemblies_list
     bacterium_prefix = (next_page + "/" + assemblies_list[-1] + "/" + assemblies_list[-1]).replace("https", "ftp")
     bacterium_info["download_prefix"] = bacterium_prefix
     download_bacterium_files(bacterium_prefix, ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"], db_dir)
+    tax_f_name = assemblies_list[-1] + "_wgsmaster.gbff.gz"
+    if not os.path.exists(os.path.join(db_dir, tax_f_name)):
+        tax_f_name = None
+        download_bacterium_files(bacterium_prefix, "_genomic.gbff.gz", db_dir)
+        tax_f_name = assemblies_list[-1] + "_genomic.gbff.gz"
     bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
-        get_taxonomy(assemblies_list[-1] + "_wgsmaster.gbff.gz", db_dir)
+        get_taxonomy(tax_f_name, db_dir)
     print "got %s taxonomy" % bacterium_info["strain"]
+    #if not os.path.exists():
+    #
     bacterium_info["16S_rRNA_file"] = get_16S_fasta(assemblies_list[-1] + "_rna_from_genomic.fna.gz",
                                                     db_dir,
                                                     bacterium_info["strain"])
     print "got %s 16S rRNA" % bacterium_info["strain"]
-    return bacterium_info
+    f = open(os.path.join(db_dir, bacteria_list_f_name), 'ab')
+    f.write(pickle.dumps(bacterium_info)+"\n")
+    f.close()
 
 
 def download_bacterium_files(bact_prefix, suffixes, download_dir="./"):
+    # TODO: rename and move to EAGLEdb.lib
     if type(suffixes) is str:
         suffixes_list = [suffixes]
     else:
@@ -88,7 +114,10 @@ def download_bacterium_files(bact_prefix, suffixes, download_dir="./"):
     for suffix in suffixes_list:
         file_link = None
         file_link = bact_prefix + suffix
-        wget.download(file_link, out=download_dir)
+        try:
+            wget.download(file_link, out=download_dir)
+        except IOError:
+            print sys.exc_info()
 
 
 def get_taxonomy(f_name, f_dir, remove_tax_f=True):
@@ -104,7 +133,7 @@ def get_taxonomy(f_name, f_dir, remove_tax_f=True):
         line = None
         line = line_.decode("utf-8").strip()
         if not line: continue
-        if line[:9] == "REFERENCE":
+        if line[:9] == "REFERENCE" or line[:7] == "COMMENT" or line[:8] == "FEATURES":
             family = get_family(tax_list, genus, species, strain)
             break
         if line[:8] == "ORGANISM":
