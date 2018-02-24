@@ -4,7 +4,7 @@ import urllib2
 from EAGLE.lib.lib_tools import worker
 
 
-def get_links_from_html(html_link, num_threads=4, n_tries=10):
+def get_links_from_html(html_link, num_threads=1, n_tries=10):
     n_t = 0
     links = mp.Manager().dict()
     params_list = []

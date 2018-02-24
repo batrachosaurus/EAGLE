@@ -24,7 +24,7 @@ class TestBactDBCreator(unittest.TestCase):
         pass
 
     def test_get_bacteria_from_ncbi(self):
-        result = get_bacteria_from_ncbi(bactdb_dir=self.output_dir, last_bact=20)
+        result = get_bacteria_from_ncbi(bactdb_dir=self.output_dir, last_bact=10)
         print len(result)
         print result
         self.assertIs(type(result), list)

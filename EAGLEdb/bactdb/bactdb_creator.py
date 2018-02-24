@@ -82,7 +82,9 @@ def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None, **kwargs
     else:
         next_page = bacterium_link + "/" + "latest_assembly_versions"
     assemblies_list = get_links_from_html(next_page)
-    print assemblies_list
+    if not assemblies_list:
+        print "Assemblies not loaded"
+        return 0
     bacterium_prefix = (next_page + "/" + assemblies_list[-1] + "/" + assemblies_list[-1]).replace("https", "ftp")
     bacterium_info["download_prefix"] = bacterium_prefix
     download_bacterium_files(bacterium_prefix, ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"], db_dir)
