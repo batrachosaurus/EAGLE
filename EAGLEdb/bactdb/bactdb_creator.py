@@ -7,7 +7,7 @@ import multiprocessing as mp
 
 from EAGLEdb.lib import get_links_from_html
 from EAGLE.lib import worker, load_list_from_file
-from EAGLEdb.constants import bacteria_list_f_name
+from EAGLEdb.constants import bacteria_list_f_name, analyzed_bacteria_f_name
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria",
@@ -16,6 +16,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
                            num_threads=4,
                            first_bact=None,
                            last_bact=None,
+                           analyzed_bacteria=analyzed_bacteria_f_name,
                            remove_bact_list_f=True):
     try:
         os.makedirs(bactdb_dir)
@@ -25,6 +26,10 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
     genbank_list = get_links_from_html(genbank_bacteria_link, num_threads=num_threads)
     print "20 first redseq bacteria: ", "; ".join(refseq_list[:20])
     print "20 first genbank bacteria: ", "; ".join(genbank_list[:20])
+    try:
+        analyzed_bacteria = pickle.load(open(os.path.join(bactdb_dir, analyzed_bacteria), 'rb'))
+    except IOError:
+        analyzed_bacteria = mp.Manager().dict()
     n = 1
     i = 0
     j = 0
@@ -37,6 +42,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
                            args=({'function': get_bacterium,
                                   'ncbi_db_link': genbank_bacteria_link,
                                   'bacterium_name': genbank_list[j],
+                                  'analyzed_bacteria': analyzed_bacteria,
                                   'db_dir': bactdb_dir,
                                   'source_db': "genbank",
                                   'try_err_message': "%s is not prepared: " % genbank_list[j]},
@@ -47,6 +53,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
                            args=({'function': get_bacterium,
                                   'ncbi_db_link': refseq_bacteria_link,
                                   'bacterium_name': refseq_list[i],
+                                  'analyzed_bacteria': analyzed_bacteria,
                                   'db_dir': bactdb_dir,
                                   'source_db': "refseq",
                                   'try_err_message': "%s is not prepared: " % refseq_list[i]},
@@ -61,10 +68,13 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
             for proc in proc_list:
                 proc.join()
             proc_list = list()
+    analyzed_bacteria_f = open(os.path.join(bactdb_dir, analyzed_bacteria_f_name), 'wb')
+    pickle.dump(analyzed_bacteria, analyzed_bacteria_f)
+    analyzed_bacteria_f.close()
     return load_list_from_file(os.path.join(bactdb_dir, bacteria_list_f_name), remove_list_f=remove_bact_list_f)
 
 
-def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None, **kwargs):
+def get_bacterium(ncbi_db_link, bacterium_name, analyzed_bacteria, db_dir, source_db=None, **kwargs):
     bacterium_info = {"family": None,
                       "genus": None,
                       "species": None,
@@ -75,6 +85,8 @@ def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None, **kwargs
                       "repr": False}
     bacterium_link = ncbi_db_link + "/" + bacterium_name
     print bacterium_link
+    if analyzed_bacteria[bacterium_name]:
+        return 0
     bacterium_list = get_links_from_html(bacterium_link)
     if "representative" in bacterium_list:
         next_page = bacterium_link + "/" + "representative"
@@ -103,8 +115,9 @@ def get_bacterium(ncbi_db_link, bacterium_name, db_dir, source_db=None, **kwargs
                                                     bacterium_info["strain"])
     print "got %s 16S rRNA" % bacterium_info["strain"]
     f = open(os.path.join(db_dir, bacteria_list_f_name), 'ab')
-    f.write(pickle.dumps(bacterium_info)+"\n")
+    f.write(pickle.dumps(bacterium_info)+b'\n')
     f.close()
+    analyzed_bacteria[bacterium_name] = True
 
 
 def download_bacterium_files(bact_prefix, suffixes, download_dir="./"):
