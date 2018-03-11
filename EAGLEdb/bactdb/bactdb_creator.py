@@ -1,13 +1,16 @@
 import os
+import io
 import sys
 import gzip
 import pickle
 import wget
+import json
 import multiprocessing as mp
 
 from EAGLEdb.lib import get_links_from_html
-from EAGLE.lib import worker, load_list_from_file
+from EAGLE.lib import worker
 from EAGLEdb.constants import bacteria_list_f_name, analyzed_bacteria_f_name
+from EAGLE.constants import EAGLE_logger
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria",
@@ -21,15 +24,19 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
     try:
         os.makedirs(bactdb_dir)
     except OSError:
-        print "bactdb directory exists"
+        EAGLE_logger.info("bactdb directory exists")
     refseq_list = get_links_from_html(refseq_bacteria_link, num_threads=num_threads)
     genbank_list = get_links_from_html(genbank_bacteria_link, num_threads=num_threads)
-    print "20 first redseq bacteria: ", "; ".join(refseq_list[:20])
-    print "20 first genbank bacteria: ", "; ".join(genbank_list[:20])
+    EAGLE_logger.info("20 first redseq bacteria: %s" % "; ".join(refseq_list[:20]))
+    EAGLE_logger.info("20 first genbank bacteria: %s" % "; ".join(genbank_list[:20]))
     try:
         analyzed_bacteria = pickle.load(open(os.path.join(bactdb_dir, analyzed_bacteria), 'rb'))
     except IOError:
         analyzed_bacteria = mp.Manager().dict()
+    bacteria_list_f_path = os.path.join(bactdb_dir, bacteria_list_f_name)
+    bacteria_list_f = io.open(bacteria_list_f_path, 'w', newline="\n")
+    bacteria_list_f.write(u"[\n")
+    bacteria_list_f.close()
     n = 1
     i = 0
     j = 0
@@ -68,10 +75,16 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
             for proc in proc_list:
                 proc.join()
             proc_list = list()
+    for proc in proc_list:
+        proc.join()
+    proc_list = list()
     analyzed_bacteria_f = open(os.path.join(bactdb_dir, analyzed_bacteria_f_name), 'wb')
     pickle.dump(analyzed_bacteria, analyzed_bacteria_f)
     analyzed_bacteria_f.close()
-    return load_list_from_file(os.path.join(bactdb_dir, bacteria_list_f_name), remove_list_f=remove_bact_list_f)
+    bacteria_list_f = io.open(bacteria_list_f_path, 'a', newline="\n")
+    bacteria_list_f.write(u"  {}\n]")
+    bacteria_list_f.close()
+    return json.load(open(bacteria_list_f_path))
 
 
 def get_bacterium(ncbi_db_link, bacterium_name, analyzed_bacteria, db_dir, source_db=None, **kwargs):
@@ -84,8 +97,8 @@ def get_bacterium(ncbi_db_link, bacterium_name, analyzed_bacteria, db_dir, sourc
                       "source_db": source_db,
                       "repr": False}
     bacterium_link = ncbi_db_link + "/" + bacterium_name
-    print bacterium_link
-    if analyzed_bacteria[bacterium_name]:
+    EAGLE_logger.info('bacterium link: %s' % bacterium_link)
+    if analyzed_bacteria.get(bacterium_name, None):
         return 0
     bacterium_list = get_links_from_html(bacterium_link)
     if "representative" in bacterium_list:
@@ -95,7 +108,7 @@ def get_bacterium(ncbi_db_link, bacterium_name, analyzed_bacteria, db_dir, sourc
         next_page = bacterium_link + "/" + "latest_assembly_versions"
     assemblies_list = get_links_from_html(next_page)
     if not assemblies_list:
-        print "Assemblies not loaded"
+        EAGLE_logger.warning("Assemblies not loaded")
         return 0
     bacterium_prefix = (next_page + "/" + assemblies_list[-1] + "/" + assemblies_list[-1]).replace("https", "ftp")
     bacterium_info["download_prefix"] = bacterium_prefix
@@ -107,15 +120,15 @@ def get_bacterium(ncbi_db_link, bacterium_name, analyzed_bacteria, db_dir, sourc
         tax_f_name = assemblies_list[-1] + "_genomic.gbff.gz"
     bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
         get_taxonomy(tax_f_name, db_dir)
-    print "got %s taxonomy" % bacterium_info["strain"]
+    EAGLE_logger.info("got %s taxonomy" % bacterium_info["strain"])
     #if not os.path.exists():
     #
     bacterium_info["16S_rRNA_file"] = get_16S_fasta(assemblies_list[-1] + "_rna_from_genomic.fna.gz",
                                                     db_dir,
                                                     bacterium_info["strain"])
-    print "got %s 16S rRNA" % bacterium_info["strain"]
-    f = open(os.path.join(db_dir, bacteria_list_f_name), 'ab')
-    f.write(pickle.dumps(bacterium_info)+b'\n')
+    EAGLE_logger.info("got %s 16S rRNA" % bacterium_info["strain"])
+    f = io.open(os.path.join(db_dir, bacteria_list_f_name), 'a', newline="\n")
+    f.write(unicode("  "+json.dumps(bacterium_info)+",\n"))
     f.close()
     analyzed_bacteria[bacterium_name] = True
 

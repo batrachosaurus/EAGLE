@@ -1,10 +1,11 @@
 import multiprocessing as mp
 import urllib2
 
-from EAGLE.lib.lib_tools import worker
+from EAGLE.lib import worker
+from EAGLE.constants import EAGLE_logger
 
 
-def get_links_from_html(html_link, num_threads=1, n_tries=10):
+def get_links_from_html(html_link, num_threads=1, n_tries=1, debug=False):
     n_t = 0
     links = mp.Manager().dict()
     params_list = []
@@ -12,7 +13,8 @@ def get_links_from_html(html_link, num_threads=1, n_tries=10):
         html_file = urllib2.urlopen(html_link)
         params_list.append({'function': _read_html_file_links,
                             'html_file': html_file.read().split("\n"),
-                            'links': links})
+                            'links': links,
+                            'debug': debug})
         n_t += 1
     pool = mp.Pool(num_threads)
     pool.map(worker, params_list)
