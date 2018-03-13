@@ -4,5 +4,5 @@
 
 Install it:
 ```
-pip install git+https://github.com/loven-doo/mapipe.git
+pip install git+https://github.com/loven-doo/EAGLE.git
 ```
