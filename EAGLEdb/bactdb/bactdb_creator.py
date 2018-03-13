@@ -207,7 +207,9 @@ def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
     f_path = os.path.join(f_dir, f_name)
     rRNA = False
     seq_list = []
+    EAGLE_logger.info("open %s" % f_path)  # for testing
     f = gzip.open(f_path, 'rb')
+    EAGLE_logger.info("opened %s" % f_path)  # for testing
     for line_ in f:
         line = None
         line = line_.decode("utf-8").strip()
