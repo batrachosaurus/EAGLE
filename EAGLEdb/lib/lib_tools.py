@@ -5,7 +5,7 @@ from EAGLE.lib import worker
 from EAGLE.constants import EAGLE_logger
 
 
-def get_links_from_html(html_link, num_threads=1, n_tries=1, debug=False):
+def get_links_from_html(html_link, num_threads=1, n_tries=3, debug=False):
     n_t = 0
     links = mp.Manager().dict()
     params_list = []
