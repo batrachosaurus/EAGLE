@@ -20,7 +20,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
                            first_bact=None,
                            last_bact=None,
                            analyzed_bacteria=analyzed_bacteria_f_name,
-                           remove_bact_list_f=True):
+                           remove_bact_list_f=False):
     try:
         os.makedirs(bactdb_dir)
     except OSError:
