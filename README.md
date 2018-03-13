@@ -1,1 +1,8 @@
-# EAGLE - Essential and Advantageous Genes Location Explorer
+# EAGLE - Essential and Advantageous Genes Location Explorer  
+
+### How to use
+
+Install it:
+```
+pip install git+https://github.com/loven-doo/mapipe.git
+```
