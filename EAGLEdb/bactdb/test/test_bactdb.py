@@ -17,7 +17,7 @@ class TestBactDBCreator(unittest.TestCase):
                        "species": u'Abiotrophia_defectiva',
                        "strain": u'Abiotrophia_defectiva_ATCC_49176'}
     rna_f_name = "GCF_000160075.2_ASM16007v2_rna_from_genomic.fna.gz"
-    test_16S_fasta_result = "Abiotrophia_defectiva_ATCC_49176.fasta"
+    test_16S_fasta_result = "Abiotrophia_defectiva_ATCC_49176_16S_rRNA.fasta"
     try:
         os.makedirs(output_dir)
     except OSError:
