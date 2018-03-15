@@ -145,7 +145,7 @@ def download_bacterium_files(bact_prefix, suffixes, download_dir="./"):
         try:
             wget.download(file_link, out=download_dir)
         except IOError:
-            print sys.exc_info()
+            EAGLE_logger.warning("%s file has not been found" % sys.exc_info())
 
 
 def get_taxonomy(f_name, f_dir, remove_tax_f=True):
