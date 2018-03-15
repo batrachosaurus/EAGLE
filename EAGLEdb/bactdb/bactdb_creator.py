@@ -77,7 +77,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
             proc_list = list()
     for proc in proc_list:
         proc.join()
-    proc_list = list()
+    proc_list = None
     analyzed_bacteria_f = open(os.path.join(bactdb_dir, analyzed_bacteria_f_name), 'wb')
     pickle.dump(analyzed_bacteria, analyzed_bacteria_f)
     analyzed_bacteria_f.close()
@@ -145,7 +145,7 @@ def download_bacterium_files(bact_prefix, suffixes, download_dir="./"):
         try:
             wget.download(file_link, out=download_dir)
         except IOError:
-            EAGLE_logger.warning("%s file has not been found" % sys.exc_info())
+            EAGLE_logger.warning("%s file has not been found" % json.dumps(sys.exc_info()))
 
 
 def get_taxonomy(f_name, f_dir, remove_tax_f=True):
@@ -233,5 +233,45 @@ def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
     return fasta_path
 
 
-def get_families_dict(bacteria_list):
-    pass
+def get_families_dict(bacteria_list, db_dir, only_repr=False):
+    families_dict = dict()
+    for bacterium in bacteria_list:
+        if only_repr and not bacterium['repr']: continue
+        if families_dict[bacterium['family']]:
+            if families_dict[bacterium['family']][bacterium['genus']]:
+                if families_dict[bacterium['family']][bacterium['genus']][bacterium['species']]:
+                    families_dict[bacterium['family']][bacterium['genus']][bacterium['species']][bacterium['strain']] =\
+                        {"download_prefix": bacterium["download_prefix"],
+                         "16S_rRNA_file": bacterium["16S_rRNA_file"],
+                         "source_db": bacterium["source_db"]}
+                else:
+                    families_dict[bacterium['family']][bacterium['genus']][bacterium['species']] = \
+                        {bacterium['strain']:
+                             {"download_prefix": bacterium["download_prefix"],
+                              "16S_rRNA_file": bacterium["16S_rRNA_file"],
+                              "source_db": bacterium["source_db"]}
+                         }
+            else:
+                families_dict[bacterium['family']][bacterium['genus']] = \
+                    {bacterium['species']:
+                        {bacterium['strain']:
+                            {"download_prefix": bacterium["download_prefix"],
+                             "16S_rRNA_file": bacterium["16S_rRNA_file"],
+                             "source_db": bacterium["source_db"]}
+                         }
+                     }
+        else:
+            families_dict = \
+                {bacterium['genus']:
+                    {bacterium['species']:
+                         {bacterium['strain']:
+                             {"download_prefix": bacterium["download_prefix"],
+                              "16S_rRNA_file": bacterium["16S_rRNA_file"],
+                              "source_db": bacterium["source_db"]}
+                          }
+                     },
+                 "newick_tree" : None,
+                 "gtf": os.path.join(db_dir, bacterium['family']+".gtf")
+                 }
+
+    return families_dict
