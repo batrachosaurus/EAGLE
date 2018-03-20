@@ -8,7 +8,7 @@ import multiprocessing as mp
 
 from EAGLEdb.lib import get_links_from_html
 from EAGLE.lib import worker
-from EAGLEdb.constants import bacteria_list_f_name, analyzed_bacteria_f_name
+from EAGLEdb.constants import bacteria_list_f_name, analyzed_bacteria_f_name, bact_fam_f_name
 from EAGLE.constants import EAGLE_logger
 
 
@@ -230,45 +230,79 @@ def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
     return fasta_path
 
 
-def get_families_dict(bacteria_list, db_dir, only_repr=False):
+def get_families_dict(bacteria_list, db_dir, num_threads=4, only_repr=False):
     families_dict = dict()
     for bacterium in bacteria_list:
+        bacterium_data = {"download_prefix": bacterium["download_prefix"],
+                          "16S_rRNA_file": bacterium["16S_rRNA_file"],
+                          "fna_file": None,
+                          "source_db": bacterium["source_db"],
+                          "repr": bacterium['repr']}
         if only_repr and not bacterium['repr']: continue
         if families_dict[bacterium['family']]:
             if families_dict[bacterium['family']][bacterium['genus']]:
                 if families_dict[bacterium['family']][bacterium['genus']][bacterium['species']]:
-                    families_dict[bacterium['family']][bacterium['genus']][bacterium['species']][bacterium['strain']] =\
-                        {"download_prefix": bacterium["download_prefix"],
-                         "16S_rRNA_file": bacterium["16S_rRNA_file"],
-                         "source_db": bacterium["source_db"]}
+                    families_dict[bacterium['family']][bacterium['genus']][bacterium['species']] \
+                        [bacterium['strain']] = bacterium_data
                 else:
                     families_dict[bacterium['family']][bacterium['genus']][bacterium['species']] = \
-                        {bacterium['strain']:
-                             {"download_prefix": bacterium["download_prefix"],
-                              "16S_rRNA_file": bacterium["16S_rRNA_file"],
-                              "source_db": bacterium["source_db"]}
-                         }
+                        {bacterium['strain']: bacterium_data}
             else:
                 families_dict[bacterium['family']][bacterium['genus']] = \
                     {bacterium['species']:
-                        {bacterium['strain']:
-                            {"download_prefix": bacterium["download_prefix"],
-                             "16S_rRNA_file": bacterium["16S_rRNA_file"],
-                             "source_db": bacterium["source_db"]}
-                         }
+                        {bacterium['strain']: bacterium_data}
                      }
         else:
             families_dict = \
                 {bacterium['genus']:
                     {bacterium['species']:
-                         {bacterium['strain']:
-                             {"download_prefix": bacterium["download_prefix"],
-                              "16S_rRNA_file": bacterium["16S_rRNA_file"],
-                              "source_db": bacterium["source_db"]}
-                          }
+                         {bacterium['strain']: bacterium_data}
                      },
-                 "newick_tree" : None,
-                 "gtf": os.path.join(db_dir, bacterium['family']+".gtf")
+                 "16S_rRNA_tree": None,
+                 "WGS_tree": None,
+                 "16S_rRNA_gtf": os.path.join(db_dir, bacterium['family']+"_16S_rRNA.gtf"),
+                 "WGS_gtf": os.path.join(db_dir, bacterium['family']+"_WGS.gtf"),
+                 "16S_rRNA_profile": None,
+                 "WGS_profile": None,
                  }
 
-    return families_dict
+    bact_fam_f_path = os.path.join(db_dir, bact_fam_f_name)
+    prepare_families(families_dict, db_dir, num_threads=num_threads)
+
+    return json.load(open(bact_fam_f_path))
+
+
+def prepare_families(families_dict, db_dir, num_threads=4):
+    bact_fam_f_path = os.path.join(db_dir, bact_fam_f_name)
+    bact_fam_f = io.open(bact_fam_f_path, 'w', newline="\n")
+    bact_fam_f.write(u"[\n")
+    bact_fam_f.close()
+
+    n = 0
+    proc_list = list()
+    for family in families_dict.keys():
+        p = mp.Process(target=worker,
+                       args=({'function': prepare_family,
+                              'family_name': family,
+                              'family_data': families_dict[family],
+                              'db_dir': db_dir},
+                             ))
+        p.start()
+        proc_list.append(p)
+        n += 1
+        if n % num_threads == 0:
+            for proc in proc_list:
+                proc.join()
+            proc_list = list()
+    for proc in proc_list:
+        proc.join()
+    proc_list = None
+
+    bact_fam_f = io.open(bact_fam_f_path, 'a', newline="\n")
+    bact_fam_f.write(u"  {}\n]")
+    bact_fam_f.close()
+
+
+def prepare_family(family_name, family_data, db_dir):
+
+    pass
