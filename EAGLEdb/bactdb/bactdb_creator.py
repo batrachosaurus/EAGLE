@@ -9,7 +9,9 @@ import multiprocessing as mp
 import subprocess
 
 from EAGLEdb.lib import get_links_from_html
-from EAGLE.lib import worker
+from EAGLE.lib import worker, read_fasta_to_dict
+from EAGLE.lib.alignment_tools import construct_mult_aln
+from EAGLE.lib.phylo_tools import build_tree_by_dist
 from EAGLEdb.constants import bacteria_list_f_name, analyzed_bacteria_f_name, bact_fam_f_name
 from EAGLE.constants import EAGLE_logger
 
@@ -247,8 +249,8 @@ def get_families_dict(bacteria_list, db_dir, num_threads=4, only_repr=False):
         if families_dict[bacterium['family']]:
             if families_dict[bacterium['family']][bacterium['genus']]:
                 if families_dict[bacterium['family']][bacterium['genus']][bacterium['species']]:
-                    families_dict[bacterium['family']][bacterium['genus']][bacterium['species']] \
-                        [bacterium['strain']] = bacterium_data
+                    families_dict[bacterium['family']][bacterium['genus']][bacterium['species']][bacterium['strain']] =\
+                        bacterium_data
                 else:
                     families_dict[bacterium['family']][bacterium['genus']][bacterium['species']] = \
                         {bacterium['strain']: bacterium_data}
@@ -262,13 +264,13 @@ def get_families_dict(bacteria_list, db_dir, num_threads=4, only_repr=False):
                 {bacterium['genus']:
                     {bacterium['species']:
                          {bacterium['strain']: bacterium_data}
-                     },
-                 "16S_rRNA_tree": None,
-                 "WGS_tree": None,
-                 "16S_rRNA_gtf": os.path.join(db_dir, bacterium['family']+"_16S_rRNA.gtf"),
-                 "WGS_gtf": os.path.join(db_dir, bacterium['family']+"_WGS.gtf"),
-                 "16S_rRNA_profile": None,
-                 "WGS_profile": None,
+                     }
+                # "16S_rRNA_tree": None,
+                # "WGS_tree": None,
+                # "16S_rRNA_gtf": os.path.join(db_dir, bacterium['family']+"_16S_rRNA.gtf"),
+                # "WGS_gtf": os.path.join(db_dir, bacterium['family']+"_WGS.gtf"),
+                # "16S_rRNA_profile": None,
+                # "WGS_profile": None,
                  }
 
     bact_fam_f_path = os.path.join(db_dir, bact_fam_f_name)
@@ -309,5 +311,28 @@ def prepare_families(families_dict, db_dir, num_threads=4):
 
 
 def prepare_family(family_name, family_data, db_dir):
+    rRNA_seqs_dict = dict()  # {seq_id: seq}
+    ids_to_org_dict = dict()  # {seq_id: bacterium_name}
+    for genus in family_data.keys():
+        for species in family_data[genus].keys():
+            for strain in family_data[genus][species].keys():
+                bacterium_rRNA_dict = read_fasta_to_dict(family_data[genus][species][strain]["16S_rRNA_file"])
+                for rRNA_id in bacterium_rRNA_dict.keys():
+                    ids_to_org_dict[rRNA_id] = strain
+                rRNA_seqs_dict.update(bacterium_rRNA_dict)
+    # TODO: follows
+    ### This section will be upgraded with my own alignment method but now MUSCLE and hmmer 3 are used
+    rRNA_aln = construct_mult_aln(rRNA_seqs_dict, method="MUSCLE", tmp_dir=os.path.join(db_dir, family_name+"_tmp"))
+    rRNA_aln.remove_paralogs(ids_to_org_dict, only_dist=True)  # If I use my own alignment method it only_dist will be False
+    family_data["16S_rRNA_gtf"] = os.path.join(db_dir, family_name+"_16S_rRNA.gtf")
+    family_data["16S_rRNA_fasta"] = os.path.join(db_dir, family_name+"_16S_rRNA.fasta")
+    rRNA_aln.to_gtf(gtf_path=family_data["16S_rRNA_gtf"],
+                    fasta_path=family_data["16S_rRNA_fasta"],
+                    meta_dict=ids_to_org_dict)
+    family_data["16S_rRNA_tree"] = build_tree_by_dist(rRNA_aln.get_distance_matrix())
+    family_data["16S_rRNA_profile"] = os.path.join(db_dir, family_name+".hmm")
+    rRNA_aln.get_hmm_profile(method='hmmer', profile_path=family_data["16S_rRNA_profile"])  # hmmer will be replaced with my own method
 
-    pass
+    family_json_f = open(os.path.join(db_dir, family_name+".json"), 'w')
+    json.dump(family_data, family_json_f)
+    family_json_f.close()
