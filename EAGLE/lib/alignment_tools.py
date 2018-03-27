@@ -3,6 +3,7 @@ import shutil
 import subprocess
 
 from EAGLE.constants import EAGLE_logger
+from EAGLE import conf_constants
 from EAGLE.lib import read_fasta_to_dict
 
 
@@ -35,7 +36,7 @@ class MultAln:
 def construct_mult_aln(seq_dict=None,
                        fasta_path=None,
                        method="MUSCLE",
-                       aligner_inst_dir="",
+                       aligner_inst_dir=conf_constants.muscle_inst_dir,
                        tmp_dir="tmp",
                        hmmer_inst_dir="",
                        remove_tmp=True):
