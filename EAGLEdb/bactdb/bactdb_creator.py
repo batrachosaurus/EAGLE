@@ -14,6 +14,7 @@ from EAGLE.lib.alignment_tools import construct_mult_aln
 from EAGLE.lib.phylo_tools import build_tree_by_dist
 from EAGLEdb.constants import bacteria_list_f_name, analyzed_bacteria_f_name, bact_fam_f_name
 from EAGLE.constants import EAGLE_logger
+from EAGLE.configs.update_constants import update_by_config
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria",
@@ -23,7 +24,11 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
                            first_bact=None,
                            last_bact=None,
                            analyzed_bacteria=analyzed_bacteria_f_name,
-                           remove_bact_list_f=False):
+                           remove_bact_list_f=False,
+                           config_path=None):
+
+    if config_path:
+        update_by_config(config_path)
     try:
         os.makedirs(bactdb_dir)
     except OSError:
@@ -237,7 +242,9 @@ def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
     return fasta_path
 
 
-def get_families_dict(bacteria_list, db_dir, num_threads=4, only_repr=False):
+def get_families_dict(bacteria_list, db_dir, num_threads=4, only_repr=False, config_path=None):
+    if config_path:
+        update_by_config(config_path)
     families_dict = dict()
     for bacterium in bacteria_list:
         bacterium_data = {"download_prefix": bacterium["download_prefix"],
@@ -322,7 +329,9 @@ def prepare_family(family_name, family_data, db_dir):
                 rRNA_seqs_dict.update(bacterium_rRNA_dict)
     # TODO: follows
     ### This section will be upgraded with my own alignment method but now MUSCLE and hmmer 3 are used
-    rRNA_aln = construct_mult_aln(rRNA_seqs_dict, method="MUSCLE", tmp_dir=os.path.join(db_dir, family_name+"_tmp"))
+    rRNA_aln = construct_mult_aln(seq_dict=rRNA_seqs_dict,
+                                  method="MUSCLE",
+                                  tmp_dir=os.path.join(db_dir, family_name+"_tmp"))
     rRNA_aln.remove_paralogs(ids_to_org_dict, only_dist=True)  # If I use my own alignment method it only_dist will be False
     family_data["16S_rRNA_gtf"] = os.path.join(db_dir, family_name+"_16S_rRNA.gtf")
     family_data["16S_rRNA_fasta"] = os.path.join(db_dir, family_name+"_16S_rRNA.fasta")
