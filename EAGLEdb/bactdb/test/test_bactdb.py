@@ -2,13 +2,13 @@ import os
 import shutil
 import unittest
 
-from EAGLEdb.constants import constants_path
+from EAGLEdb.constants import CONSTANTS_PATH
 from EAGLEdb.bactdb import get_bacteria_from_ncbi
 from EAGLEdb.bactdb.bactdb_creator import get_taxonomy, get_16S_fasta
 
 class TestBactDBCreator(unittest.TestCase):
 
-    test_dir = os.path.join(constants_path, "bactdb", "test")
+    test_dir = os.path.join(CONSTANTS_PATH, "bactdb", "test")
     input_dir = os.path.join(test_dir, "test_data")
     output_dir = os.path.join(test_dir, "test_results")
     tax_f_name = "GCF_000160075.2_ASM16007v2_wgsmaster.gbff.gz"

@@ -6,9 +6,12 @@ import ConfigParser
 from ConfigParser import NoSectionError, NoOptionError
 
 
+from EAGLE.general_utils import ConfConstantsBase
+
 constants_path = os.path.dirname(os.path.realpath(__file__))
 conf_dir_name = 'configs'
 conf_dir_path = os.path.join(constants_path, conf_dir_name)
+DEFAULT_CONFIG = os.path.join(conf_dir_path, "default_config.ini")
 log_config_name = 'log_conf.yaml'
 logger_name = 'EAGLE_logger'
 
@@ -44,21 +47,16 @@ def _config_parser(config_path):
     return config
 
 
-class ConfConstants:
+class ConfConstants(ConfConstantsBase):
 
-    muscle_inst_dir = ""
+    def __init__(self, config_path=DEFAULT_CONFIG):
+        # GENERAL
+        self.num_threads = 4
+        # Alignment
+        self.muscle_inst_dir = ""
+        self.hmmer_inst_dir = ""
 
-    def __init__(self):
-        pass
-
-    def update_by_config(self, config_path):
-        config = _config_parser(config_path=config_path)
-        try:
-            muscle_inst_dir = config.get("ALIGNMENT", "muscle_inst_dir")
-            self.muscle_inst_dir = None
-            self.muscle_inst_dir = muscle_inst_dir
-        except (NoSectionError, NoOptionError):
-            pass
+        super(ConfConstants, self).__init__(config_path=config_path)
 
 
 conf_constants = ConfConstants()

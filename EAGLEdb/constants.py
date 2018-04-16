@@ -1,19 +1,23 @@
 import os
 
-constants_path = os.path.dirname(os.path.realpath(__file__))
-
-bacteria_list_f_name = "bacteria.json"
-analyzed_bacteria_f_name = "analyzed_bacteria.p"
-bact_fam_f_name = "bact_fam.json"
+from EAGLE.constants import DEFAULT_CONFIG
+from EAGLE.general_utils import ConfConstantsBase
 
 
-class ConfConstants:
+CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
 
-    def __init__(self):
-        pass
-
-    def update(self):
-        pass
+BACTERIA_LIST_F_NAME = "bacteria.json"
+ANALYZED_BACTERIA_F_NAME = "analyzed_bacteria.p"
+BACT_FAM_F_NAME = "bact_fam.json"
 
 
-conf_constants = ConfConstants()
+class ConfConstants(ConfConstantsBase):
+
+    def __init__(self, config_path=DEFAULT_CONFIG):
+        # Bacteria db
+        self.only_repr=False
+
+        super(ConfConstants, self).__init__(config_path=config_path)
+
+
+conf_constants_db = ConfConstants()

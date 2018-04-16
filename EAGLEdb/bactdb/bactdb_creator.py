@@ -12,23 +12,28 @@ from EAGLEdb.lib import get_links_from_html
 from EAGLE.lib import worker, read_fasta_to_dict
 from EAGLE.lib.alignment_tools import construct_mult_aln
 from EAGLE.lib.phylo_tools import build_tree_by_dist
-from EAGLEdb.constants import bacteria_list_f_name, analyzed_bacteria_f_name, bact_fam_f_name
-from EAGLE.constants import EAGLE_logger
-from EAGLE.configs.update_constants import update_by_config
+from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db
+from EAGLE.constants import EAGLE_logger, conf_constants
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria",
                            genbank_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/genbank/bacteria",
                            bactdb_dir="EAGLEdb/bacteria",
-                           num_threads=4,
+                           num_threads=None,
                            first_bact=None,
                            last_bact=None,
-                           analyzed_bacteria=analyzed_bacteria_f_name,
+                           analyzed_bacteria=ANALYZED_BACTERIA_F_NAME,
                            remove_bact_list_f=False,
                            config_path=None):
 
     if config_path:
-        update_by_config(config_path)
+        conf_constants.update_by_config(config_path=config_path)
+        conf_constants_db.update_by_config(config_path=config_path)
+    if not num_threads:
+        num_threads = conf_constants.num_threads
+    else:
+        conf_constants.num_threads = num_threads
+
     try:
         os.makedirs(bactdb_dir)
     except OSError:
@@ -41,7 +46,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
         analyzed_bacteria = pickle.load(open(os.path.join(bactdb_dir, analyzed_bacteria), 'rb'))
     except IOError:
         analyzed_bacteria = mp.Manager().dict()
-    bacteria_list_f_path = os.path.join(bactdb_dir, bacteria_list_f_name)
+    bacteria_list_f_path = os.path.join(bactdb_dir, BACTERIA_LIST_F_NAME)
     bacteria_list_f = io.open(bacteria_list_f_path, 'w', newline="\n")
     bacteria_list_f.write(u"[\n")
     bacteria_list_f.close()
@@ -86,7 +91,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
     for proc in proc_list:
         proc.join()
     proc_list = None
-    analyzed_bacteria_f = open(os.path.join(bactdb_dir, analyzed_bacteria_f_name), 'wb')
+    analyzed_bacteria_f = open(os.path.join(bactdb_dir, ANALYZED_BACTERIA_F_NAME), 'wb')
     pickle.dump(analyzed_bacteria, analyzed_bacteria_f)
     analyzed_bacteria_f.close()
     bacteria_list_f = io.open(bacteria_list_f_path, 'a', newline="\n")
@@ -135,7 +140,7 @@ def get_bacterium(ncbi_db_link, bacterium_name, analyzed_bacteria, db_dir, sourc
                                                     db_dir,
                                                     bacterium_info["strain"])
     EAGLE_logger.info("got %s 16S rRNA" % bacterium_info["strain"])
-    f = io.open(os.path.join(db_dir, bacteria_list_f_name), 'a', newline="\n")
+    f = io.open(os.path.join(db_dir, BACTERIA_LIST_F_NAME), 'a', newline="\n")
     f.write(unicode("  "+json.dumps(bacterium_info)+",\n"))
     f.close()
     analyzed_bacteria[bacterium_name] = True
@@ -242,9 +247,19 @@ def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
     return fasta_path
 
 
-def get_families_dict(bacteria_list, db_dir, num_threads=4, only_repr=False, config_path=None):
+def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, config_path=None):
     if config_path:
-        update_by_config(config_path)
+        conf_constants.update_by_config(config_path=config_path)
+        conf_constants_db.update_by_config(config_path=config_path)
+    if not num_threads:
+        num_threads = conf_constants.num_threads
+    else:
+        conf_constants.num_threads = num_threads
+    if not only_repr:
+        only_repr = conf_constants_db.only_repr
+    else:
+        conf_constants_db.only_repr = only_repr
+
     families_dict = dict()
     for bacterium in bacteria_list:
         bacterium_data = {"download_prefix": bacterium["download_prefix"],
@@ -280,14 +295,14 @@ def get_families_dict(bacteria_list, db_dir, num_threads=4, only_repr=False, con
                 # "WGS_profile": None,
                  }
 
-    bact_fam_f_path = os.path.join(db_dir, bact_fam_f_name)
+    bact_fam_f_path = os.path.join(db_dir, BACT_FAM_F_NAME)
     prepare_families(families_dict, db_dir, num_threads=num_threads)
 
     return json.load(open(bact_fam_f_path))
 
 
 def prepare_families(families_dict, db_dir, num_threads=4):
-    bact_fam_f_path = os.path.join(db_dir, bact_fam_f_name)
+    bact_fam_f_path = os.path.join(db_dir, BACT_FAM_F_NAME)
     bact_fam_f = io.open(bact_fam_f_path, 'w', newline="\n")
     bact_fam_f.write(u"[\n")
     bact_fam_f.close()
@@ -331,6 +346,7 @@ def prepare_family(family_name, family_data, db_dir):
     ### This section will be upgraded with my own alignment method but now MUSCLE and hmmer 3 are used
     rRNA_aln = construct_mult_aln(seq_dict=rRNA_seqs_dict,
                                   method="MUSCLE",
+                                  aln_type="nucl",
                                   tmp_dir=os.path.join(db_dir, family_name+"_tmp"))
     rRNA_aln.remove_paralogs(ids_to_org_dict, only_dist=True)  # If I use my own alignment method it only_dist will be False
     family_data["16S_rRNA_gtf"] = os.path.join(db_dir, family_name+"_16S_rRNA.gtf")
