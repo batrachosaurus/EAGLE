@@ -54,6 +54,7 @@ class ConfConstants(ConfConstantsBase):
         self.num_threads = 4
         # Alignment
         self.muscle_inst_dir = ""
+        self.phylip_inst_dir = "phylip/exe"
         self.hmmer_inst_dir = ""
 
         super(ConfConstants, self).__init__(config_path=config_path)
