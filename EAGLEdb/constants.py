@@ -1,8 +1,7 @@
 import os
 
 from EAGLE.constants import DEFAULT_CONFIG
-from EAGLE.general_utils import ConfConstantsBase
-
+from EAGLE.lib.general import ConfConstantsBase
 
 CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
 

@@ -1,19 +1,20 @@
-import os
-import io
-import platform
 import gzip
-import pickle
-import wget
+import io
 import json
 import multiprocessing as mp
+import os
+import pickle
+import platform
 import subprocess
 
-from EAGLEdb.lib import get_links_from_html
-from EAGLE.lib import worker, read_fasta_to_dict
-from EAGLE.lib.alignment_tools import construct_mult_aln
-from EAGLE.lib.phylo_tools import build_tree_by_dist
-from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db
+import wget
+
 from EAGLE.constants import EAGLE_logger, conf_constants
+from EAGLE.lib.alignment import construct_mult_aln
+from EAGLE.lib.general import worker, read_fasta_to_dict
+from EAGLE.lib.phylo import build_tree_by_dist
+from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db
+from EAGLEdb.lib import get_links_from_html
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria",
@@ -65,7 +66,8 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
                                   'analyzed_bacteria': analyzed_bacteria,
                                   'db_dir': bactdb_dir,
                                   'source_db': "genbank",
-                                  'try_err_message': "%s is not prepared: " % genbank_list[j]},
+                                  'try_err_message': "%s is not prepared: " % genbank_list[j],
+                                  'logger': EAGLE_logger},
                                  ))
             j += 1
         else:
@@ -76,7 +78,8 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
                                   'analyzed_bacteria': analyzed_bacteria,
                                   'db_dir': bactdb_dir,
                                   'source_db': "refseq",
-                                  'try_err_message': "%s is not prepared: " % refseq_list[i]},
+                                  'try_err_message': "%s is not prepared: " % refseq_list[i],
+                                  'logger': EAGLE_logger},
                                  ))
             i += 1
         if genbank_list[j] == refseq_list[i-1]:
@@ -347,7 +350,10 @@ def prepare_family(family_name, family_data, db_dir):
     rRNA_aln = construct_mult_aln(seq_dict=rRNA_seqs_dict,
                                   method="MUSCLE",
                                   aln_type="nucl",
-                                  tmp_dir=os.path.join(db_dir, family_name+"_tmp"))
+                                  aligner_inst_dir=conf_constants.muscle_inst_dir,
+                                  hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                                  tmp_dir=os.path.join(db_dir, family_name+"_tmp"),
+                                  logger=EAGLE_logger)
     rRNA_aln.remove_paralogs(ids_to_org_dict, only_dist=True)  # If I use my own alignment method it only_dist will be False
     family_data["16S_rRNA_gtf"] = os.path.join(db_dir, family_name+"_16S_rRNA.gtf")
     family_data["16S_rRNA_fasta"] = os.path.join(db_dir, family_name+"_16S_rRNA.fasta")

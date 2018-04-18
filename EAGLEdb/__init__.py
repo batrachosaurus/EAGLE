@@ -1,1 +1,0 @@
-from EAGLEdb.constants import conf_constants as conf_constants_db
