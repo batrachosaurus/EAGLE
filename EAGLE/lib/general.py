@@ -1,5 +1,6 @@
 # This code can have only standard Python imports
 import ConfigParser
+import sys
 
 
 class ConfConstantsBase:
@@ -50,3 +51,51 @@ def _config_parser(config_path):
 
 def get_config_parameter(config, section, parameter, fallback=None):
     pass
+
+
+def worker(kwargs, use_try=False):
+    func = kwargs.pop('function', None)
+    if 'try_err_message' in kwargs.keys():
+        use_try = True
+    logger = kwargs.get('logger', None)
+    if func:
+        if use_try:
+            try:
+                func(**kwargs)
+            except:
+                if logger:
+                    logger.warning("%s %s" % (kwargs['try_err_message'], sys.exc_info()))
+                else:
+                    print "%s %s" % (kwargs['try_err_message'], sys.exc_info())
+        else:
+            func(**kwargs)
+    else:
+        if logger:
+            logger.warning("No function to run")
+        else:
+            print "No function to run"
+
+
+def read_fasta_to_dict(fasta_path):
+    fasta_dict = dict()
+    seq_list = list()
+    title = None
+    fasta_f = open(fasta_path)
+    for line_ in fasta_f:
+        line = None
+        line = line_.strip()
+        if not line:
+            continue
+        if line[0] == ">":
+            if title:
+                fasta_dict[title] = "".join(seq_list)
+                seq_list = list()
+                title = None
+            title = line[1:]
+        else:
+            seq_list.append(line)
+    if title:
+        fasta_dict[title] = "".join(seq_list)
+        seq_list = list()
+        title = None
+    return fasta_dict

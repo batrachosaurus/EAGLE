@@ -1,12 +1,11 @@
-import os
+import ConfigParser
 import logging
 import logging.config
+import os
+
 import yaml
-import ConfigParser
-from ConfigParser import NoSectionError, NoOptionError
 
-
-from EAGLE.general_utils import ConfConstantsBase
+from EAGLE.lib.general import ConfConstantsBase
 
 constants_path = os.path.dirname(os.path.realpath(__file__))
 conf_dir_name = 'configs'

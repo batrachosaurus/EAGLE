@@ -1,8 +1,7 @@
 import multiprocessing as mp
 import urllib2
 
-from EAGLE.lib import worker
-from EAGLE.constants import EAGLE_logger
+from EAGLE.lib.general import worker
 
 
 def get_links_from_html(html_link, num_threads=1, n_tries=3, debug=False):

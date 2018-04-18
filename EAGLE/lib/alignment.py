@@ -1,11 +1,9 @@
+import collections
 import os
 import shutil
 import subprocess
-import collections
 
-from EAGLE.constants import EAGLE_logger
-from EAGLE import conf_constants
-from EAGLE.lib import read_fasta_to_dict
+from EAGLE.lib.general import read_fasta_to_dict
 
 
 class MultAln:
@@ -46,17 +44,21 @@ def construct_mult_aln(seq_dict=None,
                        fasta_path=None,
                        method="MUSCLE",
                        aln_type=None,
-                       aligner_inst_dir=conf_constants.muscle_inst_dir,
+                       aligner_inst_dir="",
                        tmp_dir="tmp",
-                       hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                       remove_tmp=True):
+                       hmmer_inst_dir="",
+                       remove_tmp=True,
+                       logger=None):
 
     if not fasta_path and seq_dict:
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
         fasta_path = os.path.join(tmp_dir, "seqs_to_aln.fasta")
     if not fasta_path:
-        EAGLE_logger.warning("No sequences input")
+        if logger:
+            logger.warning("No sequences input")
+        else:
+            print "No sequences input"
         return 1
     if not aln_type:
         detect_aln_type(fasta_path)
