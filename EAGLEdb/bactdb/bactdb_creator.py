@@ -11,7 +11,7 @@ import wget
 
 from EAGLE.constants import EAGLE_logger, conf_constants
 from EAGLE.lib.alignment import construct_mult_aln
-from EAGLE.lib.general import worker, read_fasta_to_dict
+from EAGLE.lib.general import worker, load_fasta_to_dict
 from EAGLE.lib.phylo import build_tree_by_dist
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db
 from EAGLEdb.lib import get_links_from_html
@@ -341,7 +341,7 @@ def prepare_family(family_name, family_data, db_dir):
     for genus in family_data.keys():
         for species in family_data[genus].keys():
             for strain in family_data[genus][species].keys():
-                bacterium_rRNA_dict = read_fasta_to_dict(family_data[genus][species][strain]["16S_rRNA_file"])
+                bacterium_rRNA_dict = load_fasta_to_dict(family_data[genus][species][strain]["16S_rRNA_file"])
                 for rRNA_id in bacterium_rRNA_dict.keys():
                     ids_to_org_dict[rRNA_id] = strain
                 rRNA_seqs_dict.update(bacterium_rRNA_dict)

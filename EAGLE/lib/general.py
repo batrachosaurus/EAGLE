@@ -76,7 +76,7 @@ def worker(kwargs, use_try=False):
             print "No function to run"
 
 
-def read_fasta_to_dict(fasta_path):
+def load_fasta_to_dict(fasta_path):
     fasta_dict = dict()
     seq_list = list()
     title = None
@@ -99,3 +99,24 @@ def read_fasta_to_dict(fasta_path):
         seq_list = list()
         title = None
     return fasta_dict
+
+
+def dump_fasta_dict(fasta_dict, fasta_path, overwrite=True):
+    if overwrite:
+        fasta_f = open(fasta_path, 'w')
+    else:
+        fasta_f = open(fasta_path, 'a')
+    for seq_id in fasta_dict.keys():
+        fasta_f.write(seq_id+"\n")
+        fasta_f.write(fasta_dict[seq_id]+"\n")
+    fasta_f.close()
+
+
+def load_phylip_dist_matrix(matrix_path):
+    matrix = None
+    pass
+    return matrix
+
+
+def dump_phylip_dist_matrix(matrix, matrix_path):
+    pass
