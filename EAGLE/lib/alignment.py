@@ -2,14 +2,19 @@ import collections
 import os
 import shutil
 import subprocess
+from collections import defaultdict
 
-from EAGLE.lib.general import load_fasta_to_dict, dump_fasta_dict, load_phylip_dist_matrix
+from EAGLE.lib.general import load_fasta_to_dict, dump_fasta_dict, load_phylip_dist_matrix, reduce_seq_names
 
 
 class MultAln:
 
-    def __init__(self, mult_aln_dict, aln_type=None, tmp_dir="tmp", logger=None):
-        self.mult_aln_dict = mult_aln_dict
+    def __init__(self, mult_aln_dict=None, aln_type=None, tmp_dir="tmp", logger=None):
+        if mult_aln_dict:
+            self.mult_aln_dict, self.full_seq_names = reduce_seq_names(fasta_dict=mult_aln_dict, num_letters=10)
+        else:
+            self.mult_aln_dict = None
+            self.full_seq_names = None
         self.aln_type = aln_type
         if not self.aln_type:
             self.aln_type = detect_seqs_type(self.mult_aln_dict)
@@ -23,6 +28,9 @@ class MultAln:
     def __setitem__(self, seq_id, seq):
         self.mult_aln_dict[seq_id] = seq
 
+    def dump_alignment(self, aln_f_path):
+        pass
+
     def reduce_gaps(self, gap_percent=0.1, remove_seq=False):
         pass
 
@@ -34,17 +42,42 @@ class MultAln:
             phylip_matrix_path = os.path.join(self.tmp_dir, "dist_matrix.phylip")
             dump_fasta_dict(fasta_dict=self.mult_aln_dict, fasta_path=aln_fasta_path)
             if self.aln_type.lower() in ("protein", "prot", "p"):
-                phylip_cmd = "protdist -in " + aln_fasta_path + " -out " + phylip_matrix_path  # check cmd!
+                phylip_cmd = "fprotdist -sequence " + aln_fasta_path + " -outfile " + phylip_matrix_path
             else:
-                phylip_cmd = "dnadist -in " + aln_fasta_path + " -out " + phylip_matrix_path  # check cmd!
+                phylip_cmd = "fdnadist -sequence " + aln_fasta_path + " -method f -outfile " + phylip_matrix_path
             subprocess.call(phylip_cmd, shell=True)
             self.distance_matrix = load_phylip_dist_matrix(matrix_path=phylip_matrix_path)
         shutil.rmtree(self.tmp_dir)
-        return  self.distance_matrix
+        return self.distance_matrix
 
-    def remove_paralogs(self, seq_ids_to_orgs, only_dist=True):
+    def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):
+        short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)
         if not self.distance_matrix:
             self.get_distance_matrix()
+        org_dist_dict = defaultdict(dict)
+        seq_ids = self.distance_matrix.index
+        for seq_id in seq_ids:
+            org_dist_dict[seq_ids_to_orgs[seq_id]][seq_id] = sum(map(float, list(self.distance_matrix.loc(seq_id))))
+        for org in org_dist_dict.keys():
+            org_dist_dict[org] = sorted(org_dist_dict[org].items(), key=lambda x: x[1])
+        if method.lower() in ("minimal_distance", "min_dist", "md"):
+            full_seq_names_filt = dict(filter(lambda x: x[0] == org_dist_dict[short_seq_ids_to_org[x[0]]][0][0],
+                                              self.full_seq_names.items()))
+            mult_aln_dict_filt = dict(filter(lambda x: x[0] in full_seq_names_filt.keys(), self.mult_aln_dict.items()))
+        else:
+            # TODO: write spec_pos method
+            full_seq_names_filt = None
+            mult_aln_dict_filt = None
+        if inplace:
+            self.mult_aln_dict = mult_aln_dict_filt
+            self.full_seq_names = full_seq_names_filt
+        else:
+            filtered_aln = self
+            filtered_aln.mult_aln_dict = mult_aln_dict_filt
+            filtered_aln.full_seq_names = full_seq_names_filt
+            return filtered_aln
+
+    def _check_seq_ids_to_org(self, seq_ids_to_orgs):
         pass
 
     def to_gtf(self, gtf_path, fasta_path, meta_dict):

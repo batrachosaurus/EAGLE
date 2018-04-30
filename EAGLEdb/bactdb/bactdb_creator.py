@@ -354,7 +354,7 @@ def prepare_family(family_name, family_data, db_dir):
                                   hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                                   tmp_dir=os.path.join(db_dir, family_name+"_tmp"),
                                   logger=EAGLE_logger)
-    rRNA_aln.remove_paralogs(ids_to_org_dict, only_dist=True)  # If I use my own alignment method it only_dist will be False
+    rRNA_aln.remove_paralogs(ids_to_org_dict, method="min_dist", inplace=True)  # If I use my own alignment method: method="spec_pos"
     family_data["16S_rRNA_gtf"] = os.path.join(db_dir, family_name+"_16S_rRNA.gtf")
     family_data["16S_rRNA_fasta"] = os.path.join(db_dir, family_name+"_16S_rRNA.fasta")
     rRNA_aln.to_gtf(gtf_path=family_data["16S_rRNA_gtf"],
@@ -362,6 +362,7 @@ def prepare_family(family_name, family_data, db_dir):
                     meta_dict=ids_to_org_dict)
     family_data["16S_rRNA_tree"] = build_tree_by_dist(rRNA_aln.get_distance_matrix())
     family_data["16S_rRNA_profile"] = os.path.join(db_dir, family_name+".hmm")
+    # profiles should not be here
     rRNA_aln.get_hmm_profile(method='hmmer', profile_path=family_data["16S_rRNA_profile"])  # hmmer will be replaced with my own method
 
     family_json_f = open(os.path.join(db_dir, family_name+".json"), 'w')
