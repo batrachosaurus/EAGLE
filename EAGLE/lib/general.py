@@ -172,6 +172,9 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
     reduced_fasta_dict = dict()
     seq_names_dict = dict()
     for seq_name in fasta_dict.keys():
+        if len(seq_name) <= num_letters:
+            seq_names_dict[seq_name+"".join("_" for i in range(num_letters-len(seq_name)))] = seq_name
+            continue
         reduced_seq_name = None
         seq_name_list = filter_list("".join([splitters_repl.get(s, s) for s in seq_name]).split())
         parts = list()

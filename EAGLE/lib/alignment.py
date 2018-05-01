@@ -9,12 +9,13 @@ from EAGLE.lib.general import load_fasta_to_dict, dump_fasta_dict, load_phylip_d
 
 class MultAln:
 
-    def __init__(self, mult_aln_dict=None, aln_type=None, tmp_dir="tmp", logger=None):
+    def __init__(self, mult_aln_dict=None, aln_type=None, states_seq=None, tmp_dir="tmp", logger=None):
         if mult_aln_dict:
             self.mult_aln_dict, self.full_seq_names = reduce_seq_names(fasta_dict=mult_aln_dict, num_letters=10)
         else:
             self.mult_aln_dict = None
             self.full_seq_names = None
+        self.states_seq = states_seq
         self.aln_type = aln_type
         if not self.aln_type:
             self.aln_type = detect_seqs_type(self.mult_aln_dict)
@@ -31,7 +32,15 @@ class MultAln:
     def dump_alignment(self, aln_f_path):
         pass
 
-    def reduce_gaps(self, gap_percent=0.1, remove_seq=False):
+    def improve_aln(self,
+                    max_gap_fract=0.95,  # maximal fraction of gaps in a column to keep it in alignment
+                    max_mismatch_fract=1.0,  # maximal fraction of mismatches in a column to keep it in alignment
+                    only_ends=True,
+                    split_into_blocks=False,
+                    remove_seq=False,  # if True returns a list of alignments with different strictness of sequences removing (different thresholds for clustering)
+                    output='alignment',
+                    inplace=False):
+
         pass
 
     def get_distance_matrix(self, method="phylip"):
@@ -61,7 +70,8 @@ class MultAln:
         for org in org_dist_dict.keys():
             org_dist_dict[org] = sorted(org_dist_dict[org].items(), key=lambda x: x[1])
         if method.lower() in ("minimal_distance", "min_dist", "md"):
-            full_seq_names_filt = dict(filter(lambda x: x[0] == org_dist_dict[short_seq_ids_to_org[x[0]]][0][0],
+            full_seq_names_filt = dict(filter(lambda x: x[0] == org_dist_dict.get(short_seq_ids_to_org.get(x[0], None),
+                                                                                  ((None, None), None))[0][0],
                                               self.full_seq_names.items()))
             mult_aln_dict_filt = dict(filter(lambda x: x[0] in full_seq_names_filt.keys(), self.mult_aln_dict.items()))
         else:
@@ -78,9 +88,23 @@ class MultAln:
             return filtered_aln
 
     def _check_seq_ids_to_org(self, seq_ids_to_orgs):
-        pass
+        to_short_dict = dict()
+        long_suc_num = 0
+        short_suc_num = 0
+        for key in self.full_seq_names.keys:
+            if seq_ids_to_orgs.get(key, None):
+                short_suc_num += 1
+            if seq_ids_to_orgs.get(self.full_seq_names[key], None):
+                to_short_dict[self.full_seq_names[key]] = key
+                long_suc_num += 1
+        if short_suc_num >= long_suc_num:
+            return seq_ids_to_orgs
+        else:
+            return dict(map(lambda x: (to_short_dict.get(x[0], None),  x[1]), seq_ids_to_orgs.items()))
 
-    def to_gtf(self, gtf_path, fasta_path, meta_dict):
+    def get_blocks_tsv(self, gtf_path, fasta_path, meta_dict):
+        cut_ends_dict = self.improve_aln(output='coords')
+
         pass
 
     def get_hmm_profile(self, method, profile_path):
