@@ -1,7 +1,7 @@
 import os
 
 from EAGLE.constants import DEFAULT_CONFIG
-from EAGLE.lib.general import ConfConstantsBase
+from EAGLE.lib.general import ConfBase
 
 CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -10,7 +10,7 @@ ANALYZED_BACTERIA_F_NAME = "analyzed_bacteria.p"
 BACT_FAM_F_NAME = "bact_fam.json"
 
 
-class ConfConstants(ConfConstantsBase):
+class ConfConstants(ConfBase):
 
     def __init__(self, config_path=DEFAULT_CONFIG):
         # Bacteria db

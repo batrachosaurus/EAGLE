@@ -5,12 +5,21 @@ import subprocess
 from collections import defaultdict
 import pandas
 
-from EAGLE.lib.general import load_fasta_to_dict, dump_fasta_dict, load_phylip_dist_matrix, reduce_seq_names
+from EAGLE.lib.general import load_fasta_to_dict, dump_fasta_dict, load_phylip_dist_matrix, reduce_seq_names, ConfBase
 
 
-class MultAln:
+class MultAln(ConfBase):
 
-    def __init__(self, mult_aln_dict=None, aln_type=None, states_seq=None, tmp_dir="tmp", logger=None):
+    def __init__(self,
+                 mult_aln_dict=None,
+                 aln_type=None,
+                 states_seq=None,
+                 tmp_dir="tmp",
+                 emboss_inst_dir="",
+                 hmmer_inst_dir="",
+                 config_path=None,
+                 logger=None):
+
         if mult_aln_dict:
             self.mult_aln_dict, self.full_seq_names = reduce_seq_names(fasta_dict=mult_aln_dict, num_letters=10)
         else:
@@ -22,7 +31,10 @@ class MultAln:
             self.aln_type = detect_seqs_type(self.mult_aln_dict)
         self.distance_matrix = None
         self.tmp_dir = tmp_dir
+        self.emboss_inst_dir = emboss_inst_dir
+        self.hmmer_inst_dir = hmmer_inst_dir
         self.logger = logger
+        super(MultAln, self).__init__(config_path=config_path)
 
     def __getitem__(self, seq_id):
         return self.mult_aln_dict[seq_id]
@@ -106,9 +118,11 @@ class MultAln:
             phylip_matrix_path = os.path.join(self.tmp_dir, "dist_matrix.phylip")
             dump_fasta_dict(fasta_dict=self.mult_aln_dict, fasta_path=aln_fasta_path)
             if self.aln_type.lower() in ("protein", "prot", "p"):
-                phylip_cmd = "fprotdist -sequence " + aln_fasta_path + " -outfile " + phylip_matrix_path
+                phylip_cmd = os.path.join(self.emboss_inst_dir, "fprotdist") + " -sequence " + aln_fasta_path + \
+                             " -outfile " + phylip_matrix_path
             else:
-                phylip_cmd = "fdnadist -sequence " + aln_fasta_path + " -method f -outfile " + phylip_matrix_path
+                phylip_cmd = os.path.join(self.emboss_inst_dir, "fdnadist") + " -sequence " + aln_fasta_path + \
+                             " -method f -outfile " + phylip_matrix_path
             subprocess.call(phylip_cmd, shell=True)
             self.distance_matrix = load_phylip_dist_matrix(matrix_path=phylip_matrix_path)
         shutil.rmtree(self.tmp_dir)
@@ -209,10 +223,10 @@ def construct_mult_aln(seq_dict=None,
                        fasta_path=None,
                        method="MUSCLE",
                        aln_type=None,
-                       aligner_inst_dir="",
+                       muscle_exec_path="",
                        tmp_dir="tmp",
-                       hmmer_inst_dir="",
                        remove_tmp=True,
+                       config_path=None,
                        logger=None):
 
     if not fasta_path and seq_dict:
@@ -230,13 +244,17 @@ def construct_mult_aln(seq_dict=None,
     out_fasta_path = os.path.join(tmp_dir, "mult_aln.fasta")
 
     if method.lower() == "muscle":
-        muscle_cmd = os.path.join(aligner_inst_dir, "muscle") + " -in " + fasta_path + " -out " + out_fasta_path
+        muscle_cmd = muscle_exec_path + " -in " + fasta_path + " -out " + out_fasta_path
         subprocess.call(muscle_cmd, shell=True)
 
     mult_aln_dict = load_fasta_to_dict(out_fasta_path)
     if remove_tmp:
         shutil.rmtree(tmp_dir)
-    return MultAln(mult_aln_dict=mult_aln_dict, aln_type=aln_type, tmp_dir=tmp_dir, logger=logger)
+    return MultAln(mult_aln_dict=mult_aln_dict,
+                   aln_type=aln_type,
+                   tmp_dir=tmp_dir,
+                   config_path=config_path,
+                   logger=logger)
 
 
 def detect_seqs_type(fasta_path=None, fasta_dict=None, nuc_freq_thr=0.75):

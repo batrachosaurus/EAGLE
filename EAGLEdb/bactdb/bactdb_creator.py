@@ -369,8 +369,7 @@ def prepare_family(family_name, family_data, db_dir):
     rRNA_aln = construct_mult_aln(seq_dict=rRNA_seqs_dict,
                                   method="MUSCLE",
                                   aln_type="nucl",
-                                  aligner_inst_dir=conf_constants.muscle_inst_dir,
-                                  hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                                  muscle_exec_path=conf_constants.muscle_inst_dir,
                                   tmp_dir=tmp_fam_dir,
                                   logger=EAGLE_logger)
     rRNA_aln.full_seq_names = short_ids_dict
@@ -380,7 +379,7 @@ def prepare_family(family_name, family_data, db_dir):
     rRNA_aln.get_blocks_tsv(tsv_path=family_data["16S_rRNA_gtf"],
                             fasta_path=family_data["16S_rRNA_fasta"],
                             meta_dict=ids_to_org_dict)
-    family_data["16S_rRNA_tree"] = build_tree_by_dist(rRNA_aln.get_distance_matrix(), tmp_dir=tmp_fam_dir).newick()
+    family_data["16S_rRNA_tree"] = build_tree_by_dist(rRNA_aln.get_distance_matrix(), tmp_dir=tmp_fam_dir).newick
     family_data["16S_rRNA_profile"] = os.path.join(db_dir, family_name+".hmm")
     family_data["codon_usage"] = os.path.join(db_dir, family_name+".cu")
     # profiles should not be here

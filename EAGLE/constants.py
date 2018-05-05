@@ -5,7 +5,7 @@ import os
 
 import yaml
 
-from EAGLE.lib.general import ConfConstantsBase
+from EAGLE.lib.general import ConfBase
 
 constants_path = os.path.dirname(os.path.realpath(__file__))
 conf_dir_name = 'configs'
@@ -46,15 +46,17 @@ def _config_parser(config_path):
     return config
 
 
-class ConfConstants(ConfConstantsBase):
+class ConfConstants(ConfBase):
 
     def __init__(self, config_path=DEFAULT_CONFIG):
         # GENERAL
         self.num_threads = 4
-        # Alignment
-        self.muscle_inst_dir = ""
-        self.phylip_inst_dir = "phylip/exe"
+        # ALIGNMENT
+        self.muscle_exec_path = ""
+        self.emboss_inst_dir = ""
         self.hmmer_inst_dir = ""
+        # PHYLO
+        self.fastme_exec_path = ""
 
         super(ConfConstants, self).__init__(config_path=config_path)
 

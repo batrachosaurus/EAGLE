@@ -5,22 +5,22 @@ import pandas
 from collections import OrderedDict
 
 
-class ConfConstantsBase:
+class ConfBase:
 
     def __init__(self, config_path):
         self.config = None
-        self.update_by_config(config_path=config_path)
+        if config_path:
+            self.update_by_config(config_path=config_path)
 
     def update_by_config(self, config_path):
         self.config = _config_parser(config_path=config_path)
+        config_sections = self.config.sections()
         for param in self.__dict__.keys():
             new_value = None
-            if self._get_from_config(self.config, 'GENERAL', param, fallback=None):
-                new_value = self.config.get('GENERAL', param)
-            elif self._get_from_config(self.config, 'crAtlasSNPdb', param, fallback=None):
-                new_value = self.config.get('crAtlasSNPdb', param)
-            elif self._get_from_config(self.config, 'dbSNPreview', param, fallback=None):
-                new_value = self.config.get('dbSNPreview', param)
+            for config_section in config_sections:
+                if self._get_from_config(self.config, config_section, param, fallback=None):
+                    new_value = self.config.get(config_section, param)
+                    break
             if new_value:
                 if type(self.__dict__[param]) is list:
                     self.__dict__[param] = [elm.strip() for elm in new_value.split(",")]
@@ -40,6 +40,7 @@ class ConfConstantsBase:
             return config_obj.get(section, option)
         except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
             return fallback
+
 
 def _config_parser(config_path):
     """ Function parses config file and puts the result into an object of ConfigParser class
