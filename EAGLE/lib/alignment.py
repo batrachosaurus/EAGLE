@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 from collections import defaultdict
+import pandas
 
 from EAGLE.lib.general import load_fasta_to_dict, dump_fasta_dict, load_phylip_dist_matrix, reduce_seq_names
 
@@ -35,13 +36,67 @@ class MultAln:
     def improve_aln(self,
                     max_gap_fract=0.95,  # maximal fraction of gaps in a column to keep it in alignment
                     max_mismatch_fract=1.0,  # maximal fraction of mismatches in a column to keep it in alignment
-                    only_ends=True,
-                    split_into_blocks=False,
-                    remove_seq=False,  # if True returns a list of alignments with different strictness of sequences removing (different thresholds for clustering)
+                    remove_seq=False,  # if True can remove sequences for cleaning gaps between aln blocks
+                    dist_filt=False,  # if True returns a list of alignments (or blocks coordinates) with different strictness of sequences removing (different thresholds for clustering)
                     output='alignment',
                     inplace=False):
 
-        pass
+        if dist_filt:
+            # Constructs a list of rarefied by different distance thresholds alignments and runs improve_aln on it with dist_filt=False
+            pass
+        coords = list()
+        seq_id_list = self.mult_aln_dict.keys()
+        for i in range(len(self.mult_aln_dict[seq_id_list[0]])):
+            if self.states_seq:
+                if self.states_seq[i] in ("match", "specific"):
+                    coords = self._update_coords(i+1, coords)
+                    continue
+            let_counts = defaultdict(int)
+            for seq_id in seq_id_list:
+                let_counts[self.mult_aln_dict[seq_id][i]] += 1
+            if float(let_counts.pop("-"))/float(len(seq_id_list)) <= max_gap_fract:
+                if sorted(let_counts.values(), reverse=True)[0] >= 1.0-max_mismatch_fract:
+                    coords = self._update_coords(i+1, coords)
+            elif remove_seq:
+                # TODO: write detection of seqs to remove
+                pass
+        if len(coords[-1]) == 1:
+            coords.pop()
+        if not remove_seq and len(coords) >= 1:
+            coords = (coords[0][0], coords[-1][1])
+        if output.lower() in ("coordinates", "coords", "coord", "c"):
+            seq_coord_list = list()
+            for seq_id in self.mult_aln_dict.iterkeys():
+                seq_c_dict = {"seq_id": self.full_seq_names[seq_id]}
+                coords_for_seq = self._get_coords_for_seq(coords, self.mult_aln_dict[seq_id])
+                for k in range(len(coords_for_seq)):
+                    seq_c_dict["c%s" % ((k+1)*2-1)] = coords_for_seq[k][0]
+                    seq_c_dict["c%s" % (k+1)*2] = coords_for_seq[k][1]
+                seq_coord_list.append(seq_c_dict)
+            return pandas.DataFrame(seq_coord_list)
+        else:
+            pass  # TODO: write output as alignment
+
+    @staticmethod
+    def _update_coords(i, coords):
+        if not coords:
+            coords.append([i])
+        elif len(coords[-1]) == 1:
+            coords[-1].append(i)
+        elif coords[-1][1] == i - 1:
+            coords[-1][1] = i
+        else:
+            coords.append([i])
+        return coords
+
+    @staticmethod
+    def _get_coords_for_seq(coords, gapped_seq):
+        no_gaps_coords = list()
+        for coord_pair in coords:
+            c1_shift = gapped_seq[:coord_pair[0]].count("-")
+            c2_shift = gapped_seq[:coord_pair[1]].count("-")
+            no_gaps_coords.append((coord_pair[0]-c1_shift, coord_pair[1]-c2_shift))
+        return no_gaps_coords
 
     def get_distance_matrix(self, method="phylip"):
         if not os.path.exists(self.tmp_dir):
@@ -102,10 +157,31 @@ class MultAln:
         else:
             return dict(map(lambda x: (to_short_dict.get(x[0], None),  x[1]), seq_ids_to_orgs.items()))
 
-    def get_blocks_tsv(self, gtf_path, fasta_path, meta_dict):
-        cut_ends_dict = self.improve_aln(output='coords')
+    def get_blocks_tsv(self, tsv_path, fasta_path, split_into_blocks=False, meta_dict=None):
+        # Three block types: CB - conservetive block, SB - specific block, MB - major block. UB - unclassified block (not any of three types => MB=NA)
+        cut_ends_df = self.improve_aln(output='coords')
+        if split_into_blocks:
+            blocks_df = self.define_aln_blocks(cut_ends_coord_dict=cut_ends_df)
+        else:
+            blocks_df = cut_ends_df
+            blocks_df["block_type"] = pandas.Series(["UB"]*cut_ends_df.shape[0])
+            blocks_df["block_descr"] = pandas.Series(['major_block_id "NA"; block_id "UB1"; block_name "NA"']*
+                                                     cut_ends_df.shape[0])
+            blocks_df = blocks_df[["seq_id", "block_type", "start", "end", "block_descr"]]
+        tsv_f = open(tsv_path, 'w')
+        seqs_dict = dict(list(blocks_df.apply(self._write_blocks_tsv, axis=1, args=(tsv_f, meta_dict))))
+        tsv_f.close()
+        dump_fasta_dict(fasta_dict=seqs_dict, fasta_path=fasta_path)
 
+    def _write_blocks_tsv(self, block_info, tsv_f, meta_dict=None):
+        tsv_f.write("\t".join(list(block_info))+"; %s\n" %
+                    "; ".join('%s "%s"' % (meta[0], meta[1]) for meta in meta_dict[block_info["seq_id"]].items()))
+        return block_info["seq_id"], self.mult_aln_dict[block_info["seq_id"]].replace("-", "")
+
+    def define_aln_blocks(self, cut_ends_coord_dict):
+        blocks_info = list()  # list of dicts
         pass
+        return pandas.DataFrame(blocks_info)
 
     def get_hmm_profile(self, method, profile_path):
         pass
