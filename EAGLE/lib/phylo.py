@@ -1,13 +1,24 @@
-class PhyloTree:
+from EAGLE.lib.general import ConfBase
 
-    def __init__(self):
+
+class PhyloTree(ConfBase):
+
+    def __init__(self, newick, config_path=None, logger=None):
+        self.newick = newick
+        self.logger = logger
+        super(PhyloTree, self).__init__(config_path=config_path)
+
+    def update_by_config(self, config_path):
         pass
 
-    def newick(self):
-        pass
 
-
-def build_tree_by_dist(dist_matrix, tmp_dir, method="FastME", fastme_inst_dir=""):
+def build_tree_by_dist(dist_matrix=None,
+                       dist_matrix_f=None,
+                       tmp_dir="tmp",
+                       method="FastME",
+                       fastme_exec_path="",
+                       config_path=None,
+                       logger=None):
     pass
 
 
