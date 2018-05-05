@@ -2,6 +2,7 @@ import gzip
 import io
 import json
 import multiprocessing as mp
+from collections import defaultdict
 import os
 import pickle
 import platform
@@ -11,7 +12,7 @@ import wget
 
 from EAGLE.constants import EAGLE_logger, conf_constants
 from EAGLE.lib.alignment import construct_mult_aln
-from EAGLE.lib.general import worker, load_fasta_to_dict
+from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix
 from EAGLE.lib.phylo import build_tree_by_dist
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db
 from EAGLEdb.lib import get_links_from_html
@@ -347,8 +348,21 @@ def prepare_family(family_name, family_data, db_dir):
                     new_rRNA_id = rRNA_id.split(" ")[0].split("|")[1]
                     ids_to_org_dict[new_rRNA_id] = strain
                     rRNA_seqs_dict[new_rRNA_id] = bacterium_rRNA_dict[rRNA_id]
+    red, reduced_orgs = reduce_seq_names(fasta_dict=dict(map(lambda x: (x, True), set(ids_to_org_dict.values()))),
+                                         num_letters=7,
+                                         num_words=2)
+    rev_reduced_orgs = dict(map(lambda x: (x[1], x[0]), reduced_orgs.items()))
+    comp_seq_id_dict = defaultdict(int)
+    short_ids_dict = dict()
+    for seq_id in rRNA_seqs_dict.iterkeys():
+        short_seq_id = None
+        short_seq_id = rev_reduced_orgs[ids_to_org_dict[seq_id]]+"|"+\
+                       str(get_un_fix(un_num=comp_seq_id_dict[rev_reduced_orgs[ids_to_org_dict[seq_id]]], fix_len=2))
+        comp_seq_id_dict[rev_reduced_orgs[ids_to_org_dict[seq_id]]] += 1
+        short_ids_dict[short_seq_id] = rev_reduced_orgs[ids_to_org_dict[seq_id]]+"|"+seq_id
+        ids_to_org_dict[short_ids_dict[short_seq_id]] = {"organism_name": ids_to_org_dict.pop(seq_id)}
+        rRNA_seqs_dict[short_seq_id] = rRNA_seqs_dict.pop(seq_id)
 
-    # reduce and modify ids
     # TODO: follows
     ### This section will be upgraded with my own alignment method but now MUSCLE and hmmer 3 are used
     tmp_fam_dir = os.path.join(db_dir, family_name+"_tmp")
@@ -359,14 +373,16 @@ def prepare_family(family_name, family_data, db_dir):
                                   hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                                   tmp_dir=tmp_fam_dir,
                                   logger=EAGLE_logger)
+    rRNA_aln.full_seq_names = short_ids_dict
     rRNA_aln.remove_paralogs(ids_to_org_dict, method="min_dist", inplace=True)  # If I use my own alignment method: method="spec_pos"
     family_data["16S_rRNA_gtf"] = os.path.join(db_dir, family_name+"_16S_rRNA.gtf")
     family_data["16S_rRNA_fasta"] = os.path.join(db_dir, family_name+"_16S_rRNA.fasta")
-    rRNA_aln.get_blocks_tsv(gtf_path=family_data["16S_rRNA_gtf"],
+    rRNA_aln.get_blocks_tsv(tsv_path=family_data["16S_rRNA_gtf"],
                             fasta_path=family_data["16S_rRNA_fasta"],
                             meta_dict=ids_to_org_dict)
     family_data["16S_rRNA_tree"] = build_tree_by_dist(rRNA_aln.get_distance_matrix(), tmp_dir=tmp_fam_dir).newick()
     family_data["16S_rRNA_profile"] = os.path.join(db_dir, family_name+".hmm")
+    family_data["codon_usage"] = os.path.join(db_dir, family_name+".cu")
     # profiles should not be here
     rRNA_aln.get_hmm_profile(method='hmmer', profile_path=family_data["16S_rRNA_profile"])  # hmmer will be replaced with my own method
 

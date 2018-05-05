@@ -186,11 +186,11 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
         reduced_seq_name = "".join(parts)
         res_len = num_letters - len(reduced_seq_name)
         un_num = 1
-        un_fix = _get_un_fix(un_num, res_len)
+        un_fix = get_un_fix(un_num, res_len)
         while seq_names_dict.get(reduced_seq_name+un_fix, None):
             un_fix = None
             un_num += 1
-            un_fix = _get_un_fix(un_num, res_len)
+            un_fix = get_un_fix(un_num, res_len)
         reduced_fasta_dict[reduced_seq_name+un_fix] = fasta_dict[seq_name]
         seq_names_dict[reduced_seq_name+un_fix] = seq_name
     return reduced_fasta_dict, seq_names_dict
@@ -234,7 +234,7 @@ def _get_part_size_list(num_letters, num_words):
             return [4, 5]
 
 
-def _get_un_fix(un_num, fix_len):
+def get_un_fix(un_num, fix_len):
     un_codes = ["_", '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E']
     # 'N' - undefined (num duplicates is bigger than len(un_codes))
     if fix_len == 1:
@@ -245,7 +245,7 @@ def _get_un_fix(un_num, fix_len):
     elif fix_len == 0:
         return ""
     elif un_num <= len(un_codes):
-        return un_codes[0] + _get_un_fix(un_num, fix_len - 1)
+        return un_codes[0] + get_un_fix(un_num, fix_len - 1)
     else:
         filled_rank = len(un_codes)**(fix_len-1)
-        return un_codes[un_num//filled_rank - 1] + _get_un_fix(un_num % filled_rank, fix_len - 1)
+        return un_codes[un_num//filled_rank - 1] + get_un_fix(un_num % filled_rank, fix_len - 1)
