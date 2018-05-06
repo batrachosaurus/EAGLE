@@ -250,3 +250,21 @@ def get_un_fix(un_num, fix_len):
     else:
         filled_rank = len(un_codes)**(fix_len-1)
         return un_codes[un_num//filled_rank - 1] + get_un_fix(un_num % filled_rank, fix_len - 1)
+
+
+def load_newick(newick_f_path):
+    newick_f = open(newick_f_path)
+    tree_list = list()
+    for line_ in newick_f:
+        line = None
+        line = line_.strip()
+        tree_list.append(line)
+        if line[-1] == ";":
+            break
+    return "".join(tree_list)
+
+
+def dump_tree_newick(tree_newick, newick_f_path):
+    newick_f = open(newick_f_path, "w")
+    newick_f.write(tree_newick)
+    newick_f.close()
