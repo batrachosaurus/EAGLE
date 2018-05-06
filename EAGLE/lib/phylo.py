@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 
-from EAGLE.lib.general import ConfBase, dump_phylip_dist_matrix
+from EAGLE.lib.general import ConfBase, dump_phylip_dist_matrix, load_newick
 
 
 class PhyloTree(ConfBase):
@@ -32,16 +32,18 @@ def build_tree_by_dist(dist_matrix=None,
         else:
             print "No distance matrix input"
         return 1
-    elif not dist_matrix_f:
-        dist_matrix_f = os.path.join(tmp_dir, "dist_matr.ph")
-        dump_phylip_dist_matrix(dist_matrix=dist_matrix, matrix_path=dist_matrix_f)
     if method.lower() == "fastme":
-        fastme_cmd = fastme_exec_path + " -i " + dist_matrix_f  ###
-
+        if not dist_matrix_f:
+            dist_matrix_f = os.path.join(tmp_dir, "dist_matr.ph")
+            dump_phylip_dist_matrix(dist_matrix=dist_matrix, matrix_path=dist_matrix_f)
+        tree_f = os.path.join(tmp_dir, "tree.nwk")
+        fastme_cmd = fastme_exec_path + " -i " + dist_matrix_f + " -o " + tree_f
         subprocess.call(fastme_cmd, shell=True)
-
+        tree_newick = load_newick(newick_f_path=tree_f)
+    else:
+        return 1
     shutil.rmtree(tmp_dir)
-    return PhyloTree(newick=, config_path=config_path, logger=logger)
+    return PhyloTree(newick=tree_newick, config_path=config_path, logger=logger)
 
 
 def compare_trees(newick1, newick2):
