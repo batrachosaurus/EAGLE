@@ -10,11 +10,12 @@ pip install git+https://github.com/loven-doo/EAGLE.git --upgrade
 ## Requirements
 MUSCLE  
 HMMER3  
-PHYLIP  
+EMBOSS + PHYLIPNEW (EMBASSY package)  
 FastME 2.07  
 KaKs Calculator 2.0  
 Python 2.7  
 ### Python packages:  
 wget  
 pyaml  
+pandas  
      
