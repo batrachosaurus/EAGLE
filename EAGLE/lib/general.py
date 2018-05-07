@@ -268,3 +268,12 @@ def dump_tree_newick(tree_newick, newick_f_path):
     newick_f = open(newick_f_path, "w")
     newick_f.write(tree_newick)
     newick_f.close()
+
+
+def get_tree_from_dict(input_dict, stop_level=2):
+    tree = dict()
+    if stop_level == 1:
+        return input_dict.keys()
+    for key in input_dict.keys():
+        tree[key] = get_tree_from_dict(input_dict[key], stop_level=stop_level-1)
+    return tree

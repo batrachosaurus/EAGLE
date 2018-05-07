@@ -12,7 +12,8 @@ class PhyloTree(ConfBase):
         self.logger = logger
         super(PhyloTree, self).__init__(config_path=config_path)
 
-    def update_by_config(self, config_path):
+    def according_to_taxonomy(self, taxonomy):
+        # NOT inplace method!
         pass
 
 

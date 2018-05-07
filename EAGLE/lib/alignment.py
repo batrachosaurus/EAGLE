@@ -192,6 +192,9 @@ class MultAln(ConfBase):
                     "; ".join('%s "%s"' % (meta[0], meta[1]) for meta in meta_dict[block_info["seq_id"]].items()))
         return block_info["seq_id"], self.mult_aln_dict[block_info["seq_id"]].replace("-", "")
 
+    def remove_seqs(self, seqs_list):
+        pass
+
     def define_aln_blocks(self, cut_ends_coord_dict):
         blocks_info = list()  # list of dicts
         pass

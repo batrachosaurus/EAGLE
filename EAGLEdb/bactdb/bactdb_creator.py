@@ -12,7 +12,7 @@ import wget
 
 from EAGLE.constants import EAGLE_logger, conf_constants
 from EAGLE.lib.alignment import construct_mult_aln
-from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix
+from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, get_tree_from_dict
 from EAGLE.lib.phylo import build_tree_by_dist
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db
 from EAGLEdb.lib import get_links_from_html
@@ -272,9 +272,9 @@ def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, 
                           "source_db": bacterium["source_db"],
                           "repr": bacterium['repr']}
         if only_repr and not bacterium['repr']: continue
-        if families_dict[bacterium['family']]:
-            if families_dict[bacterium['family']][bacterium['genus']]:
-                if families_dict[bacterium['family']][bacterium['genus']][bacterium['species']]:
+        if families_dict.get(bacterium['family'], None):
+            if families_dict[bacterium['family']].get(bacterium['genus'], None):
+                if families_dict[bacterium['family']][bacterium['genus']].get(bacterium['species'], None):
                     families_dict[bacterium['family']][bacterium['genus']][bacterium['species']][bacterium['strain']] =\
                         bacterium_data
                 else:
@@ -286,7 +286,7 @@ def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, 
                         {bacterium['strain']: bacterium_data}
                      }
         else:
-            families_dict = \
+            families_dict[bacterium['family']] = \
                 {bacterium['genus']:
                     {bacterium['species']:
                          {bacterium['strain']: bacterium_data}
@@ -300,13 +300,12 @@ def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, 
                  }
 
     bact_fam_f_path = os.path.join(db_dir, BACT_FAM_F_NAME)
-    prepare_families(families_dict, db_dir, num_threads=num_threads)
+    prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=num_threads)
 
     return json.load(open(bact_fam_f_path))
 
 
-def prepare_families(families_dict, db_dir, num_threads=4):
-    bact_fam_f_path = os.path.join(db_dir, BACT_FAM_F_NAME)
+def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
     bact_fam_f = io.open(bact_fam_f_path, 'w', newline="\n")
     bact_fam_f.write(u"[\n")
     bact_fam_f.close()
@@ -374,15 +373,22 @@ def prepare_family(family_name, family_data, db_dir):
                                   logger=EAGLE_logger)
     rRNA_aln.full_seq_names = short_ids_dict
     rRNA_aln.remove_paralogs(ids_to_org_dict, method="min_dist", inplace=True)  # If I use my own alignment method: method="spec_pos"
+    rRNA_tree = build_tree_by_dist(rRNA_aln.get_distance_matrix(), tmp_dir=tmp_fam_dir)
+    # TODO: write it for not only repr bacteria usage
+    # fam_tax = {family_name: get_tree_from_dict(family_data, stop_level=3)}
+    # rRNA_tree, removed_seqs = rRNA_tree.according_to_taxonomy(taxonomy=fam_tax)
+    # rRNA_aln.remove_seqs(seqs_list=removed_seqs)
+    ###
+    family_data["16S_rRNA_tree"] = rRNA_tree.newick
     family_data["16S_rRNA_gtf"] = os.path.join(db_dir, family_name+"_16S_rRNA.gtf")
     family_data["16S_rRNA_fasta"] = os.path.join(db_dir, family_name+"_16S_rRNA.fasta")
     rRNA_aln.get_blocks_tsv(tsv_path=family_data["16S_rRNA_gtf"],
                             fasta_path=family_data["16S_rRNA_fasta"],
                             meta_dict=ids_to_org_dict)
-    family_data["16S_rRNA_tree"] = build_tree_by_dist(rRNA_aln.get_distance_matrix(), tmp_dir=tmp_fam_dir).newick
+
     family_data["16S_rRNA_profile"] = os.path.join(db_dir, family_name+".hmm")
     family_data["codon_usage"] = os.path.join(db_dir, family_name+".cu")
-    # profiles should not be here
+    ###
     rRNA_aln.get_hmm_profile(method='hmmer', profile_path=family_data["16S_rRNA_profile"])  # hmmer will be replaced with my own method
 
     family_json_f = open(os.path.join(db_dir, family_name+".json"), 'w')
