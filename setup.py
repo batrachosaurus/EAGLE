@@ -1,9 +1,10 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.6.0',
+      version='0.6.1',
       packages=find_packages(),
-      package_data={'EAGLE': ['configs/*', ]},
+      package_data={'EAGLE': ['configs/*', ],
+                    'EAGLEdb': ['org_tables/*', ]},
       install_requires=[
             'wget',
             'pyaml',

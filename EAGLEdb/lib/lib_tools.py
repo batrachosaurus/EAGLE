@@ -1,6 +1,11 @@
 import multiprocessing as mp
+import platform
+import subprocess
 import urllib2
 
+import wget
+
+from EAGLE.constants import EAGLE_logger
 from EAGLE.lib.general import worker
 
 
@@ -33,3 +38,21 @@ def _read_html_file_links(html_file, links, **kwargs):
         if "parent directory" in line.lower() or ".." in line: continue
         line_list = line.split("<a href")
         links[(line_list[1].split('">')[0].strip(' ="/'))] = True
+
+
+def download_organism_files(org_prefix, suffixes, download_dir="./"):
+    # TODO: rename and move to EAGLEdb.lib
+    if type(suffixes) is str:
+        suffixes_list = [suffixes]
+    else:
+        suffixes_list = list(suffixes)
+    for suffix in suffixes_list:
+        file_link = None
+        file_link = org_prefix + suffix
+        if platform.system() == 'Windows':
+            try:
+                wget.download(file_link, out=download_dir)
+            except IOError:
+                EAGLE_logger.warning("'%s' file has not been found" % file_link)
+        else:
+            subprocess.call("wget " + file_link + " -P " + download_dir + "/", shell=True)

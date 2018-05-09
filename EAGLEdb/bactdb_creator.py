@@ -2,24 +2,23 @@ import gzip
 import io
 import json
 import multiprocessing as mp
-from collections import defaultdict
 import os
 import pickle
-import platform
-import subprocess
+from collections import defaultdict
 
-import wget
+import pandas
 
 from EAGLE.constants import EAGLE_logger, conf_constants
 from EAGLE.lib.alignment import construct_mult_aln
-from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, get_tree_from_dict
+from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, bool_from_str
 from EAGLE.lib.phylo import build_tree_by_dist
-from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db
-from EAGLEdb.lib import get_links_from_html
+from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
+    DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE
+from EAGLEdb.lib.lib_tools import download_organism_files
 
 
-def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria",
-                           genbank_bacteria_link="https://ftp.ncbi.nlm.nih.gov/genomes/genbank/bacteria",
+def get_bacteria_from_ncbi(refseq_bacteria_table=None,
+                           genbank_bacteria_table=None,
                            bactdb_dir="EAGLEdb/bacteria",
                            num_threads=None,
                            first_bact=None,
@@ -28,6 +27,9 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
                            remove_bact_list_f=False,
                            config_path=None):
 
+    if not refseq_bacteria_table and not genbank_bacteria_table:
+        refseq_bacteria_table = DEFAULT_REFSEQ_BACTERIA_TABLE
+        genbank_bacteria_table = DEFAULT_GENBANK_BACTERIA_TABLE
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
         conf_constants_db.update_by_config(config_path=config_path)
@@ -39,11 +41,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
     try:
         os.makedirs(bactdb_dir)
     except OSError:
-        EAGLE_logger.info("bactdb directory exists")
-    refseq_list = get_links_from_html(refseq_bacteria_link, num_threads=num_threads)
-    genbank_list = get_links_from_html(genbank_bacteria_link, num_threads=num_threads)
-    EAGLE_logger.info("20 first redseq bacteria: %s" % "; ".join(refseq_list[:20]))
-    EAGLE_logger.info("20 first genbank bacteria: %s" % "; ".join(genbank_list[:20]))
+        EAGLE_logger.warning("bactdb directory exists")
     try:
         analyzed_bacteria = pickle.load(open(os.path.join(bactdb_dir, analyzed_bacteria), 'rb'))
     except IOError:
@@ -52,38 +50,42 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
     bacteria_list_f = io.open(bacteria_list_f_path, 'w', newline="\n")
     bacteria_list_f.write(u"[\n")
     bacteria_list_f.close()
+    refseq_df = pandas.read_csv(refseq_bacteria_table, sep="\t")
+    genbank_df = pandas.read_csv(genbank_bacteria_table, sep="\t")
     n = 1
     i = 0
     j = 0
     proc_list = list()
-    while i < len(refseq_list) or j < len(genbank_list):
+    while i < refseq_df.shape[0] or j < genbank_df.shape[0]:
         if first_bact and n < first_bact: continue
         if last_bact and n > last_bact: break
-        if genbank_list[j] < refseq_list[i]:
+        if genbank_df.loc[j]["org_name"] < refseq_df.loc[i]["org_name"]:
             p = mp.Process(target=worker,
                            args=({'function': get_bacterium,
-                                  'ncbi_db_link': genbank_bacteria_link,
-                                  'bacterium_name': genbank_list[j],
+                                  'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
+                                  'bacterium_name': genbank_df.loc[j]["org_name"],
+                                  'repr': bool_from_str(genbank_df.loc[j]["repr"]),
                                   'analyzed_bacteria': analyzed_bacteria,
                                   'db_dir': bactdb_dir,
                                   'source_db': "genbank",
-                                  'try_err_message': "%s is not prepared: " % genbank_list[j],
+                                  'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"],
                                   'logger': EAGLE_logger},
                                  ))
             j += 1
         else:
             p = mp.Process(target=worker,
                            args=({'function': get_bacterium,
-                                  'ncbi_db_link': refseq_bacteria_link,
-                                  'bacterium_name': refseq_list[i],
+                                  'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
+                                  'bacterium_name': refseq_df.loc[i]["org_name"],
+                                  'repr': bool_from_str(refseq_df.loc[i]["repr"]),
                                   'analyzed_bacteria': analyzed_bacteria,
                                   'db_dir': bactdb_dir,
                                   'source_db': "refseq",
-                                  'try_err_message': "%s is not prepared: " % refseq_list[i],
+                                  'try_err_message': "%s is not prepared: " % refseq_df.loc[i]["org_name"],
                                   'logger': EAGLE_logger},
                                  ))
             i += 1
-        if genbank_list[j] == refseq_list[i-1]:
+        if genbank_df.loc[j]["org_name"] == refseq_df.loc[i-1]["org_name"]:
             j += 1
         p.start()
         proc_list.append(p)
@@ -104,43 +106,33 @@ def get_bacteria_from_ncbi(refseq_bacteria_link="https://ftp.ncbi.nlm.nih.gov/ge
     return json.load(open(bacteria_list_f_path))
 
 
-def get_bacterium(ncbi_db_link, bacterium_name, analyzed_bacteria, db_dir, source_db=None, **kwargs):
+def get_bacterium(ncbi_db_link, bacterium_name, repr, analyzed_bacteria, db_dir, source_db=None, **kwargs):
+    assembly_id = ncbi_db_link.split("/")[-1]
     bacterium_info = {"family": None,
                       "genus": None,
                       "species": None,
                       "strain": None,
-                      "download_prefix": None,
+                      "download_prefix": (ncbi_db_link+"/"+assembly_id).replace("https", "ftp"),
                       "16S_rRNA_file": None,
                       "source_db": source_db,
-                      "repr": False}
-    bacterium_link = ncbi_db_link + "/" + bacterium_name
-    EAGLE_logger.info('bacterium link: %s' % bacterium_link)
+                      "repr": repr}
+    EAGLE_logger.info('bacterium link: %s' % bacterium_info["download_prefix"])
     if analyzed_bacteria.get(bacterium_name, None):
         return 0
-    bacterium_list = get_links_from_html(bacterium_link)
-    if "representative" in bacterium_list:
-        next_page = bacterium_link + "/" + "representative"
-        bacterium_info["repr"] = True
-    else:
-        next_page = bacterium_link + "/" + "latest_assembly_versions"
-    assemblies_list = get_links_from_html(next_page)
-    if not assemblies_list:
-        EAGLE_logger.warning("Assemblies not loaded")
-        return 0
-    bacterium_prefix = (next_page + "/" + assemblies_list[-1] + "/" + assemblies_list[-1]).replace("https", "ftp")
-    bacterium_info["download_prefix"] = bacterium_prefix
-    download_bacterium_files(bacterium_prefix, ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"], db_dir)
-    tax_f_name = assemblies_list[-1] + "_wgsmaster.gbff.gz"
+    download_organism_files(bacterium_info["bacterium_prefix"],
+                            ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"],
+                            db_dir)
+    tax_f_name = assembly_id + "_wgsmaster.gbff.gz"
     if not os.path.exists(os.path.join(db_dir, tax_f_name)):
         tax_f_name = None
-        download_bacterium_files(bacterium_prefix, "_genomic.gbff.gz", db_dir)
-        tax_f_name = assemblies_list[-1] + "_genomic.gbff.gz"
+        download_organism_files(bacterium_info["bacterium_prefix"], "_genomic.gbff.gz", db_dir)
+        tax_f_name = assembly_id + "_genomic.gbff.gz"
     bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
         get_taxonomy(tax_f_name, db_dir)
     EAGLE_logger.info("got %s taxonomy" % bacterium_info["strain"])
     #if not os.path.exists():
     #
-    bacterium_info["16S_rRNA_file"] = get_16S_fasta(assemblies_list[-1] + "_rna_from_genomic.fna.gz",
+    bacterium_info["16S_rRNA_file"] = get_16S_fasta(assembly_id + "_rna_from_genomic.fna.gz",
                                                     db_dir,
                                                     bacterium_info["strain"])
     EAGLE_logger.info("got %s 16S rRNA" % bacterium_info["strain"])
@@ -148,24 +140,6 @@ def get_bacterium(ncbi_db_link, bacterium_name, analyzed_bacteria, db_dir, sourc
     f.write(unicode("  "+json.dumps(bacterium_info)+",\n"))
     f.close()
     analyzed_bacteria[bacterium_name] = True
-
-
-def download_bacterium_files(bact_prefix, suffixes, download_dir="./"):
-    # TODO: rename and move to EAGLEdb.lib
-    if type(suffixes) is str:
-        suffixes_list = [suffixes]
-    else:
-        suffixes_list = list(suffixes)
-    for suffix in suffixes_list:
-        file_link = None
-        file_link = bact_prefix + suffix
-        if platform.system() == 'Windows':
-            try:
-                wget.download(file_link, out=download_dir)
-            except IOError:
-                EAGLE_logger.warning("'%s' file has not been found" % file_link)
-        else:
-            subprocess.call("wget " + file_link + " -P " + download_dir + "/", shell=True)
 
 
 def get_taxonomy(f_name, f_dir, remove_tax_f=True):

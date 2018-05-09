@@ -25,10 +25,7 @@ class ConfBase:
                 if type(self.__dict__[param]) is list:
                     self.__dict__[param] = [elm.strip() for elm in new_value.split(",")]
                 elif type(self.__dict__[param]) is bool:
-                    if new_value.lower() in ("0", "false", "f", "no", "n", "na", "none", "null"):
-                        self.__dict__[param] = False
-                    else:
-                        self.__dict__[param] = True
+                    self.__dict__[param] = bool_from_str(new_value)
                 elif new_value.lower() in ("0", "false", "f", "no", "n", "na", "none", "null"):
                     self.__dict__[param] = None
                 else:
@@ -52,8 +49,11 @@ def _config_parser(config_path):
     return config
 
 
-def get_config_parameter(config, section, parameter, fallback=None):
-    pass
+def bool_from_str(string):
+    if string.lower() in ("0", "false", "f", "no", "n", "na", "none", "null"):
+        return False
+    else:
+        return True
 
 
 def worker(kwargs, use_try=False):
