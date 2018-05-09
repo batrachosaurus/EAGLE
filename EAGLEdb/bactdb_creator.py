@@ -380,9 +380,9 @@ def prepare_family(family_name, family_data, db_dir):
     # rRNA_aln.remove_seqs(seqs_list=removed_seqs)
     ###
     family_data["16S_rRNA_tree"] = rRNA_tree.newick
-    family_data["16S_rRNA_gtf"] = os.path.join(db_dir, family_name+"_16S_rRNA.gtf")
+    family_data["16S_rRNA_tsv"] = os.path.join(db_dir, family_name+"_16S_rRNA.tsv")
     family_data["16S_rRNA_fasta"] = os.path.join(db_dir, family_name+"_16S_rRNA.fasta")
-    rRNA_aln.get_blocks_tsv(tsv_path=family_data["16S_rRNA_gtf"],
+    rRNA_aln.get_blocks_tsv(tsv_path=family_data["16S_rRNA_tsv"],
                             fasta_path=family_data["16S_rRNA_fasta"],
                             meta_dict=ids_to_org_dict)
 

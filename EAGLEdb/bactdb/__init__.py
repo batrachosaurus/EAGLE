@@ -1,1 +1,0 @@
-from EAGLEdb.bactdb.bactdb_creator import get_bacteria_from_ncbi
