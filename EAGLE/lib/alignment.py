@@ -42,6 +42,15 @@ class MultAln(ConfBase):
     def __setitem__(self, seq_id, seq):
         self.mult_aln_dict[seq_id] = seq
 
+    def seqs(self):
+        if self.mult_aln_dict:
+            if self.full_seq_names:
+                return [self.full_seq_names[seq_id] for seq_id in self.mult_aln_dict.keys()]
+            else:
+                return [seq_id for seq_id in self.mult_aln_dict.keys()]
+        else:
+            return list()
+
     def dump_alignment(self, aln_f_path):
         pass
 

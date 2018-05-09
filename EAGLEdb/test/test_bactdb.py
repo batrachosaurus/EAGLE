@@ -2,9 +2,10 @@ import os
 import shutil
 import unittest
 
-from EAGLEdb.constants import CONSTANTS_PATH
 from EAGLEdb.bactdb import get_bacteria_from_ncbi
-from EAGLEdb.bactdb.bactdb_creator import get_taxonomy, get_16S_fasta
+from EAGLEdb.bactdb_creator import get_taxonomy, get_16S_fasta
+from EAGLEdb.constants import CONSTANTS_PATH
+
 
 class TestBactDBCreator(unittest.TestCase):
 
