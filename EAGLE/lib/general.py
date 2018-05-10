@@ -5,7 +5,7 @@ import pandas
 from collections import OrderedDict
 
 
-class ConfBase:
+class ConfBase(object):
 
     def __init__(self, config_path):
         self.config = None
@@ -50,7 +50,7 @@ def _config_parser(config_path):
 
 
 def bool_from_str(string):
-    if string.lower() in ("0", "false", "f", "no", "n", "na", "none", "null"):
+    if str(string).lower() in ("0", "false", "f", "no", "n", "na", "none", "null"):
         return False
     else:
         return True
