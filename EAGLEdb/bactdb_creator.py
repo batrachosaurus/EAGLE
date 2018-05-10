@@ -50,8 +50,8 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     bacteria_list_f = io.open(bacteria_list_f_path, 'w', newline="\n")
     bacteria_list_f.write(u"[\n")
     bacteria_list_f.close()
-    refseq_df = pandas.read_csv(refseq_bacteria_table, sep="\t")
-    genbank_df = pandas.read_csv(genbank_bacteria_table, sep="\t")
+    refseq_df = pandas.read_csv(refseq_bacteria_table, sep="\t", dtype=str)
+    genbank_df = pandas.read_csv(genbank_bacteria_table, sep="\t", dtype=str)
     n = 1
     i = 0
     j = 0
@@ -119,13 +119,13 @@ def get_bacterium(ncbi_db_link, bacterium_name, repr, analyzed_bacteria, db_dir,
     EAGLE_logger.info('bacterium link: %s' % bacterium_info["download_prefix"])
     if analyzed_bacteria.get(bacterium_name, None):
         return 0
-    download_organism_files(bacterium_info["bacterium_prefix"],
+    download_organism_files(bacterium_info["download_prefix"],
                             ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"],
                             db_dir)
     tax_f_name = assembly_id + "_wgsmaster.gbff.gz"
     if not os.path.exists(os.path.join(db_dir, tax_f_name)):
         tax_f_name = None
-        download_organism_files(bacterium_info["bacterium_prefix"], "_genomic.gbff.gz", db_dir)
+        download_organism_files(bacterium_info["download_prefix"], "_genomic.gbff.gz", db_dir)
         tax_f_name = assembly_id + "_genomic.gbff.gz"
     bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
         get_taxonomy(tax_f_name, db_dir)

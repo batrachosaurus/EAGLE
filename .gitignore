@@ -3,3 +3,4 @@
 EAGLEdb/bactdb/test/test_results/
 dist/
 EAGLE.egg-info/
+*.log
