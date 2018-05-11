@@ -23,7 +23,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                            num_threads=None,
                            first_bact=None,
                            last_bact=None,
-                           analyzed_bacteria=ANALYZED_BACTERIA_F_NAME,
+                           analyzed_bacteria_f_path=ANALYZED_BACTERIA_F_NAME,
                            remove_bact_list_f=False,
                            config_path=None):
 
@@ -43,7 +43,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     except OSError:
         EAGLE_logger.warning("bactdb directory exists")
     try:
-        analyzed_bacteria = pickle.load(open(os.path.join(bactdb_dir, analyzed_bacteria), 'rb'))
+        analyzed_bacteria = pickle.load(open(analyzed_bacteria_f_path, 'rb'))
     except IOError:
         analyzed_bacteria = mp.Manager().dict()
     bacteria_list_f_path = os.path.join(bactdb_dir, BACTERIA_LIST_F_NAME)
