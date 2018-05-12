@@ -42,9 +42,13 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
         os.makedirs(bactdb_dir)
     except OSError:
         EAGLE_logger.warning("bactdb directory exists")
-    try:
-        analyzed_bacteria = pickle.load(open(analyzed_bacteria_f_path, 'rb'))
-    except IOError:
+    if os.path.exists(analyzed_bacteria_f_path):
+        EAGLE_logger.info("loading analyzed bacteria from '%s'" % analyzed_bacteria_f_path)
+        analyzed_bacteria_f = open(analyzed_bacteria_f_path)
+        analyzed_bacteria = mp.Manager().dict().update(json.load(analyzed_bacteria_f))
+        analyzed_bacteria_f.close()
+        EAGLE_logger.info("analyzed bacteria loaded")
+    else:
         analyzed_bacteria = mp.Manager().dict()
     bacteria_list_f_path = os.path.join(bactdb_dir, BACTERIA_LIST_F_NAME)
     bacteria_list_f = io.open(bacteria_list_f_path, 'w', newline="\n")
@@ -116,8 +120,10 @@ def get_bacterium(ncbi_db_link, bacterium_name, repr, analyzed_bacteria, db_dir,
                       "16S_rRNA_file": None,
                       "source_db": source_db,
                       "repr": repr}
+    EAGLE_logger.info("%s getting started" % bacterium_name)
     EAGLE_logger.info('bacterium link: %s' % bacterium_info["download_prefix"])
     if analyzed_bacteria.get(bacterium_name, None):
+        EAGLE_logger.info("%s is in analyzed bacteria" % bacterium_name)
         return 0
     download_organism_files(bacterium_info["download_prefix"],
                             ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"],

@@ -12,6 +12,7 @@ class TestBactDBCreator(unittest.TestCase):
     test_dir = os.path.join(CONSTANTS_PATH, "test")
     input_dir = os.path.join(test_dir, "test_data")
     output_dir = os.path.join(test_dir, "test_results")
+    analyzed_bacteria_f_path = os.path.join(input_dir, "analyzed_bacteria.p")
     tax_f_name = "GCF_000160075.2_ASM16007v2_wgsmaster.gbff.gz"
     test_tax_result = {"family": u'Aerococcaceae',
                        "genus": u'Abiotrophia',
@@ -25,7 +26,9 @@ class TestBactDBCreator(unittest.TestCase):
         pass
 
     def test_get_bacteria_from_ncbi(self):
-        result = get_bacteria_from_ncbi(bactdb_dir=self.output_dir, last_bact=10)
+        result = get_bacteria_from_ncbi(bactdb_dir=self.output_dir,
+                                        last_bact=20,
+                                        analyzed_bacteria_f_path=self.analyzed_bacteria_f_path)
         print len(result)
         print result
         self.assertIs(type(result), list)
