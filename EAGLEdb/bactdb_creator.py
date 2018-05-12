@@ -101,8 +101,8 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     for proc in proc_list:
         proc.join()
     proc_list = None
-    analyzed_bacteria_f = open(os.path.join(bactdb_dir, ANALYZED_BACTERIA_F_NAME), 'wb')
-    pickle.dump(analyzed_bacteria, analyzed_bacteria_f)
+    analyzed_bacteria_f = open(os.path.join(bactdb_dir, ANALYZED_BACTERIA_F_NAME))
+    json.dump(analyzed_bacteria, analyzed_bacteria_f)
     analyzed_bacteria_f.close()
     bacteria_list_f = io.open(bacteria_list_f_path, 'a', newline="\n")
     bacteria_list_f.write(u"  {}\n]")
