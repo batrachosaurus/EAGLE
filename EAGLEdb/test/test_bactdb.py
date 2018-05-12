@@ -12,7 +12,7 @@ class TestBactDBCreator(unittest.TestCase):
     test_dir = os.path.join(CONSTANTS_PATH, "test")
     input_dir = os.path.join(test_dir, "test_data")
     output_dir = os.path.join(test_dir, "test_results")
-    analyzed_bacteria_f_path = os.path.join(input_dir, "analyzed_bacteria.p")
+    analyzed_bacteria_f_path = os.path.join(input_dir, "analyzed_bacteria.json")
     tax_f_name = "GCF_000160075.2_ASM16007v2_wgsmaster.gbff.gz"
     test_tax_result = {"family": u'Aerococcaceae',
                        "genus": u'Abiotrophia',
