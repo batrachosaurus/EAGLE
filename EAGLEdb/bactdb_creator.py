@@ -57,7 +57,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     n = 1
     i = 0
     j = 0
-    bacteria_queue = mp.Queue()
+    bacteria_queue = mp.Queue(100)
     pool_proc = mp.Process(target=run_proc_pool,
                            args=(num_threads, bacteria_queue, {'function': get_bacterium,
                                                                'analyzed_bacteria': analyzed_bacteria,
