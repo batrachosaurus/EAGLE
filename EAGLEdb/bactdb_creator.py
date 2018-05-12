@@ -3,14 +3,12 @@ import io
 import json
 import multiprocessing as mp
 import os
-import pickle
 from collections import defaultdict
-
 import pandas
 
 from EAGLE.constants import EAGLE_logger, conf_constants
 from EAGLE.lib.alignment import construct_mult_aln
-from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, bool_from_str
+from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, bool_from_str, run_proc_pool
 from EAGLE.lib.phylo import build_tree_by_dist
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE
@@ -58,50 +56,38 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     n = 1
     i = 0
     j = 0
-    proc_list = list()
+    bacteria_queue = mp.Queue()
+    pool_proc = mp.Process(target=run_proc_pool,
+                           args=(num_threads, bacteria_queue, {'function': get_bacterium,
+                                                               'analyzed_bacteria': analyzed_bacteria,
+                                                               'logger': EAGLE_logger}, "done"))
+    pool_proc.start()
     while i < refseq_df.shape[0] or j < genbank_df.shape[0]:
         if first_bact and n < first_bact: continue
         if last_bact and n > last_bact: break
         if genbank_df.loc[j]["org_name"] < refseq_df.loc[i]["org_name"]:
-            p = mp.Process(target=worker,
-                           args=({'function': get_bacterium,
-                                  'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
-                                  'bacterium_name': genbank_df.loc[j]["org_name"],
-                                  'repr': bool_from_str(genbank_df.loc[j]["repr"]),
-                                  'analyzed_bacteria': analyzed_bacteria,
-                                  'db_dir': bactdb_dir,
-                                  'source_db': "genbank",
-                                  'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"],
-                                  'logger': EAGLE_logger},
-                                 ))
+            bacteria_queue.put({'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
+                                'bacterium_name': genbank_df.loc[j]["org_name"],
+                                'repr': bool_from_str(genbank_df.loc[j]["repr"]),
+                                'db_dir': bactdb_dir,
+                                'source_db': "genbank",
+                                'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
             j += 1
         else:
-            p = mp.Process(target=worker,
-                           args=({'function': get_bacterium,
-                                  'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
-                                  'bacterium_name': refseq_df.loc[i]["org_name"],
-                                  'repr': bool_from_str(refseq_df.loc[i]["repr"]),
-                                  'analyzed_bacteria': analyzed_bacteria,
-                                  'db_dir': bactdb_dir,
-                                  'source_db': "refseq",
-                                  'try_err_message': "%s is not prepared: " % refseq_df.loc[i]["org_name"],
-                                  'logger': EAGLE_logger},
-                                 ))
+            bacteria_queue.put({'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
+                                'bacterium_name': refseq_df.loc[i]["org_name"],
+                                'repr': bool_from_str(refseq_df.loc[i]["repr"]),
+                                'db_dir': bactdb_dir,
+                                'source_db': "refseq",
+                                'try_err_message': "%s is not prepared: " % refseq_df.loc[i]["org_name"]})
             i += 1
         if genbank_df.loc[j]["org_name"] == refseq_df.loc[i-1]["org_name"]:
             j += 1
-        p.start()
-        proc_list.append(p)
         n += 1
-        if n % num_threads == 0:
-            for proc in proc_list:
-                proc.join()
-            proc_list = list()
-    for proc in proc_list:
-        proc.join()
-    proc_list = None
-    analyzed_bacteria_f = open(os.path.join(bactdb_dir, ANALYZED_BACTERIA_F_NAME))
-    json.dump(analyzed_bacteria, analyzed_bacteria_f)
+    bacteria_queue.put("done")
+    pool_proc.join()
+    analyzed_bacteria_f = open(os.path.join(bactdb_dir, ANALYZED_BACTERIA_F_NAME), "w")
+    json.dump(dict(analyzed_bacteria), analyzed_bacteria_f)
     analyzed_bacteria_f.close()
     bacteria_list_f = io.open(bacteria_list_f_path, 'a', newline="\n")
     bacteria_list_f.write(u"  {}\n]")

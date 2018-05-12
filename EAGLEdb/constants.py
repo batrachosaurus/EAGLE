@@ -6,7 +6,7 @@ from EAGLE.lib.general import ConfBase
 CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
 
 BACTERIA_LIST_F_NAME = "bacteria.json"
-ANALYZED_BACTERIA_F_NAME = "analyzed_bacteria.p"
+ANALYZED_BACTERIA_F_NAME = "analyzed_bacteria.json"
 BACT_FAM_F_NAME = "bact_fam.json"
 
 ORG_TABLES_DIR = os.path.join(CONSTANTS_PATH, "org_tables")

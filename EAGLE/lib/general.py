@@ -1,7 +1,9 @@
 # This code can have only standard Python imports
 import ConfigParser
 import sys
+import multiprocessing as mp
 import pandas
+import time
 from collections import OrderedDict
 
 
@@ -54,6 +56,33 @@ def bool_from_str(string):
         return False
     else:
         return True
+
+
+def run_proc_pool(num_threads, queue, constant_params=None, end_message="done"):
+    proc_list = list()
+    for i in range(num_threads):
+        p = mp.Process(target=_queue_reader,
+                       args=(queue, constant_params, end_message,))
+        p.start()
+        proc_list.append(p)
+    for proc in proc_list:
+        proc.join()
+    proc_list = None
+
+
+def _queue_reader(queue, constant_params=None, end_message="done", timeout=1):
+    while True:
+        if not queue.empty():
+            q_mess = queue.get()
+            if q_mess == end_message:
+                queue.put(q_mess)
+                break
+            else:
+                if constant_params:
+                    q_mess.update(constant_params)
+                worker(q_mess)
+        else:
+            time.sleep(timeout)
 
 
 def worker(kwargs, use_try=False):
