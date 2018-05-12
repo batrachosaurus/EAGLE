@@ -27,7 +27,7 @@ class TestBactDBCreator(unittest.TestCase):
 
     def test_get_bacteria_from_ncbi(self):
         result = get_bacteria_from_ncbi(bactdb_dir=self.output_dir,
-                                        last_bact=20,
+                                        last_bact=30,
                                         analyzed_bacteria_f_path=self.analyzed_bacteria_f_path)
         print len(result)
         print result
