@@ -3,6 +3,7 @@ import io
 import json
 import multiprocessing as mp
 import os
+import time
 from collections import defaultdict
 import pandas
 
@@ -85,6 +86,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
             j += 1
         n += 1
     bacteria_queue.put("done")
+    time.sleep(10)
     pool_proc.join()
     analyzed_bacteria_f = open(os.path.join(bactdb_dir, ANALYZED_BACTERIA_F_NAME), "w")
     json.dump(dict(analyzed_bacteria), analyzed_bacteria_f)

@@ -65,6 +65,7 @@ def run_proc_pool(num_threads, queue, constant_params=None, end_message="done"):
                        args=(queue, constant_params, end_message,))
         p.start()
         proc_list.append(p)
+    time.sleep(10)
     for proc in proc_list:
         proc.join()
     proc_list = None
