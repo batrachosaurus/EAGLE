@@ -42,14 +42,13 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
         os.makedirs(bactdb_dir)
     except OSError:
         EAGLE_logger.warning("bactdb directory exists")
+    analyzed_bacteria = mp.Manager().dict()
     if os.path.exists(analyzed_bacteria_f_path):
         EAGLE_logger.info("loading analyzed bacteria from '%s'" % analyzed_bacteria_f_path)
         analyzed_bacteria_f = open(analyzed_bacteria_f_path)
-        analyzed_bacteria = mp.Manager().dict().update(json.load(analyzed_bacteria_f))
+        analyzed_bacteria.update(json.load(analyzed_bacteria_f))
         analyzed_bacteria_f.close()
         EAGLE_logger.info("analyzed bacteria loaded")
-    else:
-        analyzed_bacteria = mp.Manager().dict()
     bacteria_list_f_path = os.path.join(bactdb_dir, BACTERIA_LIST_F_NAME)
     bacteria_list_f = io.open(bacteria_list_f_path, 'w', newline="\n")
     bacteria_list_f.write(u"[\n")
