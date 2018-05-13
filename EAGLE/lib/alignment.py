@@ -231,6 +231,49 @@ class MultAln(ConfBase):
         pass
 
 
+class BlastHandler(ConfBase):
+
+    def __init__(self,
+                 inst_dir="",
+                 config_path=None,
+                 logger=None):
+
+        self.inst_dir = inst_dir
+        self.logger = logger
+
+        super(BlastHandler, self).__init__(config_path=config_path)
+
+    def make_blastdb(self, in_fasta, dbtype, db_name=None):
+        if db_name:
+            makeblastdb_cmd = os.path.join(self.inst_dir, "makeblastdb") + " -in " + in_fasta + " -dbtype " + dbtype + \
+                              " -out " + db_name
+        else:
+            makeblastdb_cmd = os.path.join(self.inst_dir, "makeblastdb") + " -in " + in_fasta + " -dbtype " + dbtype
+        subprocess.call(makeblastdb_cmd, shell=True)
+
+    def run_blast_search(self, blast_type, query, db, out, outfmt=7, max_hsps=100):
+        pass
+
+
+class HmmerHandler(ConfBase):
+
+    def __init__(self,
+                 inst_dir="",
+                 config_path=None,
+                 logger=None):
+
+        self.inst_dir = inst_dir
+        self.logger = logger
+
+        super(HmmerHandler, self).__init__(config_path=config_path)
+
+    def build_hmm_profile(self):
+        pass
+
+    def run_hmmscan(self):
+        pass
+
+
 def construct_mult_aln(seq_dict=None,
                        fasta_path=None,
                        method="MUSCLE",
