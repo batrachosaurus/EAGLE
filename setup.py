@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.7.3',
+      version='0.7.4',
       packages=find_packages(),
       package_data={'EAGLE': ['configs/*', ],
                     'EAGLEdb': ['org_tables/*', ]},
@@ -13,5 +13,6 @@ setup(name='EAGLE',
       entry_points={
             'console_scripts': [
                   "EAGLEdb.prepare_ncbi_summary = EAGLEdb.prepare_ncbi_summary:prepare_summary_table",
+                  "EAGLEdb = EAGLEdb.__main__:main",
             ]
       })

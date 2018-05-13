@@ -71,6 +71,8 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
             continue
         if last_bact and n > last_bact: break
         if genbank_df.loc[j]["org_name"] < refseq_df.loc[i]["org_name"]:
+            while len(bacteria_queue) >= 50:
+                time.sleep(1)
             bacteria_queue.append({'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
                                    'bacterium_name': genbank_df.loc[j]["org_name"],
                                    'repr': bool_from_str(genbank_df.loc[j]["repr"]),
@@ -79,6 +81,8 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                                    'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
             j += 1
         else:
+            while len(bacteria_queue) >= 50:
+                time.sleep(1)
             bacteria_queue.append({'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
                                    'bacterium_name': refseq_df.loc[i]["org_name"],
                                    'repr': bool_from_str(refseq_df.loc[i]["repr"]),
