@@ -68,6 +68,15 @@ def run_proc_pool(num_threads, queue, constant_params=None, end_message="done"):
     time.sleep(10)
     for proc in proc_list:
         proc.join()
+    while queue.full():
+        queue.get()
+        try:
+            queue.task_done()
+        except AttributeError:
+            continue
+    queue.close()
+    queue.join_tread()
+    time.sleep(10)
     proc_list = None
 
 
@@ -76,12 +85,20 @@ def _queue_reader(queue, constant_params=None, end_message="done", timeout=1):
         if not queue.empty():
             q_mess = queue.get()
             if q_mess == end_message:
+                try:
+                    queue.task_done()
+                except AttributeError:
+                    pass
                 queue.put(q_mess)
                 break
             else:
                 if constant_params:
                     q_mess.update(constant_params)
                 worker(q_mess)
+                try:
+                    queue.task_done()
+                except AttributeError:
+                    continue
         else:
             time.sleep(timeout)
 
