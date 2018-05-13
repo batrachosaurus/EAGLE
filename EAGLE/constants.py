@@ -55,6 +55,7 @@ class ConfConstants(ConfBase):
         self.muscle_exec_path = ""
         self.emboss_inst_dir = ""
         self.hmmer_inst_dir = ""
+        self.blast_inst_dir = ""
         # PHYLO
         self.fastme_exec_path = ""
 

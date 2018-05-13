@@ -1,10 +1,11 @@
 # This code can have only standard Python imports
 import ConfigParser
-import sys
 import multiprocessing as mp
-import pandas
+import sys
 import time
 from collections import OrderedDict
+
+import pandas
 
 
 class ConfBase(object):
@@ -59,6 +60,7 @@ def bool_from_str(string):
 
 
 def run_proc_pool(num_threads, queue, constant_params=None, end_message="done"):
+    #  queue is multiprocessing Manager list
     proc_list = list()
     for i in range(num_threads):
         p = mp.Process(target=_queue_reader,
@@ -68,37 +70,22 @@ def run_proc_pool(num_threads, queue, constant_params=None, end_message="done"):
     time.sleep(10)
     for proc in proc_list:
         proc.join()
-    while queue.full():
-        queue.get()
-        try:
-            queue.task_done()
-        except AttributeError:
-            continue
-    queue.close()
-    queue.join_tread()
+    queue = None
     time.sleep(10)
     proc_list = None
 
 
 def _queue_reader(queue, constant_params=None, end_message="done", timeout=1):
     while True:
-        if not queue.empty():
-            q_mess = queue.get()
+        if queue:
+            q_mess = queue.pop(0)
             if q_mess == end_message:
-                try:
-                    queue.task_done()
-                except AttributeError:
-                    pass
-                queue.put(q_mess)
+                queue.append(q_mess)
                 break
             else:
                 if constant_params:
                     q_mess.update(constant_params)
                 worker(q_mess)
-                try:
-                    queue.task_done()
-                except AttributeError:
-                    continue
         else:
             time.sleep(timeout)
 
@@ -315,12 +302,3 @@ def dump_tree_newick(tree_newick, newick_f_path):
     newick_f = open(newick_f_path, "w")
     newick_f.write(tree_newick)
     newick_f.close()
-
-
-def get_tree_from_dict(input_dict, stop_level=2):
-    tree = dict()
-    if stop_level == 1:
-        return input_dict.keys()
-    for key in input_dict.keys():
-        tree[key] = get_tree_from_dict(input_dict[key], stop_level=stop_level-1)
-    return tree

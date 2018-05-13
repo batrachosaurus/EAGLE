@@ -5,6 +5,7 @@ import multiprocessing as mp
 import os
 import time
 from collections import defaultdict
+
 import pandas
 
 from EAGLE.constants import EAGLE_logger, conf_constants
@@ -13,7 +14,8 @@ from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_
 from EAGLE.lib.phylo import build_tree_by_dist
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE
-from EAGLEdb.lib.lib_tools import download_organism_files
+from EAGLEdb.lib.db_creator import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
+    generate_btax_profile
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_table=None,
@@ -55,10 +57,9 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     refseq_df = pandas.read_csv(refseq_bacteria_table, sep="\t", dtype=str)
     genbank_df = pandas.read_csv(genbank_bacteria_table, sep="\t", dtype=str)
     n = 1
-    m = 0
     i = 0
     j = 0
-    bacteria_queue = mp.JoinableQueue(100)
+    bacteria_queue = mp.Manager().list()
     pool_proc = mp.Process(target=run_proc_pool,
                            args=(num_threads, bacteria_queue, {'function': get_bacterium,
                                                                'analyzed_bacteria': analyzed_bacteria,
@@ -69,32 +70,26 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
             n += 1
             continue
         if last_bact and n > last_bact: break
-        if m >= 1000:
-            bacteria_queue.join()
-            time.sleep(10)
-            m = 0
         if genbank_df.loc[j]["org_name"] < refseq_df.loc[i]["org_name"]:
-            bacteria_queue.put({'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
-                                'bacterium_name': genbank_df.loc[j]["org_name"],
-                                'repr': bool_from_str(genbank_df.loc[j]["repr"]),
-                                'db_dir': bactdb_dir,
-                                'source_db': "genbank",
-                                'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
+            bacteria_queue.append({'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
+                                   'bacterium_name': genbank_df.loc[j]["org_name"],
+                                   'repr': bool_from_str(genbank_df.loc[j]["repr"]),
+                                   'db_dir': bactdb_dir,
+                                   'source_db': "genbank",
+                                   'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
             j += 1
         else:
-            bacteria_queue.put({'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
-                                'bacterium_name': refseq_df.loc[i]["org_name"],
-                                'repr': bool_from_str(refseq_df.loc[i]["repr"]),
-                                'db_dir': bactdb_dir,
-                                'source_db': "refseq",
-                                'try_err_message': "%s is not prepared: " % refseq_df.loc[i]["org_name"]})
+            bacteria_queue.append({'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
+                                   'bacterium_name': refseq_df.loc[i]["org_name"],
+                                   'repr': bool_from_str(refseq_df.loc[i]["repr"]),
+                                   'db_dir': bactdb_dir,
+                                   'source_db': "refseq",
+                                   'try_err_message': "%s is not prepared: " % refseq_df.loc[i]["org_name"]})
             i += 1
         if genbank_df.loc[j]["org_name"] == refseq_df.loc[i-1]["org_name"]:
             j += 1
         n += 1
-        m += 1
-    bacteria_queue.put("done")
-    bacteria_queue.join()
+    bacteria_queue.append("done")
     time.sleep(10)
     pool_proc.join()
     analyzed_bacteria_f = open(os.path.join(bactdb_dir, ANALYZED_BACTERIA_F_NAME), "w")
@@ -123,11 +118,12 @@ def get_bacterium(ncbi_db_link, bacterium_name, repr, analyzed_bacteria, db_dir,
         return 0
     download_organism_files(bacterium_info["download_prefix"],
                             ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"],
-                            db_dir)
+                            db_dir,
+                            logger=EAGLE_logger)
     tax_f_name = assembly_id + "_wgsmaster.gbff.gz"
     if not os.path.exists(os.path.join(db_dir, tax_f_name)):
         tax_f_name = None
-        download_organism_files(bacterium_info["download_prefix"], "_genomic.gbff.gz", db_dir)
+        download_organism_files(bacterium_info["download_prefix"], "_genomic.gbff.gz", db_dir, logger=EAGLE_logger)
         tax_f_name = assembly_id + "_genomic.gbff.gz"
     bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
         get_taxonomy(tax_f_name, db_dir)
@@ -312,6 +308,7 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
 
 
 def prepare_family(family_name, family_data, db_dir):
+    # TODO: refactor it
     rRNA_seqs_dict = dict()  # {seq_id: seq}
     ids_to_org_dict = dict()  # {seq_id: bacterium_name}
     for genus in family_data.keys():
@@ -361,12 +358,18 @@ def prepare_family(family_name, family_data, db_dir):
     rRNA_aln.get_blocks_tsv(tsv_path=family_data["16S_rRNA_tsv"],
                             fasta_path=family_data["16S_rRNA_fasta"],
                             meta_dict=ids_to_org_dict)
-
-    family_data["16S_rRNA_profile"] = os.path.join(db_dir, family_name+".hmm")
-    family_data["codon_usage"] = os.path.join(db_dir, family_name+".cu")
-    ###
-    rRNA_aln.get_hmm_profile(method='hmmer', profile_path=family_data["16S_rRNA_profile"])  # hmmer will be replaced with my own method
-
+    remained_orgs = map(lambda seq_id: ids_to_org_dict[seq_id], rRNA_aln.seqs())
+    family_data = clean_btax_data(family_data, remained_orgs, stop_level=3)
+    family_data = download_btax_files(key_prefix_pairs={"fna_file": "_genomic.fna.gz"},
+                                      btax_data=family_data,
+                                      download_dir=db_dir,
+                                      logger=EAGLE_logger)
+    family_data["blastdb"] = create_btax_blastdb(family_data, family_name, db_dir,
+                                                 blast_inst_dir=conf_constants.blast_inst_dir,
+                                                 logger=EAGLE_logger)
+    # repr_alns = <function that builds alignments for set of representative genes>
+    family_data["repr_profile"] = generate_btax_profile(source=rRNA_aln, method="hmmer")  # TODO: the source should be repe_alns
+    # family_data["codon_usage"] = get_btax_cu(family_data)
     family_json_f = open(os.path.join(db_dir, family_name+".json"), 'w')
     json.dump(family_data, family_json_f)
     family_json_f.close()
