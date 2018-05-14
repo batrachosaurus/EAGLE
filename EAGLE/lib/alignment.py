@@ -21,10 +21,15 @@ class MultAln(ConfBase):
                  logger=None):
 
         if mult_aln_dict:
-            self.mult_aln_dict, self.full_seq_names = reduce_seq_names(fasta_dict=mult_aln_dict, num_letters=10)
+            self.mult_aln_dict = mult_aln_dict
+            self.mult_aln_dict_short_id, self.short_to_full_seq_names = reduce_seq_names(fasta_dict=mult_aln_dict,
+                                                                                num_letters=10)
+            self.full_to_short_seq_names = dict(map(lambda x: (x[1], x[0]), self.short_to_full_seq_names.items()))
         else:
             self.mult_aln_dict = None
-            self.full_seq_names = None
+            self.mult_aln_dict_short_id = None
+            self.short_to_full_seq_names = None
+            self.full_to_short_seq_names = None
         self.states_seq = states_seq
         self.aln_type = aln_type
         if not self.aln_type:
@@ -44,10 +49,7 @@ class MultAln(ConfBase):
 
     def seqs(self):
         if self.mult_aln_dict:
-            if self.full_seq_names:
-                return [self.full_seq_names[seq_id] for seq_id in self.mult_aln_dict.keys()]
-            else:
-                return [seq_id for seq_id in self.mult_aln_dict.keys()]
+            return [seq_id for seq_id in self.mult_aln_dict.keys()]
         else:
             return list()
 
@@ -88,7 +90,7 @@ class MultAln(ConfBase):
         if output.lower() in ("coordinates", "coords", "coord", "c"):
             seq_coord_list = list()
             for seq_id in self.mult_aln_dict.iterkeys():
-                seq_c_dict = {"seq_id": self.full_seq_names[seq_id]}
+                seq_c_dict = {"seq_id": seq_id}
                 coords_for_seq = self._get_coords_for_seq(coords, self.mult_aln_dict[seq_id])
                 for k in range(len(coords_for_seq)):
                     seq_c_dict["c%s" % ((k+1)*2-1)] = coords_for_seq[k][0]
@@ -125,7 +127,19 @@ class MultAln(ConfBase):
         if method.lower() == "phylip":
             aln_fasta_path = os.path.join(self.tmp_dir, "alignment.fasta")
             phylip_matrix_path = os.path.join(self.tmp_dir, "dist_matrix.phylip")
-            dump_fasta_dict(fasta_dict=self.mult_aln_dict, fasta_path=aln_fasta_path)
+            if self.mult_aln_dict:
+                if not self.mult_aln_dict_short_id:
+                    self.mult_aln_dict_short_id, self.short_to_full_seq_names = \
+                        reduce_seq_names(fasta_dict=self.mult_aln_dict, num_letters=10)
+                    self.full_to_short_seq_names = dict(map(lambda x: (x[1], x[0]),
+                                                            self.short_to_full_seq_names.items()))
+            else:
+                if self.logger:
+                    self.logger.warning("No sequences in alignment")
+                else:
+                    print("No sequences in alignment")
+                return 1
+            dump_fasta_dict(fasta_dict=self.mult_aln_dict_short_id, fasta_path=aln_fasta_path)
             if self.aln_type.lower() in ("protein", "prot", "p"):
                 phylip_cmd = os.path.join(self.emboss_inst_dir, "fprotdist") + " -sequence " + aln_fasta_path + \
                              " -outfile " + phylip_matrix_path
@@ -137,7 +151,7 @@ class MultAln(ConfBase):
         shutil.rmtree(self.tmp_dir)
         return self.distance_matrix
 
-    def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):
+    def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):  ###
         short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)
         if not self.distance_matrix:
             self.get_distance_matrix()
@@ -150,7 +164,7 @@ class MultAln(ConfBase):
         if method.lower() in ("minimal_distance", "min_dist", "md"):
             full_seq_names_filt = dict(filter(lambda x: x[0] == org_dist_dict.get(short_seq_ids_to_org.get(x[0], None),
                                                                                   ((None, None), None))[0][0],
-                                              self.full_seq_names.items()))
+                                              self.short_to_full_seq_names.items()))
             mult_aln_dict_filt = dict(filter(lambda x: x[0] in full_seq_names_filt.keys(), self.mult_aln_dict.items()))
         else:
             # TODO: write spec_pos method
@@ -158,22 +172,22 @@ class MultAln(ConfBase):
             mult_aln_dict_filt = None
         if inplace:
             self.mult_aln_dict = mult_aln_dict_filt
-            self.full_seq_names = full_seq_names_filt
+            self.short_to_full_seq_names = full_seq_names_filt
         else:
             filtered_aln = self
             filtered_aln.mult_aln_dict = mult_aln_dict_filt
-            filtered_aln.full_seq_names = full_seq_names_filt
+            filtered_aln.short_to_full_seq_names = full_seq_names_filt
             return filtered_aln
 
     def _check_seq_ids_to_org(self, seq_ids_to_orgs):
         to_short_dict = dict()
         long_suc_num = 0
         short_suc_num = 0
-        for key in self.full_seq_names.keys:
+        for key in self.short_to_full_seq_names.keys():
             if seq_ids_to_orgs.get(key, None):
                 short_suc_num += 1
-            if seq_ids_to_orgs.get(self.full_seq_names[key], None):
-                to_short_dict[self.full_seq_names[key]] = key
+            if seq_ids_to_orgs.get(self.short_to_full_seq_names[key], None):
+                to_short_dict[self.short_to_full_seq_names[key]] = key
                 long_suc_num += 1
         if short_suc_num >= long_suc_num:
             return seq_ids_to_orgs
@@ -209,8 +223,15 @@ class MultAln(ConfBase):
         pass
         return pandas.DataFrame(blocks_info)
 
-    def get_hmm_profile(self, method, profile_path):
-        pass
+    def get_hmm_profile(self, profile_path, method="hmmer"):
+        if method.lower() == "hmmer":
+            if not os.path.exists(self.tmp_dir):
+                os.makedirs(self.tmp_dir)
+            aln_fasta_path = os.path.join(self.tmp_dir, "aln.fasta")
+            dump_fasta_dict(self.mult_aln_dict, aln_fasta_path)
+            hmmer_handler = HmmerHandler(inst_dir=self.hmmer_inst_dir, config_path=self.config_path, logger=self.logger)
+            hmmer_handler.build_hmm_profile()
+            shutil.rmtree(self.tmp_dir)
 
     def nucl_by_prot_aln(self, nucl_fasta_dict=None, nucl_fasta_path=None):
         if self.aln_type.lower() not in ("protein", "prot", "p"):
@@ -267,8 +288,9 @@ class HmmerHandler(ConfBase):
 
         super(HmmerHandler, self).__init__(config_path=config_path)
 
-    def build_hmm_profile(self):
-        pass
+    def build_hmm_profile(self, profile_path, in_fasta_path):
+        hmmbuild_cmd = os.path.join(self.inst_dir, "hmmbuild") + " " + profile_path + " " + in_fasta_path
+        subprocess.call(hmmbuild_cmd, shell=True)
 
     def run_hmmscan(self):
         pass
@@ -279,6 +301,8 @@ def construct_mult_aln(seq_dict=None,
                        method="MUSCLE",
                        aln_type=None,
                        muscle_exec_path="",
+                       emboss_inst_dir="",
+                       hmmer_inst_dir="",
                        tmp_dir="tmp",
                        remove_tmp=True,
                        config_path=None,
@@ -307,6 +331,8 @@ def construct_mult_aln(seq_dict=None,
         shutil.rmtree(tmp_dir)
     return MultAln(mult_aln_dict=mult_aln_dict,
                    aln_type=aln_type,
+                   emboss_inst_dir=emboss_inst_dir,
+                   hmmer_inst_dir=hmmer_inst_dir,
                    tmp_dir=tmp_dir,
                    config_path=config_path,
                    logger=logger)

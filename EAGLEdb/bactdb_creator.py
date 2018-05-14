@@ -283,7 +283,7 @@ def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, 
 
 def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
     bact_fam_f = io.open(bact_fam_f_path, 'w', newline="\n")
-    bact_fam_f.write(u"[\n")
+    bact_fam_f.write(u"{\n")
     bact_fam_f.close()
 
     n = 0
@@ -293,6 +293,7 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
                        args=({'function': prepare_family,
                               'family_name': family,
                               'family_data': families_dict[family],
+                              'bact_fam_f_path': bact_fam_f_path,
                               'db_dir': db_dir},
                              ))
         p.start()
@@ -307,11 +308,11 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
     proc_list = None
 
     bact_fam_f = io.open(bact_fam_f_path, 'a', newline="\n")
-    bact_fam_f.write(u"  {}\n]")
+    bact_fam_f.write(u"  {}\n}")
     bact_fam_f.close()
 
 
-def prepare_family(family_name, family_data, db_dir):
+def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
     # TODO: refactor it
     rRNA_seqs_dict = dict()  # {seq_id: seq}
     ids_to_org_dict = dict()  # {seq_id: bacterium_name}
@@ -346,6 +347,8 @@ def prepare_family(family_name, family_data, db_dir):
                                   method="MUSCLE",
                                   aln_type="nucl",
                                   muscle_exec_path=conf_constants.muscle_inst_dir,
+                                  emboss_inst_dir=conf_constants.emboss_inst_dir,
+                                  hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                                   tmp_dir=tmp_fam_dir,
                                   logger=EAGLE_logger)
     rRNA_aln.full_seq_names = short_ids_dict
@@ -371,9 +374,12 @@ def prepare_family(family_name, family_data, db_dir):
     family_data["blastdb"] = create_btax_blastdb(family_data, family_name, db_dir,
                                                  blast_inst_dir=conf_constants.blast_inst_dir,
                                                  logger=EAGLE_logger)
-    # repr_alns = <function that builds alignments for set of representative genes>
-    family_data["repr_profile"] = generate_btax_profile(source=rRNA_aln, method="hmmer")  # TODO: the source should be repe_alns
+    # repr_alns = <function that builds alignments for set of representative genes (returns dict = {aln_name: MultAln object})>
+    family_data["repr_profile"] = generate_btax_profile(source={"16S_rRNA": rRNA_aln},
+                                                        db_dir=db_dir,
+                                                        btax_name=family_name,
+                                                        method="hmmer")  # TODO: the source should be repr_alns
     # family_data["codon_usage"] = get_btax_cu(family_data)
-    family_json_f = open(os.path.join(db_dir, family_name+".json"), 'w')
-    json.dump(family_data, family_json_f)
-    family_json_f.close()
+    bact_fam_json_f = open(bact_fam_f_path, 'a')
+    bact_fam_json_f.write('  "'+family_name+'": '+json.dumps(family_data)+",\n")
+    bact_fam_json_f.close()
