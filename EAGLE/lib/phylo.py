@@ -7,9 +7,11 @@ from EAGLE.lib.general import ConfBase, dump_phylip_dist_matrix, load_newick
 
 class PhyloTree(ConfBase):
 
-    def __init__(self, newick, config_path=None, logger=None):
+    def __init__(self, newick, full_seq_names=None, config_path=None, logger=None):
         self.newick = newick
+        self.full_seq_names = full_seq_names
         self.logger = logger
+
         super(PhyloTree, self).__init__(config_path=config_path)
 
     def according_to_taxonomy(self, taxonomy):
@@ -19,6 +21,7 @@ class PhyloTree(ConfBase):
 
 def build_tree_by_dist(dist_matrix=None,
                        dist_matrix_f=None,
+                       full_seq_names=None,
                        tmp_dir="tmp",
                        method="FastME",
                        fastme_exec_path="",
@@ -44,7 +47,7 @@ def build_tree_by_dist(dist_matrix=None,
     else:
         return 1
     shutil.rmtree(tmp_dir)
-    return PhyloTree(newick=tree_newick, config_path=config_path, logger=logger)
+    return PhyloTree(newick=tree_newick, full_seq_names=full_seq_names, config_path=config_path, logger=logger)
 
 
 def compare_trees(newick1, newick2):
