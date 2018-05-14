@@ -351,15 +351,22 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
                                   hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                                   tmp_dir=tmp_fam_dir,
                                   logger=EAGLE_logger)
-    rRNA_aln.full_seq_names = short_ids_dict
+    rRNA_aln.short_to_full_seq_names = short_ids_dict
+    rRNA_aln.full_to_short_seq_names = None
+    rRNA_aln.mult_aln_dict = dict(map(
+        lambda x: (rRNA_aln.short_to_full_seq_names[x[0]], rRNA_aln.mult_aln_dict_short_id[x[0]]),
+        rRNA_aln.mult_aln_dict_short_ids.items()))
     rRNA_aln.remove_paralogs(ids_to_org_dict, method="min_dist", inplace=True)  # If I use my own alignment method: method="spec_pos"
     rRNA_tree = build_tree_by_dist(rRNA_aln.get_distance_matrix(), tmp_dir=tmp_fam_dir)
+    rRNA_tree.full_seq_names = dict(map(lambda x: (x, ids_to_org_dict[short_ids_dict[x]]),
+                                        rRNA_aln.mult_aln_dict_short_id.keys()))
     # TODO: write it for not only repr bacteria usage
     # fam_tax = {family_name: get_tree_from_dict(family_data, stop_level=3)}
     # rRNA_tree, removed_seqs = rRNA_tree.according_to_taxonomy(taxonomy=fam_tax)
     # rRNA_aln.remove_seqs(seqs_list=removed_seqs)
     ###
-    family_data["16S_rRNA_tree"] = rRNA_tree.newick
+    family_data["16S_rRNA_tree"] = {"newick": rRNA_tree.newick,
+                                    "full_seq_names": rRNA_tree.full_seq_names}
     family_data["16S_rRNA_tsv"] = os.path.join(db_dir, family_name+"_16S_rRNA.tsv")
     family_data["16S_rRNA_fasta"] = os.path.join(db_dir, family_name+"_16S_rRNA.fasta")
     rRNA_aln.get_blocks_tsv(tsv_path=family_data["16S_rRNA_tsv"],

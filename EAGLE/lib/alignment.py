@@ -1,8 +1,7 @@
-import collections
 import os
 import shutil
 import subprocess
-from collections import defaultdict
+from collections import defaultdict, Counter
 import pandas
 
 from EAGLE.lib.general import load_fasta_to_dict, dump_fasta_dict, load_phylip_dist_matrix, reduce_seq_names, ConfBase
@@ -151,48 +150,55 @@ class MultAln(ConfBase):
         shutil.rmtree(self.tmp_dir)
         return self.distance_matrix
 
-    def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):  ###
+    def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):
         short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)
         if not self.distance_matrix:
             self.get_distance_matrix()
         org_dist_dict = defaultdict(dict)
-        seq_ids = self.distance_matrix.index
-        for seq_id in seq_ids:
-            org_dist_dict[seq_ids_to_orgs[seq_id]][seq_id] = sum(map(float, list(self.distance_matrix.loc(seq_id))))
+        short_seq_ids = self.distance_matrix.index
+        for short_seq_id in short_seq_ids:
+            org_dist_dict[short_seq_ids_to_org[short_seq_id]][short_seq_id] = \
+                sum(map(float, list(self.distance_matrix.loc(short_seq_id))))
         for org in org_dist_dict.keys():
             org_dist_dict[org] = sorted(org_dist_dict[org].items(), key=lambda x: x[1])
         if method.lower() in ("minimal_distance", "min_dist", "md"):
-            full_seq_names_filt = dict(filter(lambda x: x[0] == org_dist_dict.get(short_seq_ids_to_org.get(x[0], None),
-                                                                                  ((None, None), None))[0][0],
-                                              self.short_to_full_seq_names.items()))
-            mult_aln_dict_filt = dict(filter(lambda x: x[0] in full_seq_names_filt.keys(), self.mult_aln_dict.items()))
+            short_to_full_seq_names_filt = dict(
+                filter(lambda x: x[0] == org_dist_dict.get(short_seq_ids_to_org.get(x[0], None),
+                                                           ((None, None), None))[0][0],
+                       self.short_to_full_seq_names.items())
+                       )
+            full_to_short_seq_names_filt = dict(map(lambda x: (x[1], x[0]), short_to_full_seq_names_filt.items()))
+            mult_aln_dict_filt = dict(filter(lambda x: x[0] in full_to_short_seq_names_filt.keys(),
+                                             self.mult_aln_dict.items()))
+            mult_aln_dict_short_id_filt = dict(filter(lambda x: x[0] in short_to_full_seq_names_filt.keys(),
+                                                      self.mult_aln_dict_short_id.items()))
         else:
             # TODO: write spec_pos method
-            full_seq_names_filt = None
+            short_to_full_seq_names_filt = None
+            full_to_short_seq_names_filt = None
             mult_aln_dict_filt = None
+            mult_aln_dict_short_id_filt = None
         if inplace:
             self.mult_aln_dict = mult_aln_dict_filt
-            self.short_to_full_seq_names = full_seq_names_filt
+            self.mult_aln_dict_short_id = mult_aln_dict_short_id_filt
+            self.short_to_full_seq_names = short_to_full_seq_names_filt
+            self.full_to_short_seq_names = full_to_short_seq_names_filt
         else:
             filtered_aln = self
             filtered_aln.mult_aln_dict = mult_aln_dict_filt
-            filtered_aln.short_to_full_seq_names = full_seq_names_filt
+            filtered_aln.mult_aln_dict_short_id = mult_aln_dict_short_id_filt
+            filtered_aln.short_to_full_seq_names = short_to_full_seq_names_filt
+            filtered_aln.full_to_short_seq_names = full_to_short_seq_names_filt
             return filtered_aln
 
     def _check_seq_ids_to_org(self, seq_ids_to_orgs):
         to_short_dict = dict()
-        long_suc_num = 0
-        short_suc_num = 0
         for key in self.short_to_full_seq_names.keys():
             if seq_ids_to_orgs.get(key, None):
-                short_suc_num += 1
+                to_short_dict[key] = key
             if seq_ids_to_orgs.get(self.short_to_full_seq_names[key], None):
                 to_short_dict[self.short_to_full_seq_names[key]] = key
-                long_suc_num += 1
-        if short_suc_num >= long_suc_num:
-            return seq_ids_to_orgs
-        else:
-            return dict(map(lambda x: (to_short_dict.get(x[0], None),  x[1]), seq_ids_to_orgs.items()))
+        return to_short_dict
 
     def get_blocks_tsv(self, tsv_path, fasta_path, split_into_blocks=False, meta_dict=None):
         # Three block types: CB - conservetive block, SB - specific block, MB - major block. UB - unclassified block (not any of three types => MB=NA)
@@ -230,7 +236,7 @@ class MultAln(ConfBase):
             aln_fasta_path = os.path.join(self.tmp_dir, "aln.fasta")
             dump_fasta_dict(self.mult_aln_dict, aln_fasta_path)
             hmmer_handler = HmmerHandler(inst_dir=self.hmmer_inst_dir, config_path=self.config_path, logger=self.logger)
-            hmmer_handler.build_hmm_profile()
+            hmmer_handler.build_hmm_profile(profile_path=profile_path, in_aln_path=aln_fasta_path)
             shutil.rmtree(self.tmp_dir)
 
     def nucl_by_prot_aln(self, nucl_fasta_dict=None, nucl_fasta_path=None):
@@ -288,8 +294,8 @@ class HmmerHandler(ConfBase):
 
         super(HmmerHandler, self).__init__(config_path=config_path)
 
-    def build_hmm_profile(self, profile_path, in_fasta_path):
-        hmmbuild_cmd = os.path.join(self.inst_dir, "hmmbuild") + " " + profile_path + " " + in_fasta_path
+    def build_hmm_profile(self, profile_path, in_aln_path):
+        hmmbuild_cmd = os.path.join(self.inst_dir, "hmmbuild") + " " + profile_path + " " + in_aln_path
         subprocess.call(hmmbuild_cmd, shell=True)
 
     def run_hmmscan(self):
@@ -346,7 +352,7 @@ def detect_seqs_type(fasta_path=None, fasta_dict=None, nuc_freq_thr=0.75):
         for seq_key in fasta_dict.keys():
             seqs_list.append(fasta_dict[seq_key])
             summ_l += len(fasta_dict[seq_key])
-        let_counts = collections.Counter("".join(seqs_list))
+        let_counts = Counter("".join(seqs_list))
         if float(let_counts.get("a", 0)+let_counts.get("c", 0)+let_counts.get("g", 0)+let_counts.get("t", 0))/float(summ_l) >= nuc_freq_thr:
             return "nucl"
         else:
