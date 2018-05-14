@@ -14,9 +14,11 @@ EMBOSS + PHYLIPNEW (EMBASSY package)
 FastME 2.07  
 KaKs Calculator 2.0  
 Blast+  
+Redis  
 Python 2.7  
 ### Python packages:  
 wget  
 pyaml  
 pandas  
+redis  
      

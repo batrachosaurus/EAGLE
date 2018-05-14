@@ -3,8 +3,10 @@ import ConfigParser
 import multiprocessing as mp
 import sys
 import time
+import pickle
 import shutil
 from collections import OrderedDict
+import subprocess
 
 import pandas
 
@@ -45,6 +47,34 @@ class ConfBase(object):
             return fallback
 
 
+class RedisQueue:
+
+    def __init__(self, queue_name, redis_connection):
+        self.name =queue_name
+        self.conn = redis_connection
+
+    def qsize(self):
+        return self.conn.llen(self.name)
+
+    def empty(self):
+        return self.qsize() == 0
+
+    def full(self):
+        return self.qsize() != 0
+
+    def put(self, message):
+        self.conn.rpush(self.name, pickle.dumps(message))
+
+    def get(self, block=True, timeout=None):
+        if block:
+            message = self.conn.blpop(self.name, timeout=timeout)
+        else:
+            message = self.conn.lpop(self.name)
+
+        if message:
+            return pickle.loads(message[1])
+
+
 def _config_parser(config_path):
     """ Function parses config file and puts the result into an object of ConfigParser class
       :param config_path: path to config file
@@ -73,17 +103,15 @@ def run_proc_pool(num_threads, queue, constant_params=None, end_message="done"):
     time.sleep(10)
     for proc in proc_list:
         proc.join()
-    queue = None
-    time.sleep(10)
     proc_list = None
 
 
 def _queue_reader(queue, constant_params=None, end_message="done", timeout=1):
     while True:
         if queue:
-            q_mess = queue.pop(0)
+            q_mess = queue.get()
             if q_mess == end_message:
-                queue.append(q_mess)
+                queue.put(q_mess)
                 break
             else:
                 if constant_params:
@@ -317,3 +345,14 @@ def join_files(in_files_list, out_file_path):
             shutil.copyfileobj(f, out_file)
             f.close()
         out_file.close()
+
+
+def get_redis_server(host='localhost', port=6379, restart=True):
+    if host == 'localhost' or host == '127.0.0.1':
+        if restart:
+            subprocess.call("echo 1 > /proc/sys/net/ipv4/tcp_tw_reuse", shell=True)
+            subprocess.call("echo 1 > /proc/sys/net/ipv4/tcp_tw_recycle", shell=True)
+            subprocess.call("redis-cli -p " + str(port) + " shutdown", shell=True)
+        subprocess.Popen("redis-server --port " + str(port), shell=True)
+        time.sleep(10)
+        return "connected to Redis server"

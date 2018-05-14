@@ -3,14 +3,14 @@ import io
 import json
 import multiprocessing as mp
 import os
-import time
 from collections import defaultdict
-
+import redis
 import pandas
 
 from EAGLE.constants import EAGLE_logger, conf_constants
 from EAGLE.lib.alignment import construct_mult_aln
-from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, bool_from_str, run_proc_pool
+from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, bool_from_str, run_proc_pool, \
+    RedisQueue
 from EAGLE.lib.phylo import build_tree_by_dist
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE
@@ -59,7 +59,11 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     n = 1
     i = 0
     j = 0
-    bacteria_queue = mp.Manager().list()
+    conf_constants.get_redis_server()
+    bacteria_queue = RedisQueue(queue_name="bacteria_queue",
+                                redis_connection=redis.StrictRedis(host=conf_constants.redis_host,
+                                                                   port=conf_constants.redis_port,
+                                                                   db=conf_constants.redis_queue_db))
     pool_proc = mp.Process(target=run_proc_pool,
                            args=(num_threads, bacteria_queue, {'function': get_bacterium,
                                                                'analyzed_bacteria': analyzed_bacteria,
@@ -71,30 +75,25 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
             continue
         if last_bact and n > last_bact: break
         if genbank_df.loc[j]["org_name"] < refseq_df.loc[i]["org_name"]:
-            while len(bacteria_queue) >= 50:
-                time.sleep(1)
-            bacteria_queue.append({'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
-                                   'bacterium_name': genbank_df.loc[j]["org_name"],
-                                   'repr': bool_from_str(genbank_df.loc[j]["repr"]),
-                                   'db_dir': bactdb_dir,
-                                   'source_db': "genbank",
-                                   'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
+            bacteria_queue.put({'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
+                                'bacterium_name': genbank_df.loc[j]["org_name"],
+                                'repr': bool_from_str(genbank_df.loc[j]["repr"]),
+                                'db_dir': bactdb_dir,
+                                'source_db': "genbank",
+                                'try_err_mssage': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
             j += 1
         else:
-            while len(bacteria_queue) >= 50:
-                time.sleep(1)
-            bacteria_queue.append({'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
-                                   'bacterium_name': refseq_df.loc[i]["org_name"],
-                                   'repr': bool_from_str(refseq_df.loc[i]["repr"]),
-                                   'db_dir': bactdb_dir,
-                                   'source_db': "refseq",
-                                   'try_err_message': "%s is not prepared: " % refseq_df.loc[i]["org_name"]})
+            bacteria_queue.put({'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
+                                'bacterium_name': refseq_df.loc[i]["org_name"],
+                                'repr': bool_from_str(refseq_df.loc[i]["repr"]),
+                                'db_dir': bactdb_dir,
+                                'source_db': "refseq",
+                                'try_err_message': "%s is not prepared: " % refseq_df.loc[i]["org_name"]})
             i += 1
         if genbank_df.loc[j]["org_name"] == refseq_df.loc[i-1]["org_name"]:
             j += 1
         n += 1
-    bacteria_queue.append("done")
-    time.sleep(10)
+    bacteria_queue.put("done")
     pool_proc.join()
     analyzed_bacteria_f = open(os.path.join(bactdb_dir, ANALYZED_BACTERIA_F_NAME), "w")
     json.dump(dict(analyzed_bacteria), analyzed_bacteria_f)

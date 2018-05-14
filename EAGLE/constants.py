@@ -2,10 +2,10 @@ import ConfigParser
 import logging
 import logging.config
 import os
-
 import yaml
+import redis
 
-from EAGLE.lib.general import ConfBase
+from EAGLE.lib.general import ConfBase, get_redis_server
 
 constants_path = os.path.dirname(os.path.realpath(__file__))
 conf_dir_name = 'configs'
@@ -51,6 +51,9 @@ class ConfConstants(ConfBase):
     def __init__(self, config_path=DEFAULT_CONFIG):
         # GENERAL
         self.num_threads = 4
+        self.redis_host = 'localhost'
+        self.redis_port = 6379
+        self.redis_queue_db = 0
         # ALIGNMENT
         self.muscle_exec_path = ""
         self.emboss_inst_dir = ""
@@ -60,6 +63,9 @@ class ConfConstants(ConfBase):
         self.fastme_exec_path = ""
 
         super(ConfConstants, self).__init__(config_path=config_path)
+
+    def get_redis_server(self, restart=True):
+        EAGLE_logger.info(get_redis_server(self.redis_host, self.redis_port, restart=restart))
 
 
 conf_constants = ConfConstants()

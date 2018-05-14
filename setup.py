@@ -1,14 +1,15 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.7.6',
+      version='0.8.0',
       packages=find_packages(),
       package_data={'EAGLE': ['configs/*', ],
                     'EAGLEdb': ['org_tables/*', ]},
       install_requires=[
             'wget',
             'pyaml',
-            'pandas'
+            'pandas',
+            'redis'
       ],
       entry_points={
             'console_scripts': [
