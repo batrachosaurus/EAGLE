@@ -13,14 +13,14 @@ from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_
     RedisQueue
 from EAGLE.lib.phylo import build_tree_by_dist
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
-    DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE
+    DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR
 from EAGLEdb.lib.db_creator import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
     generate_btax_profile
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                            genbank_bacteria_table=None,
-                           bactdb_dir="EAGLEdb/bacteria",
+                           bactdb_dir=DEFAULT_BACTDB_DIR,
                            num_threads=None,
                            first_bact=None,
                            last_bact=None,
@@ -242,6 +242,8 @@ def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, 
 
     families_dict = dict()
     for bacterium in bacteria_list:
+        if not os.path.exists(bacterium["16S_rRNA_file"]):
+            continue
         bacterium_data = {"download_prefix": bacterium["download_prefix"],
                           "16S_rRNA_file": bacterium["16S_rRNA_file"],
                           "fna_file": None,

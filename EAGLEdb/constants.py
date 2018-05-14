@@ -12,6 +12,7 @@ BACT_FAM_F_NAME = "bact_fam.json"
 ORG_TABLES_DIR = os.path.join(CONSTANTS_PATH, "org_tables")
 DEFAULT_REFSEQ_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "refseq_bacteria_table.txt")
 DEFAULT_GENBANK_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "genbank_bacteria_table.txt")
+DEFAULT_BACTDB_DIR = os.path.join("EAGLEdb", "bacteria")
 
 
 class ConfConstants(ConfBase):

@@ -113,7 +113,7 @@ def run_proc_pool(num_threads, queue, constant_params=None, end_message="done"):
 def _queue_reader(queue, constant_params=None, end_message="done", timeout=1):
     while True:
         if queue.full():
-            q_mess = queue.get()
+            q_mess = queue.get(block=False)
             if q_mess == end_message:
                 queue.put(q_mess)
                 break
