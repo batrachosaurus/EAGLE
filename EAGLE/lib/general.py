@@ -3,6 +3,7 @@ import ConfigParser
 import multiprocessing as mp
 import sys
 import time
+import shutil
 from collections import OrderedDict
 
 import pandas
@@ -11,11 +12,13 @@ import pandas
 class ConfBase(object):
 
     def __init__(self, config_path):
+        self.config_path = None
         self.config = None
         if config_path:
             self.update_by_config(config_path=config_path)
 
     def update_by_config(self, config_path):
+        self.config_path = config_path
         self.config = _config_parser(config_path=config_path)
         config_sections = self.config.sections()
         for param in self.__dict__.keys():
@@ -208,7 +211,10 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
     seq_names_dict = dict()
     for seq_name in fasta_dict.keys():
         if len(seq_name) <= num_letters:
-            seq_names_dict[seq_name+"".join("_" for i in range(num_letters-len(seq_name)))] = seq_name
+            prepared_seq_name = None
+            prepared_seq_name = seq_name+"".join("_" for i in range(num_letters-len(seq_name)))
+            seq_names_dict[prepared_seq_name] = seq_name
+            reduced_fasta_dict[prepared_seq_name] = fasta_dict[seq_name]
             continue
         reduced_seq_name = None
         seq_name_list = filter_list("".join([splitters_repl.get(s, s) for s in seq_name]).split())
@@ -302,3 +308,12 @@ def dump_tree_newick(tree_newick, newick_f_path):
     newick_f = open(newick_f_path, "w")
     newick_f.write(tree_newick)
     newick_f.close()
+
+
+def join_files(in_files_list, out_file_path):
+    with open(out_file_path, 'wb') as out_file:
+        for f_path in in_files_list:
+            f = open(f_path, 'rb')
+            shutil.copyfileobj(f, out_file)
+            f.close()
+        out_file.close()

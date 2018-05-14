@@ -8,7 +8,7 @@ import wget
 import gzip
 import shutil
 
-from EAGLE.lib.general import worker
+from EAGLE.lib.general import worker, join_files
 from EAGLE.lib.alignment import BlastHandler
 
 
@@ -111,7 +111,7 @@ def create_btax_blastdb(btax_data, btax_name, db_dir, blast_inst_dir="", logger=
     fna_list = get_from_btax_data("fna_file", btax_data)
     btax_fna_path = os.path.join(db_dir, btax_name+".fasta")
     blast_db_path = os.path.join(blastdb_dir, btax_name)
-    cat_cmd = "cat " + " ".join(fna_list) + " > " + btax_fna_path
+    join_files(fna_list, btax_fna_path)
     blast_handler = BlastHandler(inst_dir=blast_inst_dir, logger=logger)
     blast_handler.make_blastdb(btax_fna_path, dbtype="nucl", db_name=blast_db_path)
     return blast_db_path
@@ -127,5 +127,17 @@ def get_from_btax_data(key, btax_data):
         return key_data_list
 
 
-def generate_btax_profile(source, method="hmmer"):
-    pass
+def generate_btax_profile(source, db_dir, btax_name, method="hmmer"):
+    btax_profiles_tmp_dir = os.path.join(db_dir, btax_name+"_profiles_tmp")
+    if not os.path.exists(btax_profiles_tmp_dir):
+        os.makedirs(btax_profiles_tmp_dir)
+    aln_profiles_list = list()
+    for aln_key in source.keys:
+        aln_profile_path = None
+        aln_profile_path = os.path.join(btax_profiles_tmp_dir, aln_key+".hmm")
+        source[aln_key].get_hmm_profile(profile_path=aln_profile_path, method=method)
+        aln_profiles_list.append(aln_profile_path)
+    btax_profile_path = os.path.join(db_dir, btax_name+".hmm")
+    join_files(aln_profiles_list, btax_profile_path)
+    shutil.rmtree(btax_profiles_tmp_dir)
+    return btax_profile_path
