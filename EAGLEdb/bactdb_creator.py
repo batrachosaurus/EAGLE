@@ -63,7 +63,8 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     bacteria_queue = RedisQueue(queue_name="bacteria_queue",
                                 redis_connection=redis.StrictRedis(host=conf_constants.redis_host,
                                                                    port=conf_constants.redis_port,
-                                                                   db=conf_constants.redis_queue_db))
+                                                                   db=conf_constants.redis_queue_db),
+                                max_size=50)
     pool_proc = mp.Process(target=run_proc_pool,
                            args=(num_threads, bacteria_queue, {'function': get_bacterium,
                                                                'analyzed_bacteria': analyzed_bacteria,

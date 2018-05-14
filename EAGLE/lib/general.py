@@ -49,9 +49,10 @@ class ConfBase(object):
 
 class RedisQueue:
 
-    def __init__(self, queue_name, redis_connection):
-        self.name =queue_name
+    def __init__(self, queue_name, redis_connection, max_size=0):
+        self.name = queue_name
         self.conn = redis_connection
+        self.max_size = max_size
 
     def qsize(self):
         return self.conn.llen(self.name)
@@ -63,6 +64,9 @@ class RedisQueue:
         return self.qsize() != 0
 
     def put(self, message):
+        if self.max_size > 0:
+            while self.qsize() >= self.max_size:
+                time.sleep(1)
         self.conn.rpush(self.name, pickle.dumps(message))
 
     def get(self, block=True, timeout=None):
