@@ -1,2 +1,4 @@
 from EAGLEdb.bactdb_creator import get_bacteria_from_ncbi, get_families_dict
 from EAGLEdb.__main__ import create_bactdb
+from EAGLEdb.get_analyzed_bacteria import are_bacteria_analyzed
+from EAGLEdb.prepare_ncbi_summary import prepare_summary_table
