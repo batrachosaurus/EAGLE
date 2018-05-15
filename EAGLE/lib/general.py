@@ -134,7 +134,7 @@ def _queue_reader(queue, proc_num, proc_states, constant_params=None, end_messag
 def _maintain_procs(p_dict, p_states, p_args, end_message="done", no_response_max=20):
     while len(p_states.keys()) > 0:
         for proc_id in p_states.keys():
-            if p_states[proc_id] == "done":
+            if p_states[proc_id] == end_message:
                 p_states.pop(proc_id)
             elif p_states[proc_id] > no_response_max:
                 p_args[1] = proc_id

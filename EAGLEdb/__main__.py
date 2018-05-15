@@ -1,9 +1,11 @@
 import sys
 import argparse
+import json
 
 from EAGLEdb.bactdb_creator import get_bacteria_from_ncbi, get_families_dict
 from EAGLE.constants import conf_constants
 from EAGLEdb.constants import DEFAULT_BACTDB_DIR, conf_constants_db, ANALYZED_BACTERIA_F_NAME
+from EAGLEdb import join_bacteria_lists
 
 
 def _parse_cmd_args(*args):
@@ -58,6 +60,7 @@ def create_bactdb(input_table_refseq=None,
                   bactdb_dir=DEFAULT_BACTDB_DIR,
                   num_threads=None,
                   analyzed_bacteria_f_path=ANALYZED_BACTERIA_F_NAME,
+                  analyzed_bacteria_info_list_path=None,
                   config_path=None,
                   **kwargs):
 
@@ -70,6 +73,9 @@ def create_bactdb(input_table_refseq=None,
                                            bactdb_dir=bactdb_dir,
                                            num_threads=num_threads,
                                            analyzed_bacteria_f_path=analyzed_bacteria_f_path)
+    if analyzed_bacteria_info_list_path:
+        bacteria_list = join_bacteria_lists(bacteria_list_1=bacteria_list,
+                                            bacteria_list_2=json.load(open(analyzed_bacteria_info_list_path)))
     families_dict = get_families_dict(bacteria_list=bacteria_list,
                                       num_threads=num_threads,
                                       db_dir=bactdb_dir,

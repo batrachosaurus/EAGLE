@@ -4,9 +4,10 @@ import multiprocessing as mp
 import platform
 import subprocess
 import urllib2
-import wget
 import gzip
 import shutil
+
+import wget
 
 from EAGLE.lib.general import worker, join_files
 from EAGLE.lib.alignment import BlastHandler
