@@ -97,21 +97,27 @@ def bool_from_str(string):
 
 
 def run_proc_pool(num_threads, queue, constant_params=None, end_message="done"):
-    #  queue is multiprocessing Manager list
-    proc_list = list()
+    #  queue is RedisQueue object
+    proc_dict = dict()
+    proc_states = mp.Manager().dict()
     for i in range(num_threads):
+        proc_states[i] = 0
         p = mp.Process(target=_queue_reader,
-                       args=(queue, constant_params, end_message,))
+                       args=(queue, i, proc_states, constant_params, end_message,))
         p.start()
-        proc_list.append(p)
+        proc_dict[i] = p
     time.sleep(10)
-    for proc in proc_list:
-        proc.join()
-    proc_list = None
+    proc_dict = _maintain_procs(proc_dict, proc_states,
+                                p_args=[queue, 0, proc_states, constant_params, end_message,],
+                                end_message="done")
+    for proc_id in proc_dict.keys():
+        proc_dict[proc_id].join()
+    proc_dict = None
 
 
-def _queue_reader(queue, constant_params=None, end_message="done", timeout=1):
+def _queue_reader(queue, proc_num, proc_states, constant_params=None, end_message="done", timeout=1):
     while True:
+        proc_states[proc_num] = 0
         if queue.full():
             q_mess = queue.get()
             if q_mess == end_message:
@@ -123,6 +129,24 @@ def _queue_reader(queue, constant_params=None, end_message="done", timeout=1):
                 worker(q_mess)
         else:
             time.sleep(timeout)
+
+
+def _maintain_procs(p_dict, p_states, p_args, end_message="done", no_response_max=20):
+    while len(p_states.keys()) > 0:
+        for proc_id in p_states.keys():
+            if p_states[proc_id] == "done":
+                p_states.pop(proc_id)
+            elif p_states[proc_id] > no_response_max:
+                p_args[1] = proc_id
+                p = mp.Process(target=_queue_reader,
+                               args=tuple(p_args))
+                p.start()
+                p_dict[proc_id] = p
+                p_states[proc_id] = 0
+            else:
+                p_states[proc_id] += 1
+        time.sleep(20)
+    return p_dict
 
 
 def worker(kwargs, use_try=False):

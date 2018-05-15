@@ -2,7 +2,7 @@ import sys
 import pandas
 
 
-def prepare_summary_tables(summary_table=None, out_table_path=None):
+def prepare_summary_table(summary_table=None, out_table_path=None):
     if not summary_table and not out_table_path:
         try:
             summary_table = sys.argv[1]
@@ -21,4 +21,4 @@ def prepare_summary_tables(summary_table=None, out_table_path=None):
 
 
 if __name__ == "__main__":
-    prepare_summary_tables(sys.argv[1], sys.argv[2])
+    prepare_summary_table(sys.argv[1], sys.argv[2])
