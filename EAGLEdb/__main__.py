@@ -29,7 +29,7 @@ def _parse_cmd_args(*args):
                         "--db-dir",
                         help="Path to a directory to collect database files",
                         required=False,
-                        default=DEFAULT_BACTDB_DIR)
+                        default=None)
     parser.add_argument("-nt",
                         "--num-threads",
                         help="Threads number (can be set in config file)",
@@ -40,7 +40,12 @@ def _parse_cmd_args(*args):
                         help='Path to a json with organisms not to analyze listed. '
                              'Format as follows: {"org_name": true}',
                         required=False,
-                        default=ANALYZED_BACTERIA_F_NAME)
+                        default=None)
+    parser.add_argument("-anorgsinf",
+                        "--analyzed-organisms-info",
+                        help='Path to a json with info for organisms just analyzed',
+                        required=False,
+                        default=None)
     parser.add_argument("-c",
                         "--config-path",
                         help="Path to a config file",
@@ -57,28 +62,32 @@ def _parse_cmd_args(*args):
 
 def create_bactdb(input_table_refseq=None,
                   input_table_genbank=None,
-                  bactdb_dir=DEFAULT_BACTDB_DIR,
+                  db_dir=DEFAULT_BACTDB_DIR,
                   num_threads=None,
-                  analyzed_bacteria_f_path=ANALYZED_BACTERIA_F_NAME,
-                  analyzed_bacteria_info_list_path=None,
+                  analyzed_organisms=ANALYZED_BACTERIA_F_NAME,
+                  analyzed_organisms_info=None,
                   config_path=None,
                   **kwargs):
 
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
         conf_constants_db.update_by_config(config_path=config_path)
+    if not db_dir:
+        db_dir = DEFAULT_BACTDB_DIR
+    if not analyzed_organisms:
+        analyzed_organisms = ANALYZED_BACTERIA_F_NAME
 
     bacteria_list = get_bacteria_from_ncbi(refseq_bacteria_table=input_table_refseq,
                                            genbank_bacteria_table=input_table_genbank,
-                                           bactdb_dir=bactdb_dir,
+                                           bactdb_dir=db_dir,
                                            num_threads=num_threads,
-                                           analyzed_bacteria_f_path=analyzed_bacteria_f_path)
-    if analyzed_bacteria_info_list_path:
+                                           analyzed_bacteria_f_path=analyzed_organisms)
+    if analyzed_organisms_info:
         bacteria_list = join_bacteria_lists(bacteria_list_1=bacteria_list,
-                                            bacteria_list_2=json.load(open(analyzed_bacteria_info_list_path)))
+                                            bacteria_list_2=json.load(open(analyzed_organisms_info)))
     families_dict = get_families_dict(bacteria_list=bacteria_list,
                                       num_threads=num_threads,
-                                      db_dir=bactdb_dir,
+                                      db_dir=db_dir,
                                       only_repr=True)
     pass
 
