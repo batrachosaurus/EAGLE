@@ -75,7 +75,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                                     'repr': bool_from_str(genbank_df.loc[j]["repr"]),
                                     'db_dir': bactdb_dir,
                                     'source_db': "genbank",
-                                    'try_err_mssage': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
+                                    'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
                 j += 1
             else:
                 params_list.append({'function': get_bacterium,
@@ -98,7 +98,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                                     'repr': bool_from_str(genbank_df.loc[j]["repr"]),
                                     'db_dir': bactdb_dir,
                                     'source_db': "genbank",
-                                    'try_err_mssage': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
+                                    'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
                 j += 1
             else:
                 params_list.append({'function': get_bacterium,
