@@ -11,6 +11,7 @@ from EAGLE.constants import EAGLE_logger, conf_constants
 from EAGLE.lib.alignment import construct_mult_aln
 from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, bool_from_str
 from EAGLE.lib.phylo import build_tree_by_dist
+from EAGLEdb import join_bacteria_lists
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR
 from EAGLEdb.lib.db_creator import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
@@ -381,3 +382,34 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
     bact_fam_json_f = open(bact_fam_f_path, 'a')
     bact_fam_json_f.write('  "'+family_name+'": '+json.dumps(family_data)+",\n")
     bact_fam_json_f.close()
+
+
+def create_bactdb(input_table_refseq=None,
+                  input_table_genbank=None,
+                  db_dir=DEFAULT_BACTDB_DIR,
+                  num_threads=None,
+                  analyzed_organisms=ANALYZED_BACTERIA_F_NAME,
+                  analyzed_organisms_info=None,
+                  config_path=None,
+                  **kwargs):
+
+    if config_path:
+        conf_constants.update_by_config(config_path=config_path)
+        conf_constants_db.update_by_config(config_path=config_path)
+    if not db_dir:
+        db_dir = DEFAULT_BACTDB_DIR
+    if not analyzed_organisms:
+        analyzed_organisms = ANALYZED_BACTERIA_F_NAME
+
+    bacteria_list = get_bacteria_from_ncbi(refseq_bacteria_table=input_table_refseq,
+                                           genbank_bacteria_table=input_table_genbank,
+                                           bactdb_dir=db_dir,
+                                           num_threads=num_threads,
+                                           analyzed_bacteria_f_path=analyzed_organisms)
+    if analyzed_organisms_info:
+        bacteria_list = join_bacteria_lists(bacteria_list_1=bacteria_list,
+                                            bacteria_list_2=json.load(open(analyzed_organisms_info)))
+    families_dict = get_families_dict(bacteria_list=bacteria_list,
+                                      num_threads=num_threads,
+                                      db_dir=db_dir,
+                                      only_repr=True)
