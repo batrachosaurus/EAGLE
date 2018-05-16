@@ -65,7 +65,29 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
             n += 1
             continue
         if last_bact and n > last_bact: break
-        if genbank_df.loc[j]["org_name"] < refseq_df.loc[i]["org_name"]:
+        if i >= refseq_df.shape[0]:
+            params_list.append({'function': get_bacterium,
+                                'analyzed_bacteria': analyzed_bacteria,
+                                'logger': EAGLE_logger,
+                                'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
+                                'bacterium_name': genbank_df.loc[j]["org_name"],
+                                'repr': bool_from_str(genbank_df.loc[j]["repr"]),
+                                'db_dir': bactdb_dir,
+                                'source_db': "genbank",
+                                'try_err_mssage': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
+            j += 1
+        elif j >= genbank_df.shape[0]:
+            params_list.append({'function': get_bacterium,
+                                'analyzed_bacteria': analyzed_bacteria,
+                                'logger': EAGLE_logger,
+                                'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
+                                'bacterium_name': refseq_df.loc[i]["org_name"],
+                                'repr': bool_from_str(refseq_df.loc[i]["repr"]),
+                                'db_dir': bactdb_dir,
+                                'source_db': "refseq",
+                                'try_err_message': "%s is not prepared: " % refseq_df.loc[i]["org_name"]})
+            i += 1
+        elif genbank_df.loc[j]["org_name"] < refseq_df.loc[i]["org_name"]:
             params_list.append({'function': get_bacterium,
                                 'analyzed_bacteria': analyzed_bacteria,
                                 'logger': EAGLE_logger,
