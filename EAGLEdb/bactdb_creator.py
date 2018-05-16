@@ -362,7 +362,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
     rRNA_aln = construct_mult_aln(seq_dict=rRNA_seqs_dict,
                                   method="MUSCLE",
                                   aln_type="nucl",
-                                  muscle_exec_path=conf_constants.muscle_inst_dir,
+                                  muscle_exec_path=conf_constants.muscle_exec_path,
                                   emboss_inst_dir=conf_constants.emboss_inst_dir,
                                   hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                                   tmp_dir=tmp_fam_dir,
@@ -422,6 +422,13 @@ def create_bactdb(input_table_refseq=None,
         conf_constants_db.update_by_config(config_path=config_path)
     if not db_dir:
         db_dir = DEFAULT_BACTDB_DIR
+    if num_threads:
+        int_num_threads = int(num_threads)
+        num_threads = None
+        num_threads = int_num_threads
+        conf_constants.num_threads = num_threads
+    else:
+        num_threads = conf_constants.num_threads
     if not analyzed_organisms:
         analyzed_organisms = ANALYZED_BACTERIA_F_NAME
 
@@ -434,6 +441,6 @@ def create_bactdb(input_table_refseq=None,
         bacteria_list = join_bacteria_lists(bacteria_list_1=bacteria_list,
                                             bacteria_list_2=json.load(open(analyzed_organisms_info)))
     families_dict = get_families_dict(bacteria_list=bacteria_list,
-                                      num_threads=num_threads,
                                       db_dir=db_dir,
+                                      num_threads=num_threads,
                                       only_repr=True)
