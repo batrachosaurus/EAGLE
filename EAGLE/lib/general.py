@@ -218,7 +218,7 @@ def dump_fasta_dict(fasta_dict, fasta_path, overwrite=True):
     else:
         fasta_f = open(fasta_path, 'a')
     for seq_id in fasta_dict.keys():
-        fasta_f.write(seq_id+"\n")
+        fasta_f.write(">"+seq_id+"\n")
         fasta_f.write(fasta_dict[seq_id]+"\n")
     fasta_f.close()
 
