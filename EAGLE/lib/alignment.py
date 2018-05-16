@@ -63,6 +63,7 @@ class MultAln(ConfBase):
                     dist_filt=False,  # if True returns a list of alignments (or blocks coordinates) with different strictness of sequences removing (different thresholds for clustering)
                     output='alignment',
                     inplace=False):
+        # TODO: write methods for removing gaps between blocks
 
         if dist_filt:
             # Constructs a list of rarefied by different distance thresholds alignments and runs improve_aln on it with dist_filt=False
