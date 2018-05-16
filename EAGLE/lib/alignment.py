@@ -142,11 +142,27 @@ class MultAln(ConfBase):
                 return 1
             dump_fasta_dict(fasta_dict=self.mult_aln_dict_short_id, fasta_path=aln_fasta_path)
             if self.aln_type.lower() in ("protein", "prot", "p"):
+                if self.logger:
+                    self.logger.info("protdist is starting")
+                else:
+                    print("protdist is starting")
                 phylip_cmd = os.path.join(self.emboss_inst_dir, "fprotdist") + " -sequence " + aln_fasta_path + \
                              " -outfile " + phylip_matrix_path
+                if self.logger:
+                    self.logger.info("protdist finished")
+                else:
+                    print("protdist finished")
             else:
+                if self.logger:
+                    self.logger.info("dnadist is starting")
+                else:
+                    print("dnadist is starting")
                 phylip_cmd = os.path.join(self.emboss_inst_dir, "fdnadist") + " -sequence " + aln_fasta_path + \
                              " -method f -outfile " + phylip_matrix_path
+                if self.logger:
+                    self.logger.info("dnadist finished")
+                else:
+                    print("dnadist finished")
             subprocess.call(phylip_cmd, shell=True)
             self.distance_matrix = load_phylip_dist_matrix(matrix_path=phylip_matrix_path)
         shutil.rmtree(self.tmp_dir)
@@ -308,7 +324,7 @@ def construct_mult_aln(seq_dict=None,
                        fasta_path=None,
                        method="MUSCLE",
                        aln_type=None,
-                       muscle_exec_path="",
+                       muscle_exec_path="muscle",
                        emboss_inst_dir="",
                        hmmer_inst_dir="",
                        tmp_dir="tmp",
@@ -332,8 +348,16 @@ def construct_mult_aln(seq_dict=None,
     out_fasta_path = os.path.join(tmp_dir, "mult_aln.fasta")
 
     if method.lower() == "muscle":
+        if logger:
+            logger.info("MUSCLE is starting")
+        else:
+            print("MUSCLE is starting")
         muscle_cmd = muscle_exec_path + " -in " + fasta_path + " -out " + out_fasta_path
         subprocess.call(muscle_cmd, shell=True)
+        if logger:
+            logger.info("MUSCLE finished")
+        else:
+            print("MUSCLE finished")
 
     mult_aln_dict = load_fasta_to_dict(out_fasta_path)
     if remove_tmp:

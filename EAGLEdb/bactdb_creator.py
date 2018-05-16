@@ -372,7 +372,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
     rRNA_aln.full_to_short_seq_names = None
     rRNA_aln.mult_aln_dict = dict(map(
         lambda x: (rRNA_aln.short_to_full_seq_names[x[0]], rRNA_aln.mult_aln_dict_short_id[x[0]]),
-        rRNA_aln.mult_aln_dict_short_ids.items()))
+        rRNA_aln.mult_aln_dict_short_id.items()))
     rRNA_aln.remove_paralogs(ids_to_org_dict, method="min_dist", inplace=True)  # If I use my own alignment method: method="spec_pos"
     rRNA_tree = build_tree_by_dist(rRNA_aln.get_distance_matrix(), tmp_dir=tmp_fam_dir)
     rRNA_tree.full_seq_names = dict(map(lambda x: (x, ids_to_org_dict[short_ids_dict[x]]),

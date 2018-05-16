@@ -24,7 +24,7 @@ def build_tree_by_dist(dist_matrix=None,
                        full_seq_names=None,
                        tmp_dir="tmp",
                        method="FastME",
-                       fastme_exec_path="",
+                       fastme_exec_path="fastme",
                        config_path=None,
                        logger=None):
 
