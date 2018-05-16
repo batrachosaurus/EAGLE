@@ -7,6 +7,7 @@ import pickle
 import shutil
 from collections import OrderedDict
 import subprocess
+import logging
 
 import pandas
 
@@ -153,7 +154,11 @@ def worker(kwargs, use_try=False):
     func = kwargs.pop('function', None)
     if 'try_err_message' in kwargs.keys():
         use_try = True
-    logger = kwargs.get('logger', None)
+    logger_name = kwargs.get('logger_name', None)
+    if logger_name:
+        logger = logging.getLogger(logger_name)
+    else:
+        logger = None
     if func:
         if use_try:
             try:
