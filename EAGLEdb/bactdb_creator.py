@@ -347,7 +347,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
     rev_reduced_orgs = dict(map(lambda x: (x[1], x[0]), reduced_orgs.items()))
     comp_seq_id_dict = defaultdict(int)
     short_ids_dict = dict()
-    for seq_id in rRNA_seqs_dict.iterkeys():
+    for seq_id in rRNA_seqs_dict.keys():
         short_seq_id = None
         short_seq_id = rev_reduced_orgs[ids_to_org_dict[seq_id]]+"|"+\
                        str(get_un_fix(un_num=comp_seq_id_dict[rev_reduced_orgs[ids_to_org_dict[seq_id]]], fix_len=2))

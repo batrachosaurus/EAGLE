@@ -288,7 +288,7 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
                 break
         reduced_seq_name = "".join(parts)
         res_len = num_letters - len(reduced_seq_name)
-        un_num = 1
+        un_num = 0
         un_fix = get_un_fix(un_num, res_len)
         while seq_names_dict.get(reduced_seq_name+un_fix, None):
             un_fix = None
@@ -342,16 +342,16 @@ def get_un_fix(un_num, fix_len):
     # 'N' - undefined (num duplicates is bigger than len(un_codes))
     if fix_len == 1:
         try:
-            return un_codes[un_num-1]
+            return un_codes[un_num]
         except IndexError:
             return 'N'
     elif fix_len == 0:
         return ""
-    elif un_num <= len(un_codes):
+    elif un_num < len(un_codes):
         return un_codes[0] + get_un_fix(un_num, fix_len - 1)
     else:
-        filled_rank = len(un_codes)**(fix_len-1)
-        return un_codes[un_num//filled_rank - 1] + get_un_fix(un_num % filled_rank, fix_len - 1)
+        filled_rank = len(un_codes)**(fix_len-1) + 1
+        return un_codes[un_num//filled_rank] + get_un_fix(un_num % filled_rank, fix_len - 1)
 
 
 def load_newick(newick_f_path):
