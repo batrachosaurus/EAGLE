@@ -55,12 +55,12 @@ class ConfConstants(ConfBase):
         self.redis_port = 6379
         self.redis_queue_db = 0
         # ALIGNMENT
-        self.muscle_exec_path = ""
+        self.muscle_exec_path = "muscle"
         self.emboss_inst_dir = ""
         self.hmmer_inst_dir = ""
         self.blast_inst_dir = ""
         # PHYLO
-        self.fastme_exec_path = ""
+        self.fastme_exec_path = "fastme"
 
         super(ConfConstants, self).__init__(config_path=config_path)
 

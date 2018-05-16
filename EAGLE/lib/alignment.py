@@ -320,6 +320,7 @@ def construct_mult_aln(seq_dict=None,
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
         fasta_path = os.path.join(tmp_dir, "seqs_to_aln.fasta")
+        dump_fasta_dict(fasta_dict=seq_dict, fasta_path=fasta_path)
     if not fasta_path:
         if logger:
             logger.warning("No sequences input")
