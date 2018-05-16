@@ -355,7 +355,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
         short_ids_dict[short_seq_id] = rev_reduced_orgs[ids_to_org_dict[seq_id]]+"|"+seq_id
         ids_to_org_dict[short_ids_dict[short_seq_id]] = {"organism_name": ids_to_org_dict.pop(seq_id)}
         rRNA_seqs_dict[short_seq_id] = rRNA_seqs_dict.pop(seq_id)
-
+    EAGLE_logger.info("%s rRNA loaded" % family_name)
     # TODO: follows
     ### This section will be upgraded with my own alignment method but now MUSCLE and hmmer 3 are used
     tmp_fam_dir = os.path.join(db_dir, family_name+"_tmp")
@@ -367,6 +367,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
                                   hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                                   tmp_dir=tmp_fam_dir,
                                   logger=EAGLE_logger)
+    EAGLE_logger.info("%s rRNA alignment constructed" % family_name)
     rRNA_aln.short_to_full_seq_names = short_ids_dict
     rRNA_aln.full_to_short_seq_names = None
     rRNA_aln.mult_aln_dict = dict(map(

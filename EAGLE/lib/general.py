@@ -259,7 +259,8 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
     if num_words < 2:
         print("Number of words must be at least 2")
         return 1
-    splitters_repl = {"\t": " ",
+    splitters_repl = {"_": " ",
+                      "\t": " ",
                       ",": " ",
                       ";": " ",
                       ".": " ",
