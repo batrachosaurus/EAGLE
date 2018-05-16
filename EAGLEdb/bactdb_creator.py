@@ -5,13 +5,11 @@ import multiprocessing as mp
 import os
 from collections import defaultdict
 
-import redis
 import pandas
 
 from EAGLE.constants import EAGLE_logger, conf_constants
 from EAGLE.lib.alignment import construct_mult_aln
-from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, bool_from_str, run_proc_pool, \
-    RedisQueue
+from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, bool_from_str
 from EAGLE.lib.phylo import build_tree_by_dist
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR
@@ -60,24 +58,17 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     n = 1
     i = 0
     j = 0
-    conf_constants.get_redis_server()
-    bacteria_queue = RedisQueue(queue_name="bacteria_queue",
-                                redis_connection=redis.StrictRedis(host=conf_constants.redis_host,
-                                                                   port=conf_constants.redis_port,
-                                                                   db=conf_constants.redis_queue_db),
-                                max_size=50)
-    pool_proc = mp.Process(target=run_proc_pool,
-                           args=(num_threads, bacteria_queue, {'function': get_bacterium,
-                                                               'analyzed_bacteria': analyzed_bacteria,
-                                                               'logger': EAGLE_logger}, "done"))
-    pool_proc.start()
+    params_list = list()
     while i < refseq_df.shape[0] or j < genbank_df.shape[0]:
         if first_bact and n < first_bact:
             n += 1
             continue
         if last_bact and n > last_bact: break
         if genbank_df.loc[j]["org_name"] < refseq_df.loc[i]["org_name"]:
-            bacteria_queue.put({'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
+            params_list.append({'function': get_bacterium,
+                                'analyzed_bacteria': analyzed_bacteria,
+                                'logger': EAGLE_logger,
+                                'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
                                 'bacterium_name': genbank_df.loc[j]["org_name"],
                                 'repr': bool_from_str(genbank_df.loc[j]["repr"]),
                                 'db_dir': bactdb_dir,
@@ -85,7 +76,10 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                                 'try_err_mssage': "%s is not prepared: " % genbank_df.loc[j]["org_name"]})
             j += 1
         else:
-            bacteria_queue.put({'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
+            params_list.append({'function': get_bacterium,
+                                'analyzed_bacteria': analyzed_bacteria,
+                                'logger': EAGLE_logger,
+                                'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
                                 'bacterium_name': refseq_df.loc[i]["org_name"],
                                 'repr': bool_from_str(refseq_df.loc[i]["repr"]),
                                 'db_dir': bactdb_dir,
@@ -95,8 +89,10 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
         if genbank_df.loc[j]["org_name"] == refseq_df.loc[i-1]["org_name"]:
             j += 1
         n += 1
-    bacteria_queue.put("done")
-    pool_proc.join()
+    pool = mp.Pool(num_threads)
+    pool.map(worker, params_list)
+    pool.close()
+    pool.join()
     analyzed_bacteria_f = open(os.path.join(bactdb_dir, ANALYZED_BACTERIA_F_NAME), "w")
     json.dump(dict(analyzed_bacteria), analyzed_bacteria_f)
     analyzed_bacteria_f.close()
@@ -289,26 +285,18 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
     bact_fam_f.write(u"{\n")
     bact_fam_f.close()
 
-    n = 0
-    proc_list = list()
+    params_list = list()
     for family in families_dict.keys():
-        p = mp.Process(target=worker,
-                       args=({'function': prepare_family,
-                              'family_name': family,
-                              'family_data': families_dict[family],
-                              'bact_fam_f_path': bact_fam_f_path,
-                              'db_dir': db_dir},
-                             ))
-        p.start()
-        proc_list.append(p)
-        n += 1
-        if n % num_threads == 0:
-            for proc in proc_list:
-                proc.join()
-            proc_list = list()
-    for proc in proc_list:
-        proc.join()
-    proc_list = None
+        params_list.append({'function': prepare_family,
+                            'family_name': family,
+                            'family_data': families_dict[family],
+                            'bact_fam_f_path': bact_fam_f_path,
+                            'db_dir': db_dir})
+
+    pool = mp.Pool(num_threads)
+    pool.map(worker, params_list)
+    pool.close()
+    pool.join()
 
     bact_fam_f = io.open(bact_fam_f_path, 'a', newline="\n")
     bact_fam_f.write(u"  {}\n}")
