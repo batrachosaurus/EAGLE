@@ -168,8 +168,8 @@ class MultAln(ConfBase):
         shutil.rmtree(self.tmp_dir)
         return self.distance_matrix
 
-    def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):#
-        short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)###
+    def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):
+        short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)
         if not self.distance_matrix:
             self.get_distance_matrix()
             if self.logger:
@@ -180,7 +180,7 @@ class MultAln(ConfBase):
         short_seq_ids = self.distance_matrix.index
         for short_seq_id in short_seq_ids:
             org_dist_dict[short_seq_ids_to_org[short_seq_id]][short_seq_id] = \
-                sum(map(float, list(self.distance_matrix.loc[short_seq_id])))###
+                sum(map(float, list(self.distance_matrix.loc[short_seq_id])))
         for org in org_dist_dict.keys():
             org_dist_dict[org] = sorted(org_dist_dict[org].items(), key=lambda x: x[1])
         if method.lower() in ("minimal_distance", "min_dist", "md"):
@@ -217,9 +217,9 @@ class MultAln(ConfBase):
         to_short_dict = dict()
         for key in self.short_to_full_seq_names.keys():
             if seq_ids_to_orgs.get(key, None):
-                to_short_dict[key] = key
+                to_short_dict[key] = seq_ids_to_orgs[key]
             if seq_ids_to_orgs.get(self.short_to_full_seq_names[key], None):
-                to_short_dict[self.short_to_full_seq_names[key]] = key
+                to_short_dict[key] = seq_ids_to_orgs[self.short_to_full_seq_names[key]]
         return to_short_dict
 
     def get_blocks_tsv(self, tsv_path, fasta_path, split_into_blocks=False, meta_dict=None):
