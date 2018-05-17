@@ -349,10 +349,10 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
     short_ids_dict = dict()
     for seq_id in rRNA_seqs_dict.keys():
         short_seq_id = None
-        short_seq_id = rev_reduced_orgs[ids_to_org_dict[seq_id]]+"|"+\
+        short_seq_id = rev_reduced_orgs[ids_to_org_dict[seq_id]]+"x"+\
                        str(get_un_fix(un_num=comp_seq_id_dict[rev_reduced_orgs[ids_to_org_dict[seq_id]]], fix_len=2))
         comp_seq_id_dict[rev_reduced_orgs[ids_to_org_dict[seq_id]]] += 1
-        short_ids_dict[short_seq_id] = rev_reduced_orgs[ids_to_org_dict[seq_id]]+"|"+seq_id
+        short_ids_dict[short_seq_id] = rev_reduced_orgs[ids_to_org_dict[seq_id]]+"x"+seq_id
         ids_to_org_dict[short_ids_dict[short_seq_id]] = {"organism_name": ids_to_org_dict.pop(seq_id)}
         rRNA_seqs_dict[short_seq_id] = rRNA_seqs_dict.pop(seq_id)
     EAGLE_logger.info("%s rRNA loaded" % family_name)

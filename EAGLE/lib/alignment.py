@@ -168,15 +168,19 @@ class MultAln(ConfBase):
         shutil.rmtree(self.tmp_dir)
         return self.distance_matrix
 
-    def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):
-        short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)
+    def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):#
+        short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)###
         if not self.distance_matrix:
             self.get_distance_matrix()
+            if self.logger:
+                self.logger.info("got distance matrix")
+            else:
+                print("got distance matrix")
         org_dist_dict = defaultdict(dict)
         short_seq_ids = self.distance_matrix.index
         for short_seq_id in short_seq_ids:
             org_dist_dict[short_seq_ids_to_org[short_seq_id]][short_seq_id] = \
-                sum(map(float, list(self.distance_matrix.loc(short_seq_id))))
+                sum(map(float, list(self.distance_matrix.loc[short_seq_id])))###
         for org in org_dist_dict.keys():
             org_dist_dict[org] = sorted(org_dist_dict[org].items(), key=lambda x: x[1])
         if method.lower() in ("minimal_distance", "min_dist", "md"):
