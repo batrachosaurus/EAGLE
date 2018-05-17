@@ -170,12 +170,20 @@ class MultAln(ConfBase):
 
     def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):
         short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)
-        if not self.distance_matrix:
+        if type(self.distance_matrix) is not pandas.DataFrame:
+            self.distance_matrix= None
             self.get_distance_matrix()
             if self.logger:
                 self.logger.info("got distance matrix")
             else:
                 print("got distance matrix")
+        elif self.distance_matrix.empty:
+            self.get_distance_matrix()
+            if self.logger:
+                self.logger.info("got distance matrix")
+            else:
+                print("got distance matrix")
+
         org_dist_dict = defaultdict(dict)
         short_seq_ids = self.distance_matrix.index
         for short_seq_id in short_seq_ids:
@@ -217,9 +225,9 @@ class MultAln(ConfBase):
         to_short_dict = dict()
         for key in self.short_to_full_seq_names.keys():
             if seq_ids_to_orgs.get(key, None):
-                to_short_dict[key] = seq_ids_to_orgs[key]
+                to_short_dict[key] = seq_ids_to_orgs[key]["organism_name"]
             if seq_ids_to_orgs.get(self.short_to_full_seq_names[key], None):
-                to_short_dict[key] = seq_ids_to_orgs[self.short_to_full_seq_names[key]]
+                to_short_dict[key] = seq_ids_to_orgs[self.short_to_full_seq_names[key]]["organism_name"]
         return to_short_dict
 
     def get_blocks_tsv(self, tsv_path, fasta_path, split_into_blocks=False, meta_dict=None):

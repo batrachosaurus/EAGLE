@@ -2,6 +2,8 @@ import os
 import shutil
 import subprocess
 
+import pandas
+
 from EAGLE.lib.general import ConfBase, dump_phylip_dist_matrix, load_newick
 
 
@@ -30,12 +32,19 @@ def build_tree_by_dist(dist_matrix=None,
 
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
-    if not dist_matrix and not dist_matrix_f:
+    if type(dist_matrix) is not pandas.DataFrame and not dist_matrix_f:
         if logger:
             logger.warning("No distance matrix input")
         else:
             print "No distance matrix input"
         return 1
+    elif dist_matrix.empty and dist_matrix_f:
+        if logger:
+            logger.warning("No distance matrix input")
+        else:
+            print "No distance matrix input"
+        return 1
+
     if method.lower() == "fastme":
         if not dist_matrix_f:
             dist_matrix_f = os.path.join(tmp_dir, "dist_matr.ph")
