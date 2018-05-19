@@ -362,10 +362,11 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
     rRNA_aln = construct_mult_aln(seq_dict=rRNA_seqs_dict,
                                   method="MUSCLE",
                                   aln_type="nucl",
+                                  aln_name=family_name+"_rRNA_aln",
+                                  tmp_dir=tmp_fam_dir,
                                   muscle_exec_path=conf_constants.muscle_exec_path,
                                   emboss_inst_dir=conf_constants.emboss_inst_dir,
                                   hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                                  tmp_dir=tmp_fam_dir,
                                   logger=EAGLE_logger)
     EAGLE_logger.info("%s rRNA alignment constructed" % family_name)
     rRNA_aln.short_to_full_seq_names = short_ids_dict
