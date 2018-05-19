@@ -6,6 +6,8 @@ import subprocess
 import urllib2
 import gzip
 import shutil
+from functools import reduce
+import operator
 
 import wget
 
@@ -65,44 +67,73 @@ def download_organism_files(org_prefix, suffixes, download_dir="./", logger=None
             subprocess.call("wget " + file_link + " -P " + download_dir + "/", shell=True)
 
 
-def get_tree_from_dict(input_dict, stop_level=2):
+def get_tree_from_dict(input_dict, stop_level=2, special_keys=tuple()):
     tree = dict()
     if stop_level == 1:
-        return input_dict.keys()
+        return filter(lambda key: key not in special_keys, input_dict.keys())
     for key in input_dict.keys():
+        if key in special_keys:
+            continue
         tree[key] = get_tree_from_dict(input_dict[key], stop_level=stop_level-1)
     return tree
 
 
-def clean_btax_data(btax_data, orgs_to_remain, stop_level=2):
+def clean_btax_data(btax_data, orgs_to_remain, stop_level=2, special_keys=tuple()):
     cleaned_btax_data = dict()
     if stop_level == 1:
-        return dict(filter(None, map(lambda btax_k: (btax_k, btax_data[btax_k]) if btax_k in orgs_to_remain else None,
-                                     btax_data.keys())))
-    for btax_k in  btax_data.keys():
-        cleaned_btax_data[btax_k] = clean_btax_data(btax_data[btax_k], orgs_to_remain, stop_level=stop_level-1)
+        for btax_k in btax_data.keys():
+            if btax_k in special_keys or btax_k in orgs_to_remain:
+                cleaned_btax_data[btax_k] = btax_data[btax_k]
+    else:
+        for btax_k in btax_data.keys():
+            if btax_k in special_keys:
+                cleaned_btax_data[btax_k] = btax_data[btax_k]
+                continue
+            try:
+                cleaned_btax_data[btax_k] = clean_btax_data(btax_data[btax_k], orgs_to_remain, stop_level=stop_level-1,
+                                                            special_keys=special_keys)
+            except AttributeError:
+                continue
     return cleaned_btax_data
 
 
 def download_btax_files(key_prefix_pairs, btax_data, download_dir="./", logger=None):
-    for key in key_prefix_pairs.keys():
-        downloaded_f_path = None
-        downloaded_f_path = os.path.join(download_dir,
-                                         btax_data["download_prefix"].split("/")[-1] + key_prefix_pairs[key])
-        download_organism_files(btax_data["download_prefix"], key_prefix_pairs[key], download_dir, logger)
-        if os.path.exists(downloaded_f_path):
-            if downloaded_f_path[-3:] == ".gz":
-                btax_data[key] = downloaded_f_path[:-3]
-                with gzip.open(downloaded_f_path, 'rb') as downloaded_f_gz, \
-                        io.open(btax_data[key], 'wb', newline=b'\n') as downloaded_f:
-                    shutil.copyfileobj(downloaded_f_gz, downloaded_f)
-                    downloaded_f.close()
-                os.remove(downloaded_f_path)
+    download_pref_list = get_from_btax_data("download_prefix", btax_data)
+    if not download_pref_list:
+        return 1
+    for download_pref in download_pref_list:
+        for key in key_prefix_pairs.keys():
+            downloaded_f_path = None
+            downloaded_f_path = os.path.join(download_dir,
+                                             download_pref[0].split("/")[-1] + key_prefix_pairs[key])
+            download_organism_files(download_pref[0], key_prefix_pairs[key], download_dir, logger)
+            if os.path.exists(downloaded_f_path):
+                if downloaded_f_path[-3:] == ".gz":
+                    btax_data[key] = downloaded_f_path[:-3]
+                    with gzip.open(downloaded_f_path, 'rb') as downloaded_f_gz, \
+                             io.open(btax_data[key], 'wb', newline=b'\n') as downloaded_f:
+                        shutil.copyfileobj(downloaded_f_gz, downloaded_f)
+                        downloaded_f.close()
+                    os.remove(downloaded_f_path)
+                else:
+                    reduce(operator.getitem, download_pref[1], btax_data)[key] = downloaded_f_path
             else:
-                btax_data[key] = downloaded_f_path
-        else:
-            btax_data[key] = None
-    return btax_data
+                reduce(operator.getitem, download_pref[1], btax_data)[key] = None
+        return btax_data
+
+
+def get_from_btax_data(key, btax_data, key_path=list()):
+    try:
+        return [(btax_data[key], key_path)]
+    except KeyError:
+        try:
+            key_data_list = list()
+            for btax_key in btax_data.keys():
+                key_data_list.__iadd__(get_from_btax_data(key, btax_data[btax_key],
+                                                          key_path=key_path.__add__([btax_key])))
+            return filter(None, key_data_list)
+        except AttributeError:
+            return None
 
 
 def create_btax_blastdb(btax_data, btax_name, db_dir, blast_inst_dir="", logger=None):
@@ -112,20 +143,10 @@ def create_btax_blastdb(btax_data, btax_name, db_dir, blast_inst_dir="", logger=
     fna_list = get_from_btax_data("fna_file", btax_data)
     btax_fna_path = os.path.join(db_dir, btax_name+".fasta")
     blast_db_path = os.path.join(blastdb_dir, btax_name)
-    join_files(fna_list, btax_fna_path)
+    join_files(map(lambda fna: fna[0], fna_list), btax_fna_path)
     blast_handler = BlastHandler(inst_dir=blast_inst_dir, logger=logger)
     blast_handler.make_blastdb(btax_fna_path, dbtype="nucl", db_name=blast_db_path)
     return blast_db_path
-
-
-def get_from_btax_data(key, btax_data):
-    try:
-        return [btax_data[key]]
-    except KeyError:
-        key_data_list = list()
-        for btax_key in btax_data:
-            key_data_list.__iadd__(get_from_btax_data(key, btax_data[btax_key]))
-        return key_data_list
 
 
 def generate_btax_profile(source, db_dir, btax_name, method="hmmer"):

@@ -330,6 +330,7 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
 
 def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
     # TODO: refactor it
+    special_keys = ("16S_rRNA_tree", "16S_rRNA_tsv", "16S_rRNA_fasta", "blastdb", "repr_profile")
     rRNA_seqs_dict = dict()  # {seq_id: seq}
     ids_to_org_dict = dict()  # {seq_id: bacterium_name}
     for genus in family_data.keys():
@@ -379,7 +380,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
     rRNA_tree.full_seq_names = dict(map(lambda x: (x, ids_to_org_dict[short_ids_dict[x]]),
                                         rRNA_aln.mult_aln_dict_short_id.keys()))
     # TODO: write it for not only repr bacteria usage
-    # fam_tax = {family_name: get_tree_from_dict(family_data, stop_level=3)}
+    # fam_tax = {family_name: get_tree_from_dict(family_data, stop_level=3, special_keys=special_keys)}
     # rRNA_tree, removed_seqs = rRNA_tree.according_to_taxonomy(taxonomy=fam_tax)
     # rRNA_aln.remove_seqs(seqs_list=removed_seqs)
     ###
@@ -391,7 +392,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
                             fasta_path=family_data["16S_rRNA_fasta"],
                             meta_dict=ids_to_org_dict)
     remained_orgs = map(lambda seq_id: ids_to_org_dict[seq_id], rRNA_aln.seqs())
-    family_data = clean_btax_data(family_data, remained_orgs, stop_level=3)
+    family_data = clean_btax_data(family_data, remained_orgs, stop_level=3, special_keys=special_keys)
     family_data = download_btax_files(key_prefix_pairs={"fna_file": "_genomic.fna.gz"},
                                       btax_data=family_data,
                                       download_dir=db_dir,

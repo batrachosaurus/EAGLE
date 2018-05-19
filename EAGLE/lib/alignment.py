@@ -98,7 +98,7 @@ class MultAln(ConfBase):
                 coords_for_seq = self._get_coords_for_seq(coords, self.mult_aln_dict[seq_id])
                 for k in range(len(coords_for_seq)):
                     seq_c_dict["c%s" % ((k+1)*2-1)] = coords_for_seq[k][0]
-                    seq_c_dict["c%s" % (k+1)*2] = coords_for_seq[k][1]
+                    seq_c_dict["c%s" % ((k+1)*2)] = coords_for_seq[k][1]
                 seq_coord_list.append(seq_c_dict)
             return pandas.DataFrame(seq_coord_list)
         else:
@@ -251,7 +251,7 @@ class MultAln(ConfBase):
         dump_fasta_dict(fasta_dict=seqs_dict, fasta_path=fasta_path)
 
     def _write_blocks_tsv(self, block_info, tsv_f, meta_dict=None):
-        tsv_f.write("\t".join(list(block_info))+"; %s\n" %
+        tsv_f.write("\t".join(map(str, list(block_info)))+"; %s\n" %
                     "; ".join('%s "%s"' % (meta[0], meta[1]) for meta in meta_dict[block_info["seq_id"]].items()))
         return block_info["seq_id"], self.mult_aln_dict[block_info["seq_id"]].replace("-", "")
 
