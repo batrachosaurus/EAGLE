@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.9.9',
+      version='0.9.10',
       packages=find_packages(),
       package_data={'EAGLE': ['configs/*', ],
                     'EAGLEdb': ['org_tables/*', ]},

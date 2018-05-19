@@ -14,6 +14,7 @@ class MultAln(ConfBase):
                  mult_aln_dict=None,
                  aln_type=None,
                  states_seq=None,
+                 aln_name="mult_aln",
                  tmp_dir="tmp",
                  emboss_inst_dir="",
                  hmmer_inst_dir="",
@@ -35,6 +36,7 @@ class MultAln(ConfBase):
         if not self.aln_type:
             self.aln_type = detect_seqs_type(self.mult_aln_dict)
         self.distance_matrix = None
+        self.aln_name = aln_name
         self.tmp_dir = tmp_dir
         self.emboss_inst_dir = emboss_inst_dir
         self.hmmer_inst_dir = hmmer_inst_dir
@@ -76,6 +78,7 @@ class MultAln(ConfBase):
                     coords = self._update_coords(i+1, coords)
                     continue
             let_counts = defaultdict(int)
+            let_counts["-"] = 0
             for seq_id in seq_id_list:
                 let_counts[self.mult_aln_dict[seq_id][i]] += 1
             if float(let_counts.pop("-"))/float(len(seq_id_list)) <= max_gap_fract:
@@ -85,9 +88,9 @@ class MultAln(ConfBase):
                 # TODO: write detection of seqs to remove
                 pass
         if len(coords[-1]) == 1:
-            coords.pop()
+            coords[-1] = (coords[-1][0], coords[-1][0])
         if not remove_seq and len(coords) >= 1:
-            coords = (coords[0][0], coords[-1][1])
+            coords = [(coords[0][0], coords[-1][1])]
         if output.lower() in ("coordinates", "coords", "coord", "c"):
             seq_coord_list = list()
             for seq_id in self.mult_aln_dict.iterkeys():
@@ -126,8 +129,8 @@ class MultAln(ConfBase):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
         if method.lower() == "phylip":
-            aln_fasta_path = os.path.join(self.tmp_dir, "alignment.fasta")
-            phylip_matrix_path = os.path.join(self.tmp_dir, "dist_matrix.phylip")
+            aln_fasta_path = os.path.join(self.tmp_dir, self.aln_name+".fasta")
+            phylip_matrix_path = os.path.join(self.tmp_dir, self.aln_name+".phylip")
             if self.mult_aln_dict:
                 if not self.mult_aln_dict_short_id:
                     self.mult_aln_dict_short_id, self.short_to_full_seq_names = \
@@ -240,6 +243,7 @@ class MultAln(ConfBase):
             blocks_df["block_type"] = pandas.Series(["UB"]*cut_ends_df.shape[0])
             blocks_df["block_descr"] = pandas.Series(['major_block_id "NA"; block_id "UB1"; block_name "NA"']*
                                                      cut_ends_df.shape[0])
+            blocks_df = blocks_df.rename(index=str, columns={"c1": "start", "c2": "end"})
             blocks_df = blocks_df[["seq_id", "block_type", "start", "end", "block_descr"]]
         tsv_f = open(tsv_path, 'w')
         seqs_dict = dict(list(blocks_df.apply(self._write_blocks_tsv, axis=1, args=(tsv_f, meta_dict))))
@@ -263,7 +267,7 @@ class MultAln(ConfBase):
         if method.lower() == "hmmer":
             if not os.path.exists(self.tmp_dir):
                 os.makedirs(self.tmp_dir)
-            aln_fasta_path = os.path.join(self.tmp_dir, "aln.fasta")
+            aln_fasta_path = os.path.join(self.tmp_dir, self.aln_name+".fasta")
             dump_fasta_dict(self.mult_aln_dict, aln_fasta_path)
             hmmer_handler = HmmerHandler(inst_dir=self.hmmer_inst_dir, config_path=self.config_path, logger=self.logger)
             hmmer_handler.build_hmm_profile(profile_path=profile_path, in_aln_path=aln_fasta_path)
@@ -339,6 +343,7 @@ def construct_mult_aln(seq_dict=None,
                        muscle_exec_path="muscle",
                        emboss_inst_dir="",
                        hmmer_inst_dir="",
+                       aln_name="mult_aln",
                        tmp_dir="tmp",
                        remove_tmp=True,
                        config_path=None,
@@ -378,6 +383,7 @@ def construct_mult_aln(seq_dict=None,
                    aln_type=aln_type,
                    emboss_inst_dir=emboss_inst_dir,
                    hmmer_inst_dir=hmmer_inst_dir,
+                   aln_name=aln_name,
                    tmp_dir=tmp_dir,
                    config_path=config_path,
                    logger=logger)
