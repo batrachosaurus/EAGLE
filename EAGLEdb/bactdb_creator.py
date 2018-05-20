@@ -316,7 +316,9 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
                             'family_name': family,
                             'family_data': families_dict[family],
                             'bact_fam_f_path': bact_fam_f_path,
-                            'db_dir': db_dir})
+                            'db_dir': db_dir,
+                            'logger_name': EAGLE_logger.name,
+                            'try_err_message': "%s is not prepared: " % family})
 
     pool = mp.Pool(num_threads)
     pool.map(worker, params_list)
