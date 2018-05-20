@@ -119,7 +119,7 @@ def download_btax_files(key_prefix_pairs, btax_data, download_dir="./", logger=N
                     reduce(operator.getitem, download_pref[1], btax_data)[key] = downloaded_f_path
             else:
                 reduce(operator.getitem, download_pref[1], btax_data)[key] = None
-        return btax_data
+    return btax_data
 
 
 def get_from_btax_data(key, btax_data, key_path=list()):
@@ -144,7 +144,7 @@ def create_btax_blastdb(btax_data, btax_name, db_dir, blast_inst_dir="", logger=
     fna_list = get_from_btax_data("fna_file", btax_data)
     btax_fna_path = os.path.join(db_dir, btax_name+".fasta")
     blast_db_path = os.path.join(blastdb_dir, btax_name)
-    join_files(map(lambda fna: fna[0], fna_list), btax_fna_path)
+    join_files(filter(None, map(lambda fna: fna[0], fna_list)), btax_fna_path)
     blast_handler = BlastHandler(inst_dir=blast_inst_dir, logger=logger)
     blast_handler.make_blastdb(btax_fna_path, dbtype="nucl", db_name=blast_db_path)
     return blast_db_path
