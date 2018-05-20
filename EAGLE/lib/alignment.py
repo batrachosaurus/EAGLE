@@ -362,7 +362,7 @@ def construct_mult_aln(seq_dict=None,
         return 1
     if not aln_type:
         detect_seqs_type(fasta_path)
-    out_fasta_path = os.path.join(tmp_dir, "mult_aln.fasta")
+    out_fasta_path = os.path.join(tmp_dir, aln_name+".fasta")
 
     if method.lower() == "muscle":
         if logger:
