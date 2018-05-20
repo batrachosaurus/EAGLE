@@ -227,16 +227,32 @@ def load_phylip_dist_matrix(matrix_path):
     matr_f = open(matrix_path)
     lines_dict = OrderedDict()
     seqs_list = list()
+    matrix_started = False
+    seq_dists_list = list()
+    num_seqs = 0
+    got_seqs = 0
     for line_ in matr_f:
         line = None
         line = line_.strip()
         if not line:
             continue
         line_list = filter_list(line.split())
-        if len(line_list) == 1:
+        if len(line_list) == 1 and not matrix_started:
+            num_seqs = int(line_list[0])
             continue
-        seqs_list.append(line_list[0])
-        lines_dict[line_list[0]] = line_list[1:]
+        if not matrix_started:
+            matrix_started = True
+        if got_seqs == 0:
+            seqs_list.append(line_list[0])
+            seq_dists_list.__iadd__(line_list[1:])
+            got_seqs += len(line_list[1:])
+        else:
+            seq_dists_list.__iadd__(line_list)
+            got_seqs += len(line_list)
+        if got_seqs == num_seqs:
+            lines_dict[seqs_list[-1]] = seq_dists_list
+            seq_dists_list = list()
+            got_seqs = 0
     dist_matrix = pandas.DataFrame.from_dict(data=lines_dict, orient='index')
     dist_matrix.columns = seqs_list
     return dist_matrix

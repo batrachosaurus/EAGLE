@@ -109,9 +109,9 @@ def download_btax_files(key_prefix_pairs, btax_data, download_dir="./", logger=N
             download_organism_files(download_pref[0], key_prefix_pairs[key], download_dir, logger)
             if os.path.exists(downloaded_f_path):
                 if downloaded_f_path[-3:] == ".gz":
-                    btax_data[key] = downloaded_f_path[:-3]
+                    reduce(operator.getitem, download_pref[1], btax_data)[key] = downloaded_f_path[:-3]
                     with gzip.open(downloaded_f_path, 'rb') as downloaded_f_gz, \
-                             io.open(btax_data[key], 'wb', newline=b'\n') as downloaded_f:
+                             io.open(reduce(operator.getitem, download_pref[1], btax_data)[key], 'wb') as downloaded_f:
                         shutil.copyfileobj(downloaded_f_gz, downloaded_f)
                         downloaded_f.close()
                     os.remove(downloaded_f_path)
@@ -124,16 +124,17 @@ def download_btax_files(key_prefix_pairs, btax_data, download_dir="./", logger=N
 
 def get_from_btax_data(key, btax_data, key_path=list()):
     try:
-        return [(btax_data[key], key_path)]
-    except KeyError:
-        try:
+        btax_data_keys = btax_data.keys()
+        if key in btax_data_keys:
+            return [(btax_data[key], key_path)]
+        else:
             key_data_list = list()
-            for btax_key in btax_data.keys():
+            for btax_key in btax_data_keys:
                 key_data_list.__iadd__(get_from_btax_data(key, btax_data[btax_key],
                                                           key_path=key_path.__add__([btax_key])))
             return filter(None, key_data_list)
-        except AttributeError:
-            return None
+    except AttributeError:
+        return list()
 
 
 def create_btax_blastdb(btax_data, btax_name, db_dir, blast_inst_dir="", logger=None):
@@ -154,7 +155,7 @@ def generate_btax_profile(source, db_dir, btax_name, method="hmmer"):
     if not os.path.exists(btax_profiles_tmp_dir):
         os.makedirs(btax_profiles_tmp_dir)
     aln_profiles_list = list()
-    for aln_key in source.keys:
+    for aln_key in source.keys():
         aln_profile_path = None
         aln_profile_path = os.path.join(btax_profiles_tmp_dir, aln_key+".hmm")
         source[aln_key].get_hmm_profile(profile_path=aln_profile_path, method=method)
