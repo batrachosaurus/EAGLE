@@ -14,6 +14,8 @@ DEFAULT_CONFIG = os.path.join(conf_dir_path, "default_config.ini")
 log_config_name = 'log_conf.yaml'
 logger_name = 'EAGLE_logger'
 
+PROFILES_SCAN_OUT = "profiles_scan.out"
+
 
 def _setup_logging(
         default_path=os.path.join(conf_dir_path, log_config_name),
@@ -61,6 +63,9 @@ class ConfConstants(ConfBase):
         self.blast_inst_dir = ""
         # PHYLO
         self.fastme_exec_path = "fastme"
+        # EXPLORER
+        self.mod = "genome"
+        self.profiles_scan_out = ""
 
         super(ConfConstants, self).__init__(config_path=config_path)
 
