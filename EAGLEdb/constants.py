@@ -14,6 +14,8 @@ DEFAULT_REFSEQ_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "refseq_bacteria_ta
 DEFAULT_GENBANK_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "genbank_bacteria_table.txt")
 DEFAULT_BACTDB_DIR = os.path.join("EAGLEdb", "bacteria")
 
+PROFILES_DB_NAME = "db_repr_profiles"
+
 
 class ConfConstants(ConfBase):
 

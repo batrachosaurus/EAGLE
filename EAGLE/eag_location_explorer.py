@@ -6,7 +6,7 @@ from EAGLE.lib.alignment import HmmerHandler
 
 def explore_genes(in_fasta,
                   db_json,
-                  mod=None,
+                  mode=None,
                   num_threads=None,
                   btax_det_method="hmmer",
                   hmmer_inst_dir=None,
@@ -15,11 +15,11 @@ def explore_genes(in_fasta,
 
     if config_path:
         conf_constants.update_by_config(config_path)
-    if num_threads
+    if num_threads:
         conf_constants.num_threads = int(num_threads)
-    if mod:
-        conf_constants.mod = None
-        conf_constants.mod = mod
+    if mode:
+        conf_constants.mode = None
+        conf_constants.mode = mode
     if hmmer_inst_dir:
         conf_constants.hmmer_inst_dir = None
         conf_constants.hmmer_inst_dir = hmmer_inst_dir
@@ -27,7 +27,7 @@ def explore_genes(in_fasta,
     db_info = json.load(open(db_json))
     btax_name = get_btax(in_fasta,
                          db_info["db_repr_profiles"],
-                         mod=conf_constants.mod,
+                         mode=conf_constants.mode,
                          num_threads=conf_constants.num_threads,
                          method=btax_det_method,
                          hmmer_inst_dir=conf_constants.hmmer_inst_dir,
@@ -36,7 +36,7 @@ def explore_genes(in_fasta,
 
 def get_btax(in_fasta,
              profiles_db,
-             mod=conf_constants.mod,
+             mode=conf_constants.mode,
              num_threads=conf_constants.num_threads,
              method="hmmer",
              hmmer_inst_dir=conf_constants.hmmer_inst_dir,

@@ -63,9 +63,8 @@ class ConfConstants(ConfBase):
         self.blast_inst_dir = ""
         # PHYLO
         self.fastme_exec_path = "fastme"
-        # EXPLORER
-        self.mod = "genome"
-        self.profiles_scan_out = ""
+        # EAGLE
+        self.mode = "genome"
 
         super(ConfConstants, self).__init__(config_path=config_path)
 

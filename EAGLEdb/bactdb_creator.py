@@ -7,13 +7,13 @@ from collections import defaultdict
 
 import pandas
 
-from EAGLE.constants import EAGLE_logger, conf_constants, PROFILES_SCAN_OUT
+from EAGLE.constants import EAGLE_logger, conf_constants
 from EAGLE.lib.alignment import construct_mult_aln
 from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, bool_from_str
 from EAGLE.lib.phylo import build_tree_by_dist
 from EAGLEdb import join_bacteria_lists
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
-    DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR
+    DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME
 from EAGLEdb.lib.db_creator import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
     generate_btax_profile, create_profiles_db
 
@@ -327,7 +327,7 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
 
     bact_fam_f = io.open(bact_fam_f_path, 'a', newline="\n")
     bact_fam_f.write(u'  "db_dir": "%s",\n  "db_repr_profiles": "%s"\n}' %
-                     (db_dir, os.path.join(db_dir, PROFILES_SCAN_OUT)))
+                     (db_dir, os.path.join(db_dir, PROFILES_DB_NAME)))
     bact_fam_f.close()
 
 
@@ -453,7 +453,7 @@ def create_bactdb(input_table_refseq=None,
                                       only_repr=True)
     create_profiles_db(families_dict,
                        db_dir,
-                       profiles_db_name=PROFILES_SCAN_OUT,
+                       profiles_db_name=PROFILES_DB_NAME,
                        method="hmmer",
                        hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                        config_path=config_path, logger=EAGLE_logger)
