@@ -389,6 +389,13 @@ def dump_tree_newick(tree_newick, newick_f_path):
 
 
 def join_files(in_files_list, out_file_path):
+    if type(in_files_list) not in (list, tuple):
+        if in_files_list == out_file_path:
+            return 1
+        in_files_LIST = [in_files_list]
+        in_files_list = None
+        in_files_list = in_files_LIST
+        in_files_LIST = None
     with open(out_file_path, 'wb') as out_file:
         for f_path in in_files_list:
             f = open(f_path, 'rb')

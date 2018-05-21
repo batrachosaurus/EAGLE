@@ -12,7 +12,7 @@ import operator
 import wget
 
 from EAGLE.lib.general import worker, join_files
-from EAGLE.lib.alignment import BlastHandler
+from EAGLE.lib.alignment import BlastHandler, HmmerHandler
 
 
 def get_links_from_html(html_link, num_threads=1, n_tries=3, debug=False):
@@ -164,3 +164,11 @@ def generate_btax_profile(source, db_dir, btax_name, method="hmmer"):
     join_files(aln_profiles_list, btax_profile_path)
     shutil.rmtree(btax_profiles_tmp_dir)
     return btax_profile_path
+
+
+def create_profiles_db(btax_dict, db_dir, method="hmmer", hmmer_inst_dir="", config_path=None, logger=None):
+    profiles_list = [btax_dict[btax_k]["repr_profile"] for btax_k in btax_dict.keys()]
+    profiles_db_path = os.path.join(db_dir, "db_repr_profiles")
+    if method.lower() == "hmmer":
+        hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir, config_path=config_path, logger=logger)
+        hmmer_handler.make_profiles_db(profiles_list, profiles_db_path)

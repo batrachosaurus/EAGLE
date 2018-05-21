@@ -5,7 +5,8 @@ from collections import defaultdict, Counter
 
 import pandas
 
-from EAGLE.lib.general import load_fasta_to_dict, dump_fasta_dict, load_phylip_dist_matrix, reduce_seq_names, ConfBase
+from EAGLE.lib.general import load_fasta_to_dict, dump_fasta_dict, load_phylip_dist_matrix, reduce_seq_names, ConfBase,\
+    join_files
 
 
 class MultAln(ConfBase):
@@ -332,8 +333,19 @@ class HmmerHandler(ConfBase):
         hmmbuild_cmd = os.path.join(self.inst_dir, "hmmbuild") + " " + profile_path + " " + in_aln_path
         subprocess.call(hmmbuild_cmd, shell=True)
 
-    def run_hmmscan(self):
-        pass
+    def make_profiles_db(self, profiles_list, profiles_db_path):
+        join_files(profiles_list, profiles_db_path)
+        hmmpress_cmd = os.path.join(self.inst_dir, "hmmpress") + " " + profiles_db_path
+        subprocess.call(hmmpress_cmd, shell=True)
+
+    def run_hmmscan(self, profiles_db, in_fasta, out_path=None):
+        if not out_path:
+            if "." in in_fasta:
+                out_path = ".".join(in_fasta.split(".")[:-1]) + ".hsr"
+            else:
+                out_path = in_fasta + ".hsr"
+        hmmscan_cmd = os.path.join(self.inst_dir, "hmmscan") + " " + profiles_db + " " + in_fasta + " > " + out_path
+        subprocess.call(hmmscan_cmd, shell=True)
 
 
 def construct_mult_aln(seq_dict=None,
@@ -398,7 +410,8 @@ def detect_seqs_type(fasta_path=None, fasta_dict=None, nuc_freq_thr=0.75):
             seqs_list.append(fasta_dict[seq_key])
             summ_l += len(fasta_dict[seq_key])
         let_counts = Counter("".join(seqs_list))
-        if float(let_counts.get("a", 0)+let_counts.get("c", 0)+let_counts.get("g", 0)+let_counts.get("t", 0))/float(summ_l) >= nuc_freq_thr:
+        if float(let_counts.get("a", 0)+let_counts.get("c", 0)+let_counts.get("g", 0)+
+                         let_counts.get("t", 0))/float(summ_l) >= nuc_freq_thr:
             return "nucl"
         else:
             return "prot"
