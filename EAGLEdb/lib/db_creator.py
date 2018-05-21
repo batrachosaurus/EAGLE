@@ -176,8 +176,10 @@ def create_profiles_db(btax_dict,
 
     profiles_list = list()
     for btax_k in btax_dict.keys():
-        if btax_dict[btax_k].get("repr_profile", None):
+        try:
             profiles_list.append(btax_dict[btax_k]["repr_profile"])
+        except (KeyError, AttributeError, TypeError):
+            continue
     profiles_db_path = os.path.join(db_dir, profiles_db_name)
     if method.lower() == "hmmer":
         hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir, config_path=config_path, logger=logger)

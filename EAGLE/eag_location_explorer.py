@@ -9,7 +9,6 @@ def explore_genes(in_fasta,
                   mode=None,
                   num_threads=None,
                   btax_det_method="hmmer",
-                  hmmer_inst_dir=None,
                   config_path=None,
                   **kwargs):
 
@@ -20,9 +19,6 @@ def explore_genes(in_fasta,
     if mode:
         conf_constants.mode = None
         conf_constants.mode = mode
-    if hmmer_inst_dir:
-        conf_constants.hmmer_inst_dir = None
-        conf_constants.hmmer_inst_dir = hmmer_inst_dir
 
     db_info = json.load(open(db_json))
     btax_name = get_btax(in_fasta,
