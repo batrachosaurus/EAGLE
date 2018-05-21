@@ -15,7 +15,7 @@ from EAGLEdb import join_bacteria_lists
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR
 from EAGLEdb.lib.db_creator import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
-    generate_btax_profile
+    generate_btax_profile, create_profiles_db
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_table=None,
@@ -450,3 +450,5 @@ def create_bactdb(input_table_refseq=None,
                                       db_dir=db_dir,
                                       num_threads=num_threads,
                                       only_repr=True)
+    create_profiles_db(families_dict, db_dir, method="hmmer", hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                       config_path=config_path, logger=EAGLE_logger)
