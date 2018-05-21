@@ -16,12 +16,34 @@ def _parse_cmd_args(*args):
                         "--db-json",
                         help="Path to json with EAGLEdb to use description",
                         required=True)
-    parser.add_argument("-db",
-                        "--db-json",
-                        help="Path to json with EAGLEdb to use description",
-                        required=True)
+    parser.add_argument("-m",
+                        "--mode",
+                        help="Mode to run EAGLE: 'genome' - parses input fasta file as single genome "
+                             "even if there not only one aequence; 'contigs' - parses input fasta files as "
+                             "independent contigs",
+                        required=False,
+                        default='genome')
+    parser.add_argument("-nt",
+                        "--num-threads",
+                        help="Number of threads",
+                        required=False,
+                        default=conf_constants.num_threads)
+    parser.add_argument("-btd",
+                        "--btax-det-method",
+                        help="Method name to detect base taxon for input sequence",
+                        required=False,
+                        default="hmmer")
+    parser.add_argument("-c",
+                        "--config_path",
+                        help="Path to a config file",
+                        required=False,
+                        default=None)
 
-
+    cmd_args = parser.parse_args(args)
+    if cmd_args.config_path:
+        conf_constants.update_by_config(config_path=cmd_args.config_path)
+        cmd_args.num_threads = conf_constants.num_threads
+    return cmd_args.__dict__
 
 
 def main():

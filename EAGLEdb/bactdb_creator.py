@@ -264,6 +264,8 @@ def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, 
 
     families_dict = dict()
     for bacterium in bacteria_list:
+        if not bacterium:
+            continue
         if not os.path.exists(bacterium["16S_rRNA_file"]):
             continue
         bacterium_data = {"download_prefix": bacterium["download_prefix"],
@@ -331,7 +333,7 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
     bact_fam_f.close()
 
 
-def prepare_family(family_name, family_data, bact_fam_f_path, db_dir):
+def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
     # TODO: refactor it
     special_keys = ("16S_rRNA_tree", "16S_rRNA_tsv", "16S_rRNA_fasta", "blastdb", "repr_profile")
     rRNA_seqs_dict = dict()  # {seq_id: seq}
@@ -456,4 +458,5 @@ def create_bactdb(input_table_refseq=None,
                        profiles_db_name=PROFILES_DB_NAME,
                        method="hmmer",
                        hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                       config_path=config_path, logger=EAGLE_logger)
+                       config_path=config_path,
+                       logger=EAGLE_logger)

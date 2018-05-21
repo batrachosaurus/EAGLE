@@ -55,7 +55,7 @@ def _parse_cmd_args(*args):
         conf_constants.update_by_config(config_path=cmd_args.config_path)
         conf_constants_db.update_by_config(config_path=cmd_args.config_path)
         cmd_args.num_threads = conf_constants.num_threads
-    return cmd_args.__dict_
+    return cmd_args.__dict__
 
 
 def main():
