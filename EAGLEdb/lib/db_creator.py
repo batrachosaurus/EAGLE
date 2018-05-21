@@ -166,9 +166,19 @@ def generate_btax_profile(source, db_dir, btax_name, method="hmmer"):
     return btax_profile_path
 
 
-def create_profiles_db(btax_dict, db_dir, method="hmmer", hmmer_inst_dir="", config_path=None, logger=None):
-    profiles_list = [btax_dict[btax_k]["repr_profile"] for btax_k in btax_dict.keys()]
-    profiles_db_path = os.path.join(db_dir, "db_repr_profiles")
+def create_profiles_db(btax_dict,
+                       db_dir,
+                       profiles_db_name="db_repr_profiles",
+                       method="hmmer",
+                       hmmer_inst_dir="",
+                       config_path=None,
+                       logger=None):
+
+    profiles_list = list()
+    for btax_k in btax_dict.keys():
+        if btax_dict[btax_k].get("repr_profile", None):
+            profiles_list.append(btax_dict[btax_k]["repr_profile"])
+    profiles_db_path = os.path.join(db_dir, profiles_db_name)
     if method.lower() == "hmmer":
         hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir, config_path=config_path, logger=logger)
         hmmer_handler.make_profiles_db(profiles_list, profiles_db_path)

@@ -7,7 +7,7 @@ from collections import defaultdict
 
 import pandas
 
-from EAGLE.constants import EAGLE_logger, conf_constants
+from EAGLE.constants import EAGLE_logger, conf_constants, PROFILES_SCAN_OUT
 from EAGLE.lib.alignment import construct_mult_aln
 from EAGLE.lib.general import worker, load_fasta_to_dict, reduce_seq_names, get_un_fix, bool_from_str
 from EAGLE.lib.phylo import build_tree_by_dist
@@ -326,7 +326,8 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
     pool.join()
 
     bact_fam_f = io.open(bact_fam_f_path, 'a', newline="\n")
-    bact_fam_f.write(u"  {}\n}")
+    bact_fam_f.write(u'  "db_dir": "%s",\n  "db_repr_profiles": "%s"\n}' %
+                     (db_dir, os.path.join(db_dir, PROFILES_SCAN_OUT)))
     bact_fam_f.close()
 
 
@@ -450,5 +451,9 @@ def create_bactdb(input_table_refseq=None,
                                       db_dir=db_dir,
                                       num_threads=num_threads,
                                       only_repr=True)
-    create_profiles_db(families_dict, db_dir, method="hmmer", hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+    create_profiles_db(families_dict,
+                       db_dir,
+                       profiles_db_name=PROFILES_SCAN_OUT,
+                       method="hmmer",
+                       hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                        config_path=config_path, logger=EAGLE_logger)

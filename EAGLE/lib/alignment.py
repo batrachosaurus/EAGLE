@@ -338,13 +338,14 @@ class HmmerHandler(ConfBase):
         hmmpress_cmd = os.path.join(self.inst_dir, "hmmpress") + " " + profiles_db_path
         subprocess.call(hmmpress_cmd, shell=True)
 
-    def run_hmmscan(self, profiles_db, in_fasta, out_path=None):
+    def run_hmmscan(self, profiles_db, in_fasta, num_threads=4, out_path=None):
         if not out_path:
             if "." in in_fasta:
                 out_path = ".".join(in_fasta.split(".")[:-1]) + ".hsr"
             else:
                 out_path = in_fasta + ".hsr"
-        hmmscan_cmd = os.path.join(self.inst_dir, "hmmscan") + " " + profiles_db + " " + in_fasta + " > " + out_path
+        hmmscan_cmd = os.path.join(self.inst_dir, "hmmscan") + " --cpu " + str(num_threads) + " " + profiles_db + " " +\
+                      in_fasta + " > " + out_path
         subprocess.call(hmmscan_cmd, shell=True)
 
 
