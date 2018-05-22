@@ -11,7 +11,7 @@ import operator
 
 import wget
 
-from EAGLE.lib.general import worker, join_files
+from EAGLE.lib.general import worker, join_files, gunzip
 from EAGLE.lib.alignment import BlastHandler, HmmerHandler
 
 
@@ -110,11 +110,8 @@ def download_btax_files(key_prefix_pairs, btax_data, download_dir="./", logger=N
             if os.path.exists(downloaded_f_path):
                 if downloaded_f_path[-3:] == ".gz":
                     reduce(operator.getitem, download_pref[1], btax_data)[key] = downloaded_f_path[:-3]
-                    with gzip.open(downloaded_f_path, 'rb') as downloaded_f_gz, \
-                             io.open(reduce(operator.getitem, download_pref[1], btax_data)[key], 'wb') as downloaded_f:
-                        shutil.copyfileobj(downloaded_f_gz, downloaded_f)
-                        downloaded_f.close()
-                    os.remove(downloaded_f_path)
+                    gunzip(in_path=downloaded_f_path,
+                           out_path=reduce(operator.getitem, download_pref[1], btax_data)[key])
                 else:
                     reduce(operator.getitem, download_pref[1], btax_data)[key] = downloaded_f_path
             else:
