@@ -1,4 +1,5 @@
 import json
+import shutil
 from collections import defaultdict
 
 from EAGLE.constants import conf_constants, EAGLE_logger, PROFILES_SCAN_OUT
@@ -23,14 +24,16 @@ def explore_genes(in_fasta,
         conf_constants.mode = mode
 
     db_info = json.load(open(db_json))
-    btax_name = get_btax(in_fasta,
-                         db_info["db_repr_profiles"],
-                         btax_names=db_info.keys(),
-                         mode=conf_constants.mode,
-                         num_threads=conf_constants.num_threads,
-                         method=btax_det_method,
-                         hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                         config_path=config_path)
+    btax_names = get_btax(in_fasta,
+                          db_info["db_repr_profiles"],
+                          btax_names=db_info.keys(),
+                          mode=conf_constants.mode,
+                          num_threads=conf_constants.num_threads,
+                          method=btax_det_method,
+                          hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                          config_path=config_path)
+
+    EAGLE_logger.info("%s: %s" % (in_fasta, btax_names.items()[0][1]))#  for statistics
 
 
 def get_btax(in_fasta,
@@ -68,15 +71,39 @@ def get_btax(in_fasta,
                 lines_from_query = 0
             else:
                 line_list = filter_list(line.split())
-                btax_name = _get_btax_names(line_list[8], btax_names)
+                btax_name = _get_btax_name(line_list[8], btax_names)
                 if btax_name:
                     query_scores_dict[btax_name] += float(line_list[4])
+        if remove_scan_out:
+            shutil.rmtree(PROFILES_SCAN_OUT)
 
     if mode == "genome":
-        pass
+        queries_scores_dict = _aggregate_queries(in_fasta, queries_scores_dict)
+    return _get_queries_btax(queries_scores_dict)
+
+
+def _get_btax_name(profile_name, btax_names):
+    for btax_name in btax_names:
+        if btax_name.lower() in profile_name.lower():
+            return btax_name
+
+
+def _aggregate_queries(in_fasta, queries_scores_dict):
+    if "." in in_fasta:
+        aggr_key = ".".join(in_fasta.split(".")[: -1])
     else:
-        pass
+        aggr_key = in_fasta
+    queries_scores_dict[aggr_key] = defaultdict(int)
+    for query in queries_scores_dict.keys():
+        if query == aggr_key:
+            continue
+        for btax_name in queries_scores_dict[query]:
+            queries_scores_dict[aggr_key][btax_name] += queries_scores_dict.pop(query)[btax_name]
+    return queries_scores_dict
 
 
-def _get_btax_names(profile_name, btax_names):
-    pass
+def _get_queries_btax(queries_scores_dict):
+    queries_btax = dict()
+    for query in queries_scores_dict.keys():
+        queries_btax[query] = sorted(queries_scores_dict.items(), key=lambda x: x[1], reverse=True)[0][0]
+    return queries_btax
