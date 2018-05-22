@@ -1,10 +1,12 @@
 # This code can have only standard Python imports
 import ConfigParser
 import multiprocessing as mp
+import io
 import sys
 import time
 import pickle
 import shutil
+import gzip
 from collections import OrderedDict
 import subprocess
 import logging
@@ -413,3 +415,12 @@ def get_redis_server(host='localhost', port=6379, restart=True):
         subprocess.Popen("redis-server --port " + str(port), shell=True)
         time.sleep(10)
         return "connected to Redis server"
+
+
+def gunzip(in_path, out_path, remove_input=True):
+    with gzip.open(in_path, 'rb') as input_f_gz, \
+            io.open(out_path, 'wb') as output_f:
+        shutil.copyfileobj(input_f_gz, output_f)
+        output_f.close()
+    if remove_input:
+        shutil.rmtree(in_path)

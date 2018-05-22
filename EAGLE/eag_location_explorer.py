@@ -48,7 +48,9 @@ def get_btax(in_fasta,
 
     if method.lower() == "hmmer":
         hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir, config_path=config_path, logger=EAGLE_logger)
+        EAGLE_logger.info("hmmscan started")
         hmmer_handler.run_hmmscan(profiles_db, in_fasta, num_threads=num_threads, out_path=PROFILES_SCAN_OUT)
+        EAGLE_logger.info("hmmscan finished")
         queries_scores_dict = defaultdict(dict)
         query_scores_dict = defaultdict(float)
         lines_from_query = 0
