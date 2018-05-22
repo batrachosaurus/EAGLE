@@ -2,7 +2,6 @@ import os
 import io
 import sys
 import json
-import shutil
 
 import pandas
 
@@ -61,7 +60,7 @@ for ncbi_db_link in ncbi_db_links:
                 gunzip(in_path=fna_f_path, out_path=in_fasta)
                 explore_genes(in_fasta=in_fasta, db_json=DB_JSON, num_threads=NUM_THREADS)
                 processed_bact_f.write(unicode("  "+json.dumps({in_fasta: bacterium_info["family"]})+",\n"))
-                shutil.rmtree(in_fasta)
+                os.remove(in_fasta)
 
 processed_bact_f.write(u"  {}\n]")
 processed_bact_f.close()

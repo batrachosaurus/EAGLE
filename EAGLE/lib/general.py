@@ -5,7 +5,7 @@ import io
 import sys
 import time
 import pickle
-import shutil
+import os
 import gzip
 from collections import OrderedDict
 import subprocess
@@ -423,4 +423,4 @@ def gunzip(in_path, out_path, remove_input=True):
         shutil.copyfileobj(input_f_gz, output_f)
         output_f.close()
     if remove_input:
-        shutil.rmtree(in_path)
+        os.remove(in_path)

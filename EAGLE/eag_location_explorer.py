@@ -1,6 +1,6 @@
 import io
 import json
-import shutil
+import os
 from collections import defaultdict
 
 from EAGLE.constants import conf_constants, EAGLE_logger, PROFILES_SCAN_OUT
@@ -80,7 +80,7 @@ def get_btax(in_fasta,
                 if btax_name:
                     query_scores_dict[btax_name] += float(line_list[4])
         if remove_scan_out:
-            shutil.rmtree(PROFILES_SCAN_OUT)
+            os.remove(PROFILES_SCAN_OUT)
 
     if mode == "genome":
         queries_scores_dict = _aggregate_queries(in_fasta, queries_scores_dict)
