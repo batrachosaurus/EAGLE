@@ -67,11 +67,11 @@ def get_btax(in_fasta,
             if line[0: 6] == "Query:":
                 line_list = filter_list(line.split())
                 query = line_list[1]
-            elif query and lines_from_query < 6:
+            elif query and lines_from_query < 5:
                 lines_from_query += 1
             elif line.startswith("Domain annotation for each model (and alignments):"):
                 queries_scores_dict[query] = query_scores_dict
-                query_scores_dict = dict()
+                query_scores_dict = defaultdict(float)
                 query = None
                 lines_from_query = 0
             elif query:
@@ -89,7 +89,8 @@ def get_btax(in_fasta,
 
 def _get_btax_name(profile_name, btax_names):
     for btax_name in btax_names:
-        if btax_name.lower() in profile_name.lower():
+        btax_name_list = btax_name.lower().split("_")
+        if btax_name_list == profile_name.lower().split("_")[:len(btax_name_list)]:
             return btax_name
 
 
@@ -103,12 +104,13 @@ def _aggregate_queries(in_fasta, queries_scores_dict):
         if query == aggr_key:
             continue
         for btax_name in queries_scores_dict[query]:
-            queries_scores_dict[aggr_key][btax_name] += queries_scores_dict.pop(query)[btax_name]
+            queries_scores_dict[aggr_key][btax_name] += queries_scores_dict[query][btax_name]
+        queries_scores_dict.pop(query)
     return queries_scores_dict
 
 
 def _get_queries_btax(queries_scores_dict):
     queries_btax = dict()
     for query in queries_scores_dict.keys():
-        queries_btax[query] = sorted(queries_scores_dict.items(), key=lambda x: x[1], reverse=True)[0][0]
+        queries_btax[query] = sorted(queries_scores_dict[query].items(), key=lambda x: x[1], reverse=True)[0][0]
     return queries_btax
