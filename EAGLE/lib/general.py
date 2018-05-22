@@ -7,6 +7,7 @@ import time
 import pickle
 import os
 import gzip
+import shutil
 from collections import OrderedDict
 import subprocess
 import logging
