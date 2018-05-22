@@ -1,3 +1,4 @@
+import io
 import json
 import shutil
 from collections import defaultdict
@@ -32,8 +33,10 @@ def explore_genes(in_fasta,
                           method=btax_det_method,
                           hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                           config_path=config_path)
-
-    EAGLE_logger.info("%s: %s" % (in_fasta, btax_names.items()[0][1]))#  for statistics
+    # for statistics
+    resp_f = io.open("responsed_bacteria.json", 'a', newline="\n")
+    resp_f.write(unicode("  "+json.dumps({in_fasta: btax_names.items()[0][1]})+",\n"))
+    resp_f.close()
 
 
 def get_btax(in_fasta,
@@ -71,7 +74,7 @@ def get_btax(in_fasta,
                 query_scores_dict = dict()
                 query = None
                 lines_from_query = 0
-            else:
+            elif query:
                 line_list = filter_list(line.split())
                 btax_name = _get_btax_name(line_list[8], btax_names)
                 if btax_name:

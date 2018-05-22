@@ -1,4 +1,5 @@
 import os
+import io
 import sys
 import json
 import shutil
@@ -34,7 +35,8 @@ ncbi_db_links = list(set(ncbi_db_links))
 if not os.path.exists(WORKING_DIR):
     os.makedirs(WORKING_DIR)
 families_ = json.load(open(DB_JSON)).keys()
-check_dict = dict()
+processed_bact_f = io.open(PROCESSED_BACT_JSON, 'w', newline="\n")
+processed_bact_f.write(u"[\n")
 for ncbi_db_link in ncbi_db_links:
     assembly_id = None
     tax_f_name = None
@@ -44,11 +46,11 @@ for ncbi_db_link in ncbi_db_links:
                       "genus": None,
                       "species": None,
                       "strain": None}
-    try:
-        assembly_id = ncbi_db_link.split("/")[-1]
-        tax_f_name = assembly_id + "_genomic.gbff.gz"
-        download_prefix = (ncbi_db_link + "/" + assembly_id).replace("https", "ftp")
-        download_organism_files(download_prefix, "_genomic.gbff.gz", download_dir=WORKING_DIR, logger=EAGLE_logger)
+    assembly_id = ncbi_db_link.split("/")[-1]
+    tax_f_name = assembly_id + "_genomic.gbff.gz"
+    download_prefix = (ncbi_db_link + "/" + assembly_id).replace("https", "ftp")
+    download_organism_files(download_prefix, "_genomic.gbff.gz", download_dir=WORKING_DIR, logger=EAGLE_logger)
+    if os.path.exists(os.path.join(WORKING_DIR, tax_f_name)):
         bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
             get_taxonomy(tax_f_name, f_dir=WORKING_DIR)
         if bacterium_info["family"] in families_:
@@ -58,11 +60,8 @@ for ncbi_db_link in ncbi_db_links:
                 in_fasta = fna_f_path[:-3]
                 gunzip(in_path=fna_f_path, out_path=in_fasta)
                 explore_genes(in_fasta=in_fasta, db_json=DB_JSON, num_threads=NUM_THREADS)
-                check_dict[in_fasta] = bacterium_info["family"]
+                processed_bact_f.write(unicode("  "+json.dumps({in_fasta: bacterium_info["family"]})+",\n"))
                 shutil.rmtree(in_fasta)
-    except:
-        continue
 
-processed_bact_f = open(PROCESSED_BACT_JSON, 'w')
-json.dump(check_dict, processed_bact_f)
+processed_bact_f.write(u"  {}\n]")
 processed_bact_f.close()
