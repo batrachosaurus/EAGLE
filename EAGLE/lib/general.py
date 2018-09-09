@@ -13,6 +13,7 @@ import subprocess
 import logging
 
 import pandas
+from Bio.Seq import Seq
 
 
 class ConfBase(object):
@@ -188,6 +189,20 @@ def filter_list(in_list):
         if elm:
             filtered_list.append(elm)
     return filtered_list
+
+
+def get_seq_from_fasta(fasta_path, seq_id, ori=+1, start=0, end=-1):
+    fasta_dict = load_fasta_to_dict(fasta_path)
+    if end >= start or end == -1:
+        if ori > 0:
+            return fasta_dict[seq_id][start-1: end]
+        else:
+            return str(Seq(fasta_dict[seq_id][start-1: end]).reverse_complement())       
+    else:
+        if ori > 0:
+            return fasta_dict[seq_id][end-1: start]
+        else:
+            return str(Seq(fasta_dict[seq_id][end-1: start]).reverse_complement()) 
 
 
 def load_fasta_to_dict(fasta_path):
