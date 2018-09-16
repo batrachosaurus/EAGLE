@@ -4,7 +4,11 @@
 
 Install it:
 ```
-pip install git+https://github.com/loven-doo/EAGLE.git --upgrade  
+pip install git+https://github.com/loven-doo/EAGLE --upgrade  
+```
+from dev branch:
+```
+pip install git+https://github.com/loven-doo/EAGLE@dev --upgrade
 ```
 
 ## Requirements
