@@ -8,7 +8,9 @@ setup(name='EAGLE',
       install_requires=[
             'wget',
             'pyaml',
+            'numpy',
             'pandas',
+            'scipy',
             'redis'
       ],
       entry_points={
