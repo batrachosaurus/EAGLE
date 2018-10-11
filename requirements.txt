@@ -1,4 +1,6 @@
 wget
 pyaml
+numpy
 pandas
+scipy
 redis
