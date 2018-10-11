@@ -23,7 +23,7 @@ handlers:
         encoding: utf8
 
 loggers:
-    crAtlasSNPdb_logger:
+    EAGLE_logger:
         level: DEBUG
         handlers: [console, info_file_handler]
         propagate: no
