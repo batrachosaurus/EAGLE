@@ -5,8 +5,9 @@ from collections import defaultdict, Counter
 
 import pandas
 
-from EAGLE.lib.general import load_fasta_to_dict, dump_fasta_dict, load_phylip_dist_matrix, reduce_seq_names, ConfBase,\
-    join_files
+from EAGLE.lib.phylo import load_phylip_dist_matrix
+from EAGLE.lib.general import ConfBase, join_files
+from EAGLE.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names
 
 
 class MultAln(ConfBase):
@@ -56,8 +57,12 @@ class MultAln(ConfBase):
         else:
             return list()
 
-    def dump_alignment(self, aln_f_path):
+    def dump_alignment(self, aln_fasta_path):
         pass
+
+    @classmethod
+    def load_alignment(cls, aln_fasta_path, aln_type=None, aln_name=None):
+        return cls(mult_aln_dict=load_fasta_to_dict(fasta_path=aln_fasta_path), aln_type=aln_type, aln_name=aln_name)
 
     def improve_aln(self,
                     max_gap_fract=0.95,  # maximal fraction of gaps in a column to keep it in alignment
@@ -290,6 +295,9 @@ class MultAln(ConfBase):
                 else:
                     print "No nucleotide sequences are input"
                 return 1
+        pass
+
+    def estimate_irregularity(self, cons_thr=0.7, window_l=50, windows_step=25):
         pass
 
 
