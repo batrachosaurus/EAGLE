@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(name='EAGLE',
       version='0.13.0',
-      packages=find_packages(exclude=[find_packages("Research"), "EAGLE.tests"]),
+      packages=find_packages(exclude=find_packages("Research").__add__(["EAGLE.tests"])),
       package_data={'EAGLE': ['configs/*', 'tests/*'],
                     'EAGLEdb': ['org_tables/*', ]},
       install_requires=[
