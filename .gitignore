@@ -1,10 +1,10 @@
 .idea/
 *.pyc
 *__pycache__/
-EAGLEdb/bactdb/test/test_results/
+*test_results/
 dist/
 EAGLE.egg-info/
 *.log
+*.log.*
 *.ipynb_checkpoints/
 *Untitled.ipynb
-

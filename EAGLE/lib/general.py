@@ -1,19 +1,18 @@
 # This code can have only standard Python imports
 import ConfigParser
-import multiprocessing as mp
+import gzip
 import io
+import logging
+import logging.config
+import multiprocessing as mp
+import os
+import pickle
+import shutil
+import subprocess
 import sys
 import time
-import pickle
-import os
-import gzip
-import shutil
-from collections import OrderedDict
-import subprocess
-import logging
 
-import pandas
-from Bio.Seq import Seq
+import yaml
 
 
 class ConfBase(object):
@@ -52,6 +51,33 @@ class ConfBase(object):
             return fallback
 
 
+def _config_parser(config_path):
+    """ Function parses config file and puts the result into an object of ConfigParser class
+      :param config_path: path to config file
+      :return: a ConfigParser object
+      """
+    config = ConfigParser.ConfigParser()
+    config.read(config_path)
+    return config
+
+
+def setup_logging(default_path,
+                  default_level=logging.INFO,
+                  env_key='LOG_CFG'):
+    path = default_path
+    value = os.getenv(env_key, None)
+    if value:
+        path = value
+    if os.path.exists(path):
+
+        with open(path, 'rt') as f:
+            string = f.read()
+            config = yaml.load(string)
+        logging.config.dictConfig(config)
+    else:
+        logging.basicConfig(level=default_level)
+
+
 class RedisQueue:
 
     def __init__(self, queue_name, redis_connection, max_size=0):
@@ -82,16 +108,6 @@ class RedisQueue:
 
         if message:
             return pickle.loads(message[1])
-
-
-def _config_parser(config_path):
-    """ Function parses config file and puts the result into an object of ConfigParser class
-      :param config_path: path to config file
-      :return: a ConfigParser object
-      """
-    config = ConfigParser.ConfigParser()
-    config.read(config_path)
-    return config
 
 
 def bool_from_str(string):
@@ -191,186 +207,6 @@ def filter_list(in_list):
     return filtered_list
 
 
-def get_seq_from_fasta(fasta_path, seq_id, ori=+1, start=0, end=-1):
-    fasta_dict = load_fasta_to_dict(fasta_path)
-    if end >= start or end == -1:
-        if ori > 0:
-            return fasta_dict[seq_id][start-1: end]
-        else:
-            return str(Seq(fasta_dict[seq_id][start-1: end]).reverse_complement())       
-    else:
-        if ori > 0:
-            return fasta_dict[seq_id][end-1: start]
-        else:
-            return str(Seq(fasta_dict[seq_id][end-1: start]).reverse_complement()) 
-
-
-def load_fasta_to_dict(fasta_path):
-    fasta_dict = dict()
-    seq_list = list()
-    title = None
-    fasta_f = open(fasta_path)
-    for line_ in fasta_f:
-        line = None
-        line = line_.strip()
-        if not line:
-            continue
-        if line[0] == ">":
-            if title:
-                fasta_dict[title] = "".join(seq_list)
-                seq_list = list()
-                title = None
-            title = line[1:]
-        else:
-            seq_list.append(line)
-    if title:
-        fasta_dict[title] = "".join(seq_list)
-        seq_list = list()
-        title = None
-    return fasta_dict
-
-
-def dump_fasta_dict(fasta_dict, fasta_path, overwrite=True):
-    if overwrite:
-        fasta_f = open(fasta_path, 'w')
-    else:
-        fasta_f = open(fasta_path, 'a')
-    for seq_id in fasta_dict.keys():
-        fasta_f.write(">"+seq_id+"\n")
-        fasta_f.write(fasta_dict[seq_id]+"\n")
-    fasta_f.close()
-
-
-def load_phylip_dist_matrix(matrix_path):
-    matr_f = open(matrix_path)
-    lines_dict = OrderedDict()
-    seqs_list = list()
-    matrix_started = False
-    seq_dists_list = list()
-    num_seqs = 0
-    got_seqs = 0
-    for line_ in matr_f:
-        line = None
-        line = line_.strip()
-        if not line:
-            continue
-        line_list = filter_list(line.split())
-        if len(line_list) == 1 and not matrix_started:
-            num_seqs = int(line_list[0])
-            continue
-        if not matrix_started:
-            matrix_started = True
-        if got_seqs == 0:
-            seqs_list.append(line_list[0])
-            seq_dists_list.__iadd__(line_list[1:])
-            got_seqs += len(line_list[1:])
-        else:
-            seq_dists_list.__iadd__(line_list)
-            got_seqs += len(line_list)
-        if got_seqs == num_seqs:
-            lines_dict[seqs_list[-1]] = seq_dists_list
-            seq_dists_list = list()
-            got_seqs = 0
-    dist_matrix = pandas.DataFrame.from_dict(data=lines_dict, orient='index')
-    dist_matrix.columns = seqs_list
-    return dist_matrix
-
-
-def dump_phylip_dist_matrix(dist_matrix, matrix_path):
-    matr_f = open(matrix_path, 'w')
-    matr_f.write("    %s\n" % len(dist_matrix.columns))
-    for seq in dist_matrix.index:
-        num_spaces_to_add = 10 - len(seq)
-        spaces_to_add = [" " for i in range(num_spaces_to_add)]
-        matr_f.write("%s %s\n" % (seq+"".join(spaces_to_add), " ".join(dist_matrix.loc[seq].tolist())))
-    matr_f.close()
-
-
-def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
-    if num_letters < 6:
-        print("Number of letters must be at least 6")
-        return 1
-    if num_words < 2:
-        print("Number of words must be at least 2")
-        return 1
-    splitters_repl = {"_": " ",
-                      "\t": " ",
-                      ",": " ",
-                      ";": " ",
-                      ".": " ",
-                      ":": " ",
-                      "|": " ",
-                      "/": " ",
-                      "\\": " "}
-    parts_size_list = _get_part_size_list(num_letters, num_words)
-    reduced_fasta_dict = dict()
-    seq_names_dict = dict()
-    for seq_name in fasta_dict.keys():
-        if len(seq_name) <= num_letters:
-            prepared_seq_name = None
-            prepared_seq_name = seq_name+"".join("_" for i in range(num_letters-len(seq_name)))
-            seq_names_dict[prepared_seq_name] = seq_name
-            reduced_fasta_dict[prepared_seq_name] = fasta_dict[seq_name]
-            continue
-        reduced_seq_name = None
-        seq_name_list = filter_list("".join([splitters_repl.get(s, s) for s in seq_name]).split())
-        parts = list()
-        for i in range(num_words):
-            try:
-                parts.append(seq_name_list[i][:parts_size_list[i]])
-            except IndexError:
-                break
-        reduced_seq_name = "".join(parts)
-        res_len = num_letters - len(reduced_seq_name)
-        un_num = 0
-        un_fix = get_un_fix(un_num, res_len)
-        while seq_names_dict.get(reduced_seq_name+un_fix, None):
-            un_fix = None
-            un_num += 1
-            un_fix = get_un_fix(un_num, res_len)
-        reduced_fasta_dict[reduced_seq_name+un_fix] = fasta_dict[seq_name]
-        seq_names_dict[reduced_seq_name+un_fix] = seq_name
-    return reduced_fasta_dict, seq_names_dict
-
-
-def _get_part_size_list(num_letters, num_words):
-    if num_letters == 6:
-        return [2, 3]
-    if num_letters == 7:
-        if num_words >= 3:
-            return [2, 3, 1]
-        else:
-            return [2, 3]
-    if num_letters == 8:
-        if num_words >= 4:
-            return [2, 3, 1, 1]
-        elif num_words == 3:
-            return [3, 3, 1]
-        else:
-            return [3, 3]
-    if num_letters == 9:
-        if num_words >= 4:
-            return [3, 3, 1, 1]
-        elif num_words == 3:
-            return [3, 3, 1]
-        else:
-            return [3, 4]
-    if num_letters == 10:
-        if num_words >= 4:
-            return [3, 4, 1, 1]
-        elif num_words == 3:
-            return [3, 4, 1]
-        else:
-            return [4, 4]
-    if num_letters >= 11:
-        if num_words >= 4:
-            return [3, 4, 1, 1]
-        elif num_words == 3:
-            return [4, 4, 1]
-        else:
-            return [4, 5]
-
-
 def get_un_fix(un_num, fix_len):
     un_codes = ["_", '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E']
     # 'N' - undefined (num duplicates is bigger than len(un_codes))
@@ -386,24 +222,6 @@ def get_un_fix(un_num, fix_len):
     else:
         filled_rank = len(un_codes)**(fix_len-1) + 1
         return un_codes[un_num//filled_rank] + get_un_fix(un_num % filled_rank, fix_len - 1)
-
-
-def load_newick(newick_f_path):
-    newick_f = open(newick_f_path)
-    tree_list = list()
-    for line_ in newick_f:
-        line = None
-        line = line_.strip()
-        tree_list.append(line)
-        if line[-1] == ";":
-            break
-    return "".join(tree_list)
-
-
-def dump_tree_newick(tree_newick, newick_f_path):
-    newick_f = open(newick_f_path, "w")
-    newick_f.write(tree_newick)
-    newick_f.close()
 
 
 def join_files(in_files_list, out_file_path):

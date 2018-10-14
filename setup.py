@@ -1,17 +1,18 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.12.5',
-      packages=find_packages(),
-      package_data={'EAGLE': ['configs/*', ],
+      version='0.13.0',
+      packages=find_packages(exclude=[find_packages("Research"), "EAGLE.tests"]),
+      package_data={'EAGLE': ['configs/*', 'tests/*'],
                     'EAGLEdb': ['org_tables/*', ]},
       install_requires=[
-            'wget',
-            'pyaml',
-            'numpy',
-            'pandas',
-            'scipy',
-            'redis'
+            'wget >= 3.2',
+            'pyaml >= 3.12',
+            'numpy >= 1.14.3',
+            'pandas >= 0.23.4',
+            'scipy >= 1.1.0',
+            'biopython >= 1.72',
+            'redis >= 2.10.6',
       ],
       entry_points={
             'console_scripts': [

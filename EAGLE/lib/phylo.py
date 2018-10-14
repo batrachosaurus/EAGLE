@@ -1,10 +1,11 @@
 import os
 import shutil
 import subprocess
+from collections import OrderedDict
 
 import pandas
 
-from EAGLE.lib.general import ConfBase, dump_phylip_dist_matrix, load_newick
+from EAGLE.lib.general import ConfBase, filter_list
 
 
 class PhyloTree(ConfBase):
@@ -61,3 +62,66 @@ def build_tree_by_dist(dist_matrix=None,
 
 def compare_trees(newick1, newick2):
     pass
+
+
+def load_phylip_dist_matrix(matrix_path):
+    matr_f = open(matrix_path)
+    lines_dict = OrderedDict()
+    seqs_list = list()
+    matrix_started = False
+    seq_dists_list = list()
+    num_seqs = 0
+    got_seqs = 0
+    for line_ in matr_f:
+        line = None
+        line = line_.strip()
+        if not line:
+            continue
+        line_list = filter_list(line.split())
+        if len(line_list) == 1 and not matrix_started:
+            num_seqs = int(line_list[0])
+            continue
+        if not matrix_started:
+            matrix_started = True
+        if got_seqs == 0:
+            seqs_list.append(line_list[0])
+            seq_dists_list.__iadd__(line_list[1:])
+            got_seqs += len(line_list[1:])
+        else:
+            seq_dists_list.__iadd__(line_list)
+            got_seqs += len(line_list)
+        if got_seqs == num_seqs:
+            lines_dict[seqs_list[-1]] = seq_dists_list
+            seq_dists_list = list()
+            got_seqs = 0
+    dist_matrix = pandas.DataFrame.from_dict(data=lines_dict, orient='index')
+    dist_matrix.columns = seqs_list
+    return dist_matrix
+
+
+def dump_phylip_dist_matrix(dist_matrix, matrix_path):
+    matr_f = open(matrix_path, 'w')
+    matr_f.write("    %s\n" % len(dist_matrix.columns))
+    for seq in dist_matrix.index:
+        num_spaces_to_add = 10 - len(seq)
+        spaces_to_add = [" " for i in range(num_spaces_to_add)]
+        matr_f.write("%s %s\n" % (seq+"".join(spaces_to_add), " ".join(dist_matrix.loc[seq].tolist())))
+    matr_f.close()
+
+
+def load_newick(newick_f_path):
+    newick_f = open(newick_f_path)
+    tree_list = list()
+    for line_ in newick_f:
+        line = None
+        line = line_.strip()
+        tree_list.append(line)
+        if line[-1] == ";":
+            break
+    return "".join(tree_list)
+
+
+def dump_tree_newick(tree_newick, newick_f_path):
+    newick_f = open(newick_f_path, "w")
+    newick_f.write(tree_newick)
+    newick_f.close()
