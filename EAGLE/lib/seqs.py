@@ -3,9 +3,13 @@ from Bio.Seq import Seq
 from EAGLE.lib.general import filter_list, get_un_fix
 
 
-def get_seq_from_fasta(fasta_path, seq_id, ori=+1, start=0, end=-1):
+def seq_from_fasta(fasta_path, seq_id, ori=+1, start=0, end=-1):
     fasta_dict = load_fasta_to_dict(fasta_path)
-    if end >= start or end == -1:
+    if end == -1:
+        end = len(fasta_dict[seq_id])
+    if start < 0:
+        start = len(fasta_dict[seq_id]) - start + 1
+    if end >= start:
         if ori > 0:
             return fasta_dict[seq_id][start-1: end]
         else:
