@@ -29,6 +29,7 @@ class ConfConstants(ConfBase):
         self.emboss_inst_dir = ""
         self.hmmer_inst_dir = ""
         self.blast_inst_dir = ""
+        self.cons_thr = 0.95
         # PHYLO
         self.fastme_exec_path = "fastme"
         # EAGLE
