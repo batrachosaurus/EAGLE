@@ -3,8 +3,11 @@ import shutil
 import subprocess
 from collections import defaultdict, Counter
 
+import numpy as np
 import pandas
+from scipy.stats import chisquare
 
+from EAGLE.constants import conf_constants
 from EAGLE.lib.phylo import load_phylip_dist_matrix
 from EAGLE.lib.general import ConfBase, join_files
 from EAGLE.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names
@@ -53,7 +56,7 @@ class MultAln(ConfBase):
 
     def seqs(self):
         if self.mult_aln_dict:
-            return [seq_id for seq_id in self.mult_aln_dict.keys()]
+            return list(self.mult_aln_dict.keys())
         else:
             return list()
 
@@ -297,14 +300,45 @@ class MultAln(ConfBase):
                 return 1
         pass
 
-    def estimate_irregularity(self, cons_thr=0.7, window_l=50, windows_step=25):
-        pass
+    def estimate_irregularity(self, cons_thr=conf_constants.cons_thr, window_l=50, windows_step=25):
+        windows_list = list()
+        i = 0
+        while i < (len(self.mult_aln_dict[self.mult_aln_dict.keys()[0]])):
+            windows_list.append(MultAln(dict((seq_id, self.mult_aln_dict[seq_id][i: i + window_l])
+                                             for seq_id in self.mult_aln_dict)))
+            i += windows_step
+        cons_cols_by_windows = np.array([w.cons_cols_num(cons_thr=cons_thr) for w in windows_list])
+        print(cons_cols_by_windows, cons_cols_by_windows.mean())
+        return chisquare(cons_cols_by_windows)
+
+    def cons_cols_num(self, cons_thr=conf_constants.cons_thr):
+        cln = 0
+        for i in range(len(self.mult_aln_dict[self.mult_aln_dict.keys()[0]])):
+            s_num_dict = defaultdict(int)
+            for seq_id in self.mult_aln_dict:
+                s_num_dict[self.mult_aln_dict[seq_id][i].lower()] += 1
+            all_s_num = sum(s_num_dict.values())
+            if float(s_num_dict.get("-", 0)) / float(all_s_num) <= 1.0 - cons_thr:
+                if float(sorted(s_num_dict.values(), reverse=True)[0]) / float(all_s_num) >= cons_thr:
+                    cln += 1
+        return cln
+
+    def rarefy(self, seqs_to_remain=100):
+        seqs_ids = self.mult_aln_dict.keys()
+        if len(seqs_ids) <= seqs_to_remain:
+            return self.mult_aln_dict
+        rarefied_aln_dict = dict()
+        for i in range(seqs_to_remain):
+            seq_id = None
+            seq_id = seqs_ids.pop(np.random.randint(len(seqs_ids)))
+            rarefied_aln_dict[seq_id] = self.mult_aln_dict[seq_id]
+        return rarefied_aln_dict
 
 
 class BlastHandler(ConfBase):
 
     def __init__(self,
-                 inst_dir="",
+                 inst_dir=conf_constants.blast_inst_dir,
                  config_path=None,
                  logger=None):
 
@@ -328,7 +362,7 @@ class BlastHandler(ConfBase):
 class HmmerHandler(ConfBase):
 
     def __init__(self,
-                 inst_dir="",
+                 inst_dir=conf_constants.hmmer_inst_dir,
                  config_path=None,
                  logger=None):
 
@@ -361,9 +395,9 @@ def construct_mult_aln(seq_dict=None,
                        fasta_path=None,
                        method="MUSCLE",
                        aln_type=None,
-                       muscle_exec_path="muscle",
-                       emboss_inst_dir="",
-                       hmmer_inst_dir="",
+                       muscle_exec_path=conf_constants.muscle_exec_path,
+                       emboss_inst_dir=conf_constants.emboss_inst_dir,
+                       hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                        aln_name="mult_aln",
                        tmp_dir="tmp",
                        remove_tmp=True,
