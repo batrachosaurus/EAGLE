@@ -1,0 +1,4 @@
+Hello! I'm a test file
+and I'm not the same to f1.txt
+It's awesome to use unittests.
+Think about it while you do it)

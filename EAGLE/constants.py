@@ -4,13 +4,14 @@ import os
 from EAGLE.lib.general import ConfBase, get_redis_server, setup_logging
 
 CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
+TEST_DIR = os.path.join(CONSTANTS_PATH, "tests")
 CONF_DIR_NAME = 'configs'
 CONF_DIR_PATH = os.path.join(CONSTANTS_PATH, CONF_DIR_NAME)
 DEFAULT_CONFIG = os.path.join(CONF_DIR_PATH, "default_config.ini")
 LOG_CONFIG_NAME = 'log_conf.yaml'
 LOGGER_NAME = 'EAGLE_logger'
 
-PROFILES_SCAN_OUT = "profiles_scan.out"
+PROFILES_SCAN_OUT = "profiles_scan.out"  # it is inner name (not configurable)
 
 setup_logging(os.path.join(CONF_DIR_PATH, LOG_CONFIG_NAME))
 EAGLE_logger = logging.getLogger(LOGGER_NAME)

@@ -2,11 +2,12 @@ import os
 import shutil
 import unittest
 
-from EAGLE.constants import TEST_DIR, EAGLE_logger
-from EAGLE import eag_location_explorer
+from EAGLE.constants import EAGLE_logger
+from Research.constants import TEST_DIR
+from Research import check_bacteria_response
 
 
-PACKAGE_DIR = 'EAGLE'
+PACKAGE_DIR = 'Research'
 INPUT_DIR = os.path.join(TEST_DIR, 'test_data', PACKAGE_DIR)
 OUTPUT_DIR = os.path.join(TEST_DIR, 'test_results', PACKAGE_DIR)
 
@@ -16,7 +17,7 @@ except OSError:
     pass
 
 
-class TestEAGLocationExplorer(unittest.TestCase):
+class TestCheckBacteriaResponse(unittest.TestCase):
     pass
 
 
