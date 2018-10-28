@@ -15,7 +15,7 @@ from EAGLE.lib.seqs import load_fasta_to_dict, reduce_seq_names
 from EAGLEdb import join_bacteria_lists
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME
-from EAGLEdb.lib.db_creator import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
+from EAGLEdb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
     generate_btax_profile, create_profiles_db
 
 

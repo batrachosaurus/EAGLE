@@ -1,10 +1,10 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.13.0',
-      packages=find_packages(exclude=find_packages("Research").__add__(["EAGLE.tests", "Research"])),
+      version='0.13.1',
+      packages=find_packages(exclude=find_packages("Research").__add__(["EAGLE.tests", "EAGLEdb.tests", "Research"])),
       package_data={'EAGLE': ['configs/*', 'tests/*'],
-                    'EAGLEdb': ['org_tables/*', ]},
+                    'EAGLEdb': ['org_tables/*', 'tests/*']},
       install_requires=[
             'wget >= 3.2',
             'pyaml >= 3.12',

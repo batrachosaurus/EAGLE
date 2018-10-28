@@ -258,3 +258,19 @@ def gunzip(in_path, out_path, remove_input=True):
         output_f.close()
     if remove_input:
         os.remove(in_path)
+
+
+def compare_files(f1_path, f2_path):
+    # returns True if files are equal else returns False
+    f1 = open(f1_path, 'rb')
+    f2 = open(f2_path, 'rb')
+    f1_lines = f1.readlines()
+    f2_lines = f2.readlines()
+    f1.close()
+    f2.close()
+    if len(f1_lines) != len(f2_lines):
+        return False
+    for i in range(len(f1_lines)):
+        if f1_lines[i].strip() != f2_lines[i].strip():
+            return False
+    return True
