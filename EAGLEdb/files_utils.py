@@ -52,7 +52,7 @@ def join_bacteria_list_files(bacteria_list_1_path=None, bacteria_list_2_path=Non
             joined_bacteria_list_path = sys.argv[3]
         except IndexError:
             print("Number of arguments must be 3: 1 - bacteria list 1 json path; 2 - bacteria list 2 json path; "
-                  "3 - output hoined bacteria list json path")
+                  "3 - output joined bacteria list json path")
 
     bacteria_list_1_f = open(bacteria_list_1_path)
     bacteria_list_1 = json.load(bacteria_list_1_f)
