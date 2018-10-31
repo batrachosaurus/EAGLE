@@ -38,8 +38,8 @@ EAGLEdb -dbt bacteria
 ```
   
 Also below is the instruction for building a database from NCBI if you do not like to use the default database or prepared lists (another option):  
-1. Download assembly summary ([here] (https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria/assembly_summary.txt) is RefSeq assembly summary table for bacteria and 
-[here] (https://ftp.ncbi.nlm.nih.gov/genomes/genbank/bacteria/assembly_summary.txt) is Genbank assembly summary table for bacteria).  
+1. Download assembly summary [here] (https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria/assembly_summary.txt) is RefSeq assembly summary table for bacteria and 
+[here] (https://ftp.ncbi.nlm.nih.gov/genomes/genbank/bacteria/assembly_summary.txt) is Genbank assembly summary table for bacteria.  
    
 2. Prepare genomes lists:
 ```
