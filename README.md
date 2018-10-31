@@ -55,7 +55,7 @@ All this commands can be run as Python functions: see below EAGLEdb package refe
   
 ### Run the analysis
 ```
-EAGLE
+EAGLE ...
 ```
 or from Python
 ```
