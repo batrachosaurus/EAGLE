@@ -1,4 +1,5 @@
 # EAGLE - Essential and Advantageous Genes Location Explorer  
+Now it works only for bacterial genomes
 
 ## Requirements
 MUSCLE  
@@ -33,7 +34,7 @@ pip install git+https://github.com/loven-doo/EAGLE.git@dev --upgrade
 You can (recommended way) download the default database from [here] ()  
 Other option is to build it from prepared lists of NCBI genomes:
 ```
-EAGLEdb ...
+EAGLEdb -dbt bacteria
 ```
   
 Also below is the instruction for building a database from NCBI if you do not like to use the default database or prepared lists (another option):  
@@ -47,7 +48,7 @@ EAGLEdb.prepare_ncbi_summary <downloaded/summary/path> <prepared/genomes/list/pa
    
 3. Build the database
 ```
-EAGLEdb ...
+EAGLEdb -dbt bacteria -igenbank <prepared/genomes/list/path>
 ```
   
 
