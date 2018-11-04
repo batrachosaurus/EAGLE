@@ -2,7 +2,6 @@
 
 import os
 import io
-import multiprocessing as mp
 import platform
 import subprocess
 import urllib2
@@ -13,25 +12,18 @@ import operator
 
 import wget
 
-from EAGLE.lib.general import worker, join_files, gunzip
+from EAGLE.lib.general import join_files, gunzip
 from EAGLE.lib.alignment import BlastHandler, HmmerHandler
+from EAGLEdb.constants import PROFILES_DB_NAME
 
 
-def get_links_from_html(html_link, num_threads=1, n_tries=3, debug=False):
+def get_links_from_html(html_link, n_tries=3, debug=False):
     n_t = 0
-    links = mp.Manager().dict()
-    params_list = []
+    links = dict()
     while n_t < n_tries:
         html_file = urllib2.urlopen(html_link)
-        params_list.append({'function': _read_html_file_links,
-                            'html_file': html_file.read().split("\n"),
-                            'links': links,
-                            'debug': debug})
+        _read_html_file_links(html_file=html_file.read().split("\n"), links=links, debug=debug)
         n_t += 1
-    pool = mp.Pool(num_threads)
-    pool.map(worker, params_list)
-    pool.close()
-    pool.join()
     links_list = links.keys()
     links_list.sort()
     return links_list
@@ -167,7 +159,7 @@ def generate_btax_profile(source, db_dir, btax_name, method="hmmer"):
 
 def create_profiles_db(btax_dict,
                        db_dir,
-                       profiles_db_name="db_repr_profiles",
+                       profiles_db_name=PROFILES_DB_NAME,
                        method="hmmer",
                        hmmer_inst_dir="",
                        config_path=None,
