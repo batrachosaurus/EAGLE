@@ -14,7 +14,7 @@ Python 2.7
 &nbsp; - wget >= 3.2  
 &nbsp; - pyaml >= 3.12  
 &nbsp; - numpy >= 1.14.3  
-&nbsp; - pandas >= 0.22.0  
+&nbsp; - pandas == 0.22.0  
 &nbsp; - scipy >= 1.1.0  
 &nbsp; - biopython >= 1.72  
 &nbsp; - redis >= 2.10.6  
