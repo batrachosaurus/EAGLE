@@ -10,7 +10,7 @@ from EAGLE import explore_genes
 from EAGLE.constants import EAGLE_logger
 from EAGLE.lib.general import gunzip
 from EAGLEdb.lib.db_creation import download_organism_files
-from EAGLEdb.bactdb_creating import get_taxonomy
+from EAGLEdb.bactdb_creation import get_taxonomy
 
 
 summary_tables = sys.argv[1:]
