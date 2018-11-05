@@ -22,10 +22,10 @@ class PhyloTree(ConfBase):
 
     @classmethod
     def load_tree(cls, newick_path, full_seq_names=None, config_path=None, logger=None):
-        cls(newick=load_newick(newick_path=newick_path),
-            full_seq_names=full_seq_names,
-            config_path=config_path,
-            logger=logger)
+        return cls(newick=load_newick(newick_path=newick_path),
+                   full_seq_names=full_seq_names,
+                   config_path=config_path,
+                   logger=logger)
 
     def according_to_taxonomy(self, taxonomy):
         # NOT inplace method!
