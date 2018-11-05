@@ -17,6 +17,16 @@ class PhyloTree(ConfBase):
 
         super(PhyloTree, self).__init__(config_path=config_path)
 
+    def dump_tree(self):
+        pass
+
+    @classmethod
+    def load_tree(cls, newick_path, full_seq_names=None, config_path=None, logger=None):
+        cls(newick=load_newick(newick_path=newick_path),
+            full_seq_names=full_seq_names,
+            config_path=config_path,
+            logger=logger)
+
     def according_to_taxonomy(self, taxonomy):
         # NOT inplace method!
         pass
@@ -37,13 +47,13 @@ def build_tree_by_dist(dist_matrix=None,
         if logger:
             logger.warning("No distance matrix input")
         else:
-            print "No distance matrix input"
+            print("No distance matrix input")
         return 1
     elif dist_matrix.empty and dist_matrix_f:
         if logger:
             logger.warning("No distance matrix input")
         else:
-            print "No distance matrix input"
+            print("No distance matrix input")
         return 1
 
     if method.lower() == "fastme":
@@ -53,7 +63,11 @@ def build_tree_by_dist(dist_matrix=None,
         tree_f = os.path.join(tmp_dir, "tree.nwk")
         fastme_cmd = fastme_exec_path + " -i " + dist_matrix_f + " -o " + tree_f
         subprocess.call(fastme_cmd, shell=True)
-        tree_newick = load_newick(newick_f_path=tree_f)
+        tree_newick = load_newick(newick_path=tree_f)
+        if logger:
+            logger.info("Phylogenetic tree built with FastME")
+        else:
+            print("Phylogenetic tree built with FastME")
     else:
         return 1
     shutil.rmtree(tmp_dir)
@@ -109,8 +123,8 @@ def dump_phylip_dist_matrix(dist_matrix, matrix_path):
     matr_f.close()
 
 
-def load_newick(newick_f_path):
-    newick_f = open(newick_f_path)
+def load_newick(newick_path):
+    newick_f = open(newick_path)
     tree_list = list()
     for line_ in newick_f:
         line = None

@@ -64,8 +64,12 @@ class MultAln(ConfBase):
         pass
 
     @classmethod
-    def load_alignment(cls, aln_fasta_path, aln_type=None, aln_name=None):
-        return cls(mult_aln_dict=load_fasta_to_dict(fasta_path=aln_fasta_path), aln_type=aln_type, aln_name=aln_name)
+    def load_alignment(cls, aln_fasta_path, aln_type=None, aln_name=None, config_path=None, logger=None):
+        return cls(mult_aln_dict=load_fasta_to_dict(fasta_path=aln_fasta_path),
+                   aln_type=aln_type,
+                   aln_name=aln_name,
+                   config_path=config_path,
+                   logger=logger)
 
     def improve_aln(self,
                     max_gap_fract=0.95,  # maximal fraction of gaps in a column to keep it in alignment
@@ -135,6 +139,9 @@ class MultAln(ConfBase):
         return no_gaps_coords
 
     def get_distance_matrix(self, method="phylip"):
+        if type(self.distance_matrix) is pandas.DataFrame:
+            if not self.distance_matrix.empty:
+                return self.distance_matrix
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
         if method.lower() == "phylip":
