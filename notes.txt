@@ -1,0 +1,3 @@
+1. Move json setup out from db creation code
+2. "Replace" family with btax in db_creation code (more general functions)
+3. Add not only NCBI as available source

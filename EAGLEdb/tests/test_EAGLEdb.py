@@ -20,9 +20,9 @@ except OSError:
 class TestBactDBCreating(unittest.TestCase):
 
     test_tax = {"family": u'Aerococcaceae',
-                       "genus": u'Abiotrophia',
-                       "species": u'Abiotrophia_defectiva',
-                       "strain": u'Abiotrophia_defectiva_ATCC_49176'}
+                "genus": u'Abiotrophia',
+                "species": u'Abiotrophia_defectiva',
+                "strain": u'Abiotrophia_defectiva_ATCC_49176'}
 
     def test_get_bacteria_from_ncbi(self):
         analyzed_bacteria_f_path = os.path.join(INPUT_DIR, "analyzed_bacteria.json")

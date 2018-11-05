@@ -22,7 +22,7 @@ class ConfConstants(ConfBase):
 
     def __init__(self, config_path=DEFAULT_CONFIG):
         # Bacteria db
-        self.only_repr=False
+        self.only_repr = False
 
         super(ConfConstants, self).__init__(config_path=config_path)
 

@@ -224,7 +224,7 @@ def get_un_fix(un_num, fix_len):
         return un_codes[un_num//filled_rank] + get_un_fix(un_num % filled_rank, fix_len - 1)
 
 
-def join_files(in_files_list, out_file_path):
+def join_files(in_files_list, out_file_path, files_transform=None, **kwargs):
     if type(in_files_list) not in (list, tuple):
         if in_files_list == out_file_path:
             return 1
@@ -235,7 +235,10 @@ def join_files(in_files_list, out_file_path):
     with open(out_file_path, 'wb') as out_file:
         for f_path in in_files_list:
             f = open(f_path, 'rb')
-            shutil.copyfileobj(f, out_file)
+            if callable(files_transform):
+                shutil.copyfileobj(files_transform(f, **kwargs), out_file)
+            else:
+                shutil.copyfileobj(f, out_file)
             f.close()
         out_file.close()
 

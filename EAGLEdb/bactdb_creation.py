@@ -16,7 +16,7 @@ from EAGLEdb import join_bacteria_lists
 from EAGLEdb.constants import BACTERIA_LIST_F_NAME, ANALYZED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME
 from EAGLEdb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
-    generate_btax_profile, create_profiles_db
+    generate_btax_profile, create_profiles_db, get_btax_fna
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_table=None,
@@ -397,13 +397,19 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
     rRNA_aln.get_blocks_tsv(tsv_path=family_data["16S_rRNA_tsv"],
                             fasta_path=family_data["16S_rRNA_fasta"],
                             meta_dict=ids_to_org_dict)
-    remained_orgs = map(lambda seq_id: ids_to_org_dict[seq_id]["organism_name"], rRNA_aln.seqs())
+    remained_orgs = list(map(lambda seq_id: ids_to_org_dict[seq_id]["organism_name"], rRNA_aln.seqs()))
     family_data = clean_btax_data(family_data, remained_orgs, stop_level=3, special_keys=special_keys)
     family_data = download_btax_files(key_prefix_pairs={"fna_file": "_genomic.fna.gz"},
                                       btax_data=family_data,
                                       download_dir=db_dir,
                                       logger=EAGLE_logger)
-    family_data["blastdb"] = create_btax_blastdb(family_data, family_name, db_dir,
+    family_data["fam_fna"], family_data["chr_id"] = get_btax_fna(fna_key="fna_file",
+                                                                 btax_data=family_data,
+                                                                 btax_name=family_name,
+                                                                 db_dir=db_dir)
+    family_data["blastdb"] = create_btax_blastdb(btax_fna_path=family_data["fam_fna"],
+                                                 btax_name=family_name,
+                                                 db_dir=db_dir,
                                                  blast_inst_dir=conf_constants.blast_inst_dir,
                                                  logger=EAGLE_logger)
     # repr_alns = <function that builds alignments for set of representative genes (returns dict = {aln_name: MultAln object})>
