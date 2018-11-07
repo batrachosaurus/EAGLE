@@ -232,12 +232,20 @@ class MultAln(ConfBase):
             self.mult_aln_dict_short_id = mult_aln_dict_short_id_filt
             self.short_to_full_seq_names = short_to_full_seq_names_filt
             self.full_to_short_seq_names = full_to_short_seq_names_filt
+            if self.logger:
+                self.logger.info("paralogs removed")
+            else:
+                print("paralogs removed")
         else:
             filtered_aln = self
             filtered_aln.mult_aln_dict = mult_aln_dict_filt
             filtered_aln.mult_aln_dict_short_id = mult_aln_dict_short_id_filt
             filtered_aln.short_to_full_seq_names = short_to_full_seq_names_filt
             filtered_aln.full_to_short_seq_names = full_to_short_seq_names_filt
+            if self.logger:
+                self.logger.info("paralogs removed")
+            else:
+                print("paralogs removed")
             return filtered_aln
 
     def _check_seq_ids_to_org(self, seq_ids_to_orgs):
