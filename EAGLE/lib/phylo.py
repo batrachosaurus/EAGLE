@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 import pandas
 
+from EAGLE.constants import conf_constants
 from EAGLE.lib.general import ConfBase, filter_list
 
 
@@ -33,23 +34,23 @@ class PhyloTree(ConfBase):
 
 
 def build_tree_by_dist(dist_matrix=None,
-                       dist_matrix_f=None,
+                       dist_matrix_path=None,
                        full_seq_names=None,
                        tmp_dir="tmp",
                        method="FastME",
-                       fastme_exec_path="fastme",
+                       fastme_exec_path=conf_constants.fastme_exec_path,
                        config_path=None,
                        logger=None):
 
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
-    if type(dist_matrix) is not pandas.DataFrame and not dist_matrix_f:
+    if type(dist_matrix) is not pandas.DataFrame and not dist_matrix_path:
         if logger:
             logger.warning("No distance matrix input")
         else:
             print("No distance matrix input")
         return 1
-    elif dist_matrix.empty and dist_matrix_f:
+    elif dist_matrix.empty and dist_matrix_path:
         if logger:
             logger.warning("No distance matrix input")
         else:
@@ -57,11 +58,11 @@ def build_tree_by_dist(dist_matrix=None,
         return 1
 
     if method.lower() == "fastme":
-        if not dist_matrix_f:
-            dist_matrix_f = os.path.join(tmp_dir, "dist_matr.ph")
-            dump_phylip_dist_matrix(dist_matrix=dist_matrix, matrix_path=dist_matrix_f)
+        if not dist_matrix_path:
+            dist_matrix_path = os.path.join(tmp_dir, "dist_matr.ph")
+            dump_phylip_dist_matrix(dist_matrix=dist_matrix, matrix_path=dist_matrix_path)
         tree_path = os.path.join(tmp_dir, "tree.nwk")
-        fastme_cmd = fastme_exec_path + " -i " + dist_matrix_f + " -o " + tree_path
+        fastme_cmd = fastme_exec_path + " -i " + dist_matrix_path + " -o " + tree_path
         subprocess.call(fastme_cmd, shell=True)
         phylo_tree = PhyloTree.load_tree(newick_path=tree_path,
                                          full_seq_names=full_seq_names,
