@@ -60,10 +60,13 @@ def build_tree_by_dist(dist_matrix=None,
         if not dist_matrix_f:
             dist_matrix_f = os.path.join(tmp_dir, "dist_matr.ph")
             dump_phylip_dist_matrix(dist_matrix=dist_matrix, matrix_path=dist_matrix_f)
-        tree_f = os.path.join(tmp_dir, "tree.nwk")
-        fastme_cmd = fastme_exec_path + " -i " + dist_matrix_f + " -o " + tree_f
+        tree_path = os.path.join(tmp_dir, "tree.nwk")
+        fastme_cmd = fastme_exec_path + " -i " + dist_matrix_f + " -o " + tree_path
         subprocess.call(fastme_cmd, shell=True)
-        tree_newick = load_newick(newick_path=tree_f)
+        phylo_tree = PhyloTree.load_tree(newick_path=tree_path,
+                                         full_seq_names=full_seq_names,
+                                         config_path=config_path,
+                                         logger=logger)
         if logger:
             logger.info("Phylogenetic tree built with FastME")
         else:
@@ -71,7 +74,7 @@ def build_tree_by_dist(dist_matrix=None,
     else:
         return 1
     shutil.rmtree(tmp_dir)
-    return PhyloTree(newick=tree_newick, full_seq_names=full_seq_names, config_path=config_path, logger=logger)
+    return phylo_tree
 
 
 def compare_trees(newick1, newick2):

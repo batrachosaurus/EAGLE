@@ -438,17 +438,17 @@ def construct_mult_aln(seq_dict=None,
         else:
             print("MUSCLE finished")
 
-    mult_aln_dict = load_fasta_to_dict(out_fasta_path)
+    mult_aln = MultAln.load_alignment(aln_fasta_path=out_fasta_path,
+                                      aln_type=aln_type,
+                                      aln_name=aln_name,
+                                      config_path=config_path,
+                                      logger=logger)
+    mult_aln.emboss_inst_dir = emboss_inst_dir
+    mult_aln.hmmer_inst_dir = hmmer_inst_dir
+    mult_aln.tmp_dir = tmp_dir
     if remove_tmp:
         shutil.rmtree(tmp_dir)
-    return MultAln(mult_aln_dict=mult_aln_dict,
-                   aln_type=aln_type,
-                   emboss_inst_dir=emboss_inst_dir,
-                   hmmer_inst_dir=hmmer_inst_dir,
-                   aln_name=aln_name,
-                   tmp_dir=tmp_dir,
-                   config_path=config_path,
-                   logger=logger)
+    return mult_aln
 
 
 def detect_seqs_type(fasta_path=None, fasta_dict=None, nuc_freq_thr=0.75):
