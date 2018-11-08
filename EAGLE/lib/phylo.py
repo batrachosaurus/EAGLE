@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 import pandas
 
-from EAGLE.constants import conf_constants
+from EAGLE.constants import conf_constants, EAGLE_logger
 from EAGLE.lib.general import ConfBase, filter_list
 
 
@@ -120,10 +120,12 @@ def load_phylip_dist_matrix(matrix_path):
 def dump_phylip_dist_matrix(dist_matrix, matrix_path):
     matr_f = open(matrix_path, 'w')
     matr_f.write("    %s\n" % len(dist_matrix.columns))
+    EAGLE_logger.info("Still OK")
     for seq in dist_matrix.index:
         num_spaces_to_add = 10 - len(seq)
         spaces_to_add = [" " for i in range(num_spaces_to_add)]
         matr_f.write("%s %s\n" % (seq+"".join(spaces_to_add), " ".join(dist_matrix.loc[seq].tolist())))
+        EAGLE_logger.info("OK too")
     matr_f.close()
 
 
