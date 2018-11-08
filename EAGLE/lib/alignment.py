@@ -273,6 +273,10 @@ class MultAln(ConfBase):
         seqs_dict = dict(list(blocks_df.apply(self._write_blocks_tsv, axis=1, args=(tsv_f, meta_dict))))
         tsv_f.close()
         dump_fasta_dict(fasta_dict=seqs_dict, fasta_path=fasta_path)
+        if self.logger:
+            self.logger.info("Blocks tsv %s ready" % tsv_path)
+        else:
+            print("Blocks tsv %s ready" % tsv_path)
 
     def _write_blocks_tsv(self, block_info, tsv_f, meta_dict=None):
         tsv_f.write("\t".join(map(str, list(block_info)))+"; %s\n" %
