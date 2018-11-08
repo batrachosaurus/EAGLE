@@ -143,7 +143,6 @@ def get_btax_fna(fna_key, btax_data, btax_name, db_dir):
 
 def transform_chr_id(fna_f, chr_id_dict, tax_dict, **kwargs):
     transf_fna_lines = list()
-    EAGLE_logger.info("Now OK")  ###
     for line_ in fna_f:
         line = None
         line = line_.strip()

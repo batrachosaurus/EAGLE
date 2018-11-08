@@ -407,7 +407,6 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
                                                                  btax_data=family_data,
                                                                  btax_name=family_name,
                                                                  db_dir=db_dir)
-    EAGLE_logger.info("Still OK")###
     family_data["blastdb"] = create_btax_blastdb(btax_fna_path=family_data["fam_fna"],
                                                  btax_name=family_name,
                                                  db_dir=db_dir,
