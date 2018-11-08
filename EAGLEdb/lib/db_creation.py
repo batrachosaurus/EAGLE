@@ -13,7 +13,7 @@ import operator
 import wget
 
 
-from EAGLE.constants import conf_constants
+from EAGLE.constants import conf_constants, EAGLE_logger
 from EAGLE.lib.general import join_files, gunzip
 from EAGLE.lib.alignment import BlastHandler, HmmerHandler
 from EAGLEdb.constants import PROFILES_DB_NAME
@@ -133,6 +133,7 @@ def get_from_btax_data(key, btax_data, key_path=list()):
 def get_btax_fna(fna_key, btax_data, btax_name, db_dir):
     chr_id_dict = dict()
     btax_fna_path = os.path.join(db_dir, btax_name + ".fasta")
+    EAGLE_logger.info("Now OK")###
     fna_list = get_from_btax_data(fna_key, btax_data)
     join_files(in_files_list=filter(None, map(lambda fna: fna[0], fna_list)),
                out_file_path=btax_fna_path,
