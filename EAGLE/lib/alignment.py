@@ -188,6 +188,7 @@ class MultAln(ConfBase):
         return self.distance_matrix
 
     def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):
+        # TODO: seems to work not always properly => test it carefully
         short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)
         if type(self.distance_matrix) is not pandas.DataFrame:
             self.distance_matrix= None
