@@ -133,7 +133,6 @@ def get_from_btax_data(key, btax_data, key_path=list()):
 def get_btax_fna(fna_key, btax_data, btax_name, db_dir):
     chr_id_dict = dict()
     btax_fna_path = os.path.join(db_dir, btax_name + ".fasta")
-    EAGLE_logger.info("Now OK")###
     fna_list = get_from_btax_data(fna_key, btax_data)
     join_files(in_files_list=filter(None, map(lambda fna: fna[0], fna_list)),
                out_file_path=btax_fna_path,
@@ -144,19 +143,20 @@ def get_btax_fna(fna_key, btax_data, btax_name, db_dir):
 
 def transform_chr_id(fna_f, chr_id_dict, tax_dict, **kwargs):
     transf_fna_lines = list()
+    EAGLE_logger.info("Now OK")  ###
     for line_ in fna_f:
         line = None
         line = line_.strip()
         if not line:
             continue
-        if line[0] == ">":
+        if line[0] == b">":
             chr_id = None
             chr_id = line[1:].split()[0]
-            transf_fna_lines.append(">"+chr_id)
+            transf_fna_lines.append(b">"+chr_id)
             chr_id_dict[chr_id] = tax_dict[fna_f.name]
         else:
             transf_fna_lines.append(line)
-    return io.StringIO("\n".join(transf_fna_lines))
+    return io.BytesIO(b"\n".join(transf_fna_lines))
 
 
 def create_btax_blastdb(btax_fna_path, btax_name, db_dir, blast_inst_dir=conf_constants.blast_inst_dir, logger=None):
