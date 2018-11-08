@@ -390,7 +390,6 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
     # rRNA_tree, removed_seqs = rRNA_tree.according_to_taxonomy(taxonomy=fam_tax)
     # rRNA_aln.remove_seqs(seqs_list=removed_seqs)
     ###
-    EAGLE_logger.info("Still OK")###
     family_data["16S_rRNA_tree"] = {"newick": rRNA_tree.newick,
                                     "full_seq_names": rRNA_tree.full_seq_names}
     family_data["16S_rRNA_tsv"] = os.path.join(db_dir, family_name+"_16S_rRNA.tsv")
@@ -408,6 +407,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
                                                                  btax_data=family_data,
                                                                  btax_name=family_name,
                                                                  db_dir=db_dir)
+    EAGLE_logger.info("Still OK")###
     family_data["blastdb"] = create_btax_blastdb(btax_fna_path=family_data["fam_fna"],
                                                  btax_name=family_name,
                                                  db_dir=db_dir,
