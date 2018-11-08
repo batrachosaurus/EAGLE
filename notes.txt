@@ -1,4 +1,5 @@
-1. Move json setup out from db creation code
-2. "Replace" family with btax in db_creation code (more general functions)
-3. Add not only NCBI as available source
-4. HMMER handler may be replaced with HMM profiles handler
+1. EAGLE.lib.alignment.MultAln.remove_paralogs seems to work not always properly!
+2. Move json setup out from db creation code
+3. "Replace" family with btax in db_creation code (more general functions)
+4. Add not only NCBI as available source
+5. HMMER handler may be replaced with HMM profiles handler
