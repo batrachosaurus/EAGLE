@@ -31,7 +31,7 @@ pip install git+https://github.com/loven-doo/EAGLE.git@dev --upgrade
 ```
 
 ### Prepare the database
-You can (recommended way) download the default database from [here]()  
+You can (recommended way) download the default database from [here](http://ma.fbb.msu.ru/loven-doo/EAGLE/EAGLEdb.tar.gz)  
 Other option is to build it from prepared lists of NCBI genomes:
 ```
 EAGLEdb -dbt bacteria
