@@ -175,11 +175,11 @@ def worker(kwargs, use_try=False):
     if 'try_err_message' in kwargs.keys():
         use_try = True
     logger_name = kwargs.get('logger_name', None)
-    if logger_name:
+    if logger_name is not None:
         logger = logging.getLogger(logger_name)
     else:
         logger = None
-    if func:
+    if callable(func):
         if use_try:
             try:
                 func(**kwargs)
