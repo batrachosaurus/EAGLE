@@ -19,6 +19,40 @@ DB_JSON = "bact_fam.json"
 NUM_THREADS = 6
 PROCESSED_BACT_JSON = "processed_bact.json"
 
+# USABLE_FAMILIES = json.load(open(DB_JSON)).keys()
+USABLE_FAMILIES = [  # list of families that consists of at list 4 genera and 8 species
+    "Erwiniaceae",
+    "Rhodospirillaceae",
+    "Helicobacteraceae",
+    "Halomonadaceae",
+    "Alteromonadaceae",
+    "Sphingomonadaceae",
+    "Rhodobacteraceae",
+    "Pseudonocardiaceae",
+    "Bradyrhizobiaceae",
+    "Burkholderiaceae",
+    "Vibrionaceae",
+    "Oxalobacteraceae",
+    "Comamonadaceae",
+    "Enterobacteriaceae",
+    "Alcaligenaceae",
+    "Flavobacteriaceae",
+    "Erythrobacteraceae",
+    "Micrococcaceae",
+    "Microbacteriaceae",
+    "Planococcaceae",
+    "Ectothiorhodospiraceae",
+    "Spirochaetaceae",
+    "Acetobacteraceae",
+    "Peptococcaceae",
+    "Morganellaceae",
+    "Lachnospiraceae",
+    "Xanthomonadaceae",
+    "Cytophagaceae",
+    "Bifidobacteriaceae",
+    "Thermaceae",
+]
+
 
 def get_ncbi_links_list(summary_table):
     summary_df = pandas.read_csv(summary_table, header=1, sep="\t", dtype=str)
@@ -33,7 +67,6 @@ ncbi_db_links = list(set(ncbi_db_links))
 
 if not os.path.exists(WORKING_DIR):
     os.makedirs(WORKING_DIR)
-families_ = json.load(open(DB_JSON)).keys()
 processed_bact_f = io.open(PROCESSED_BACT_JSON, 'w', newline="\n")
 processed_bact_f.write(u"[\n")
 for ncbi_db_link in ncbi_db_links:
@@ -52,7 +85,7 @@ for ncbi_db_link in ncbi_db_links:
     if os.path.exists(os.path.join(WORKING_DIR, tax_f_name)):
         bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
             get_taxonomy(tax_f_name, f_dir=WORKING_DIR)
-        if bacterium_info["family"] in families_:
+        if bacterium_info["family"] in USABLE_FAMILIES:
             download_organism_files(download_prefix, "_genomic.fna.gz", download_dir=WORKING_DIR, logger=EAGLE_logger)
             fna_f_path = os.path.join(WORKING_DIR, assembly_id+"_genomic.fna.gz")
             if os.path.exists(fna_f_path):
