@@ -35,7 +35,7 @@ def shred_seqs(fasta_dict, part_l=50000, parts_ov=5000):
                 if last_ov_c < l_seq:
                     shredded_seqs[seq_id].append(fasta_dict[seq_id][i+part_l-int(parts_ov/2): last_ov_c])
                 else:
-                    shredded_seqs[seq_id].append(fasta_dict[seq_id][i + part_l - int(parts_ov/2):])
+                    shredded_seqs[seq_id].append(fasta_dict[seq_id][i+part_l-int(parts_ov/2):])
             else:
                 shredded_seqs[seq_id].append(fasta_dict[seq_id][i:])
             i += part_l
