@@ -124,5 +124,8 @@ def _aggregate_queries(in_fasta, queries_scores_dict):
 def _get_queries_btax(queries_scores_dict):
     queries_btax = dict()
     for query in queries_scores_dict.keys():
-        queries_btax[query] = sorted(queries_scores_dict[query].items(), key=lambda x: x[1], reverse=True)[0][0]
+        try:
+            queries_btax[query] = sorted(queries_scores_dict[query].items(), key=lambda x: x[1], reverse=True)[0][0]
+        except IndexError:
+            queries_btax[query] = "Unclassified"
     return queries_btax
