@@ -408,7 +408,7 @@ class HmmerHandler(ConfBase):
     def run_hmmscan(self, profiles_db, in_fasta, num_threads=4, out_path=None):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
-        shredded_fasta_path = os.path.join(self.tmp_dir, in_fasta)
+        shredded_fasta_path = os.path.join(self.tmp_dir, os.path.basename(in_fasta))
         if not out_path:
             if "." in in_fasta:
                 out_path = ".".join(in_fasta.split(".")[:-1]) + ".hsr"

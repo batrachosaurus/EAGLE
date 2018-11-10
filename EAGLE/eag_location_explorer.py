@@ -10,6 +10,7 @@ from EAGLE.lib.general import filter_list
 
 def explore_genes(in_fasta,
                   db_json,
+                  out_dir="",
                   mode=None,
                   num_threads=None,
                   btax_det_method="hmmer",
@@ -28,6 +29,7 @@ def explore_genes(in_fasta,
     btax_names = get_btax(in_fasta,
                           db_info["db_repr_profiles"],
                           btax_names=db_info.keys(),
+                          working_dir=out_dir,
                           mode=conf_constants.mode,
                           num_threads=conf_constants.num_threads,
                           method=btax_det_method,
@@ -42,6 +44,7 @@ def explore_genes(in_fasta,
 def get_btax(in_fasta,
              profiles_db,
              btax_names,
+             working_dir="",
              mode=conf_constants.mode,
              num_threads=conf_constants.num_threads,
              method="hmmer",
@@ -50,7 +53,10 @@ def get_btax(in_fasta,
              remove_scan_out=True):
 
     if method.lower() == "hmmer":
-        hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir, config_path=config_path, logger=EAGLE_logger)
+        hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir,
+                                     tmp_dir=os.path.join(working_dir, "hmmer_tmp"),
+                                     config_path=config_path,
+                                     logger=EAGLE_logger)
         EAGLE_logger.info("hmmscan started")
         hmmer_handler.run_hmmscan(profiles_db, in_fasta, num_threads=num_threads, out_path=PROFILES_SCAN_OUT)
         EAGLE_logger.info("hmmscan finished")

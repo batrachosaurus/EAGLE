@@ -16,6 +16,11 @@ def _parse_cmd_args(*args):
                         "--db-json",
                         help="Path to json with EAGLEdb to use description",
                         required=True)
+    parser.add_argument("-o",
+                        "--out-dir",
+                        help="Path to the directory for output",
+                        required=False,
+                        default="")
     parser.add_argument("-m",
                         "--mode",
                         help="Mode to run EAGLE: 'genome' - parses input fasta file as single genome "
