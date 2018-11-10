@@ -67,7 +67,7 @@ def get_btax(in_fasta,
         query_scores_dict = defaultdict(float)
         lines_from_query = 0
         query = None
-        profiles_scan_f = open(PROFILES_SCAN_OUT)
+        profiles_scan_f = open(os.path.join(working_dir, PROFILES_SCAN_OUT))
         for line_ in profiles_scan_f:
             line = None
             line = line_.strip()
@@ -92,7 +92,7 @@ def get_btax(in_fasta,
                 except:
                     pass
         if remove_scan_out:
-            os.remove(PROFILES_SCAN_OUT)
+            os.remove(os.path.join(working_dir, PROFILES_SCAN_OUT))
 
     if mode == "genome":
         queries_scores_dict = _aggregate_queries(in_fasta, queries_scores_dict)
