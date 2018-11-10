@@ -1,7 +1,10 @@
+import os
 from collections import defaultdict
+import subprocess
 
 from Bio.Seq import Seq
 
+from EAGLE.constants import conf_constants
 from EAGLE.lib.general import filter_list, get_un_fix
 
 
@@ -161,3 +164,8 @@ def _get_part_size_list(num_letters, num_words):
             return [4, 4, 1]
         else:
             return [4, 5]
+
+
+def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_constants.emboss_inst_dir):
+    subprocess.call(os.path.join(emboss_inst_dir, "getorf") + " " + in_fasta_path + " " + out_fasta_path + " -minsize "
+                    + str(minsize), shell=True)
