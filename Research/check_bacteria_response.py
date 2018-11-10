@@ -13,9 +13,9 @@ from EAGLEdb.lib.db_creation import download_organism_files
 from EAGLEdb.bactdb_creation import get_taxonomy
 
 
-summary_tables = sys.argv[1:]
+SUMMARY_TABLES = sys.argv[1].split(",")
+DB_JSON = sys.argv[2]
 WORKING_DIR = "check_bactdb"
-DB_JSON = "bact_fam.json"
 NUM_THREADS = 6
 PROCESSED_BACT_JSON = "processed_bact.json"
 
@@ -61,7 +61,7 @@ def get_ncbi_links_list(summary_table):
 
 
 ncbi_db_links = list()
-for summary_table in summary_tables:
+for summary_table in SUMMARY_TABLES:
     ncbi_db_links.__iadd__(get_ncbi_links_list(summary_table))
 ncbi_db_links = list(set(ncbi_db_links))
 

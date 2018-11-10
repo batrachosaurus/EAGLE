@@ -1,7 +1,7 @@
 import os
 import shutil
 import subprocess
-from collections import defaultdict, Counter
+from collections import defaultdict, OrderedDict, Counter
 
 import numpy as np
 import pandas
@@ -10,7 +10,7 @@ from scipy.stats import chisquare
 from EAGLE.constants import conf_constants
 from EAGLE.lib.phylo import load_phylip_dist_matrix
 from EAGLE.lib.general import ConfBase, join_files
-from EAGLE.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names
+from EAGLE.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs
 
 
 class MultAln(ConfBase):
@@ -383,9 +383,11 @@ class HmmerHandler(ConfBase):
 
     def __init__(self,
                  inst_dir=conf_constants.hmmer_inst_dir,
+                 tmp_dir="tmp",
                  config_path=None,
                  logger=None):
 
+        self.tmp_dir = tmp_dir
         self.inst_dir = inst_dir
         self.logger = logger
 
@@ -400,15 +402,30 @@ class HmmerHandler(ConfBase):
         hmmpress_cmd = os.path.join(self.inst_dir, "hmmpress") + " " + profiles_db_path
         subprocess.call(hmmpress_cmd, shell=True)
 
+    def run_hmmsearch(self):
+        pass
+
     def run_hmmscan(self, profiles_db, in_fasta, num_threads=4, out_path=None):
+        if not os.path.exists(self.tmp_dir):
+            os.makedirs(self.tmp_dir)
+        shredded_fasta_path = os.path.join(self.tmp_dir, in_fasta)
         if not out_path:
             if "." in in_fasta:
                 out_path = ".".join(in_fasta.split(".")[:-1]) + ".hsr"
             else:
                 out_path = in_fasta + ".hsr"
+        in_fasta_dict = load_fasta_to_dict(fasta_path=in_fasta)
+        shredded_in_fasta = shred_seqs(fasta_dict=in_fasta_dict, part_l=50000, parts_ov=5000)
+        fasta_to_scan_dict = OrderedDict()
+        i = 1
+        for seq_id in shredded_in_fasta:
+            for seq in shredded_in_fasta[seq_id]:
+                fasta_to_scan_dict[seq_id+"_"+str(i)] = seq
+        dump_fasta_dict(fasta_dict=shredded_in_fasta, fasta_path=shredded_fasta_path)
         hmmscan_cmd = os.path.join(self.inst_dir, "hmmscan") + " --cpu " + str(num_threads) + " " + profiles_db + " " +\
-                      in_fasta + " > " + out_path
+                      shredded_fasta_path + " > " + out_path
         subprocess.call(hmmscan_cmd, shell=True)
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
 
 def construct_mult_aln(seq_dict=None,

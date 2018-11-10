@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from Bio.Seq import Seq
 
 from EAGLE.lib.general import filter_list, get_un_fix
@@ -19,6 +21,25 @@ def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
             return fasta_dict[seq_id][end-1: start]
         else:
             return str(Seq(fasta_dict[seq_id][end-1: start]).reverse_complement())
+
+
+def shred_seqs(fasta_dict, part_l=50000, parts_ov=5000):
+    shredded_seqs = defaultdict(list)
+    for seq_id in fasta_dict:
+        i = 0
+        l_seq = len(fasta_dict[seq_id])
+        while i < l_seq:
+            if i+part_l < l_seq:
+                shredded_seqs[seq_id].append(fasta_dict[seq_id][i: i+part_l])
+                last_ov_c = i + part_l + int(parts_ov/2)
+                if last_ov_c < l_seq:
+                    shredded_seqs[seq_id].append(fasta_dict[seq_id][i+part_l-int(parts_ov/2): last_ov_c])
+                else:
+                    shredded_seqs[seq_id].append(fasta_dict[seq_id][i + part_l - int(parts_ov/2):])
+            else:
+                shredded_seqs[seq_id].append(fasta_dict[seq_id][i:])
+            i += part_l
+    return shredded_seqs
 
 
 def load_fasta_to_dict(fasta_path):
