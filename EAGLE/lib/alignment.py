@@ -421,7 +421,7 @@ class HmmerHandler(ConfBase):
         for seq_id in shredded_in_fasta:
             for seq in shredded_in_fasta[seq_id]:
                 fasta_to_scan_dict[seq_id+"_"+str(i)] = seq
-        dump_fasta_dict(fasta_dict=shredded_in_fasta, fasta_path=shredded_fasta_path)
+        dump_fasta_dict(fasta_dict=fasta_to_scan_dict, fasta_path=shredded_fasta_path)
         hmmscan_cmd = os.path.join(self.inst_dir, "hmmscan") + " --cpu " + str(num_threads) + " " + profiles_db + " " +\
                       shredded_fasta_path + " > " + out_path
         subprocess.call(hmmscan_cmd, shell=True)
