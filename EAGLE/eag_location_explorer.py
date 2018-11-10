@@ -58,7 +58,10 @@ def get_btax(in_fasta,
                                      config_path=config_path,
                                      logger=EAGLE_logger)
         EAGLE_logger.info("hmmscan started")
-        hmmer_handler.run_hmmscan(profiles_db, in_fasta, num_threads=num_threads, out_path=PROFILES_SCAN_OUT)
+        hmmer_handler.run_hmmscan(profiles_db,
+                                  in_fasta,
+                                  num_threads=num_threads,
+                                  out_path=os.path.join(working_dir, PROFILES_SCAN_OUT))
         EAGLE_logger.info("hmmscan finished")
         queries_scores_dict = defaultdict(dict)
         query_scores_dict = defaultdict(float)
@@ -81,10 +84,13 @@ def get_btax(in_fasta,
                 query = None
                 lines_from_query = 0
             elif query:
-                line_list = filter_list(line.split())
-                btax_name = _get_btax_name(line_list[8], btax_names)
-                if btax_name:
-                    query_scores_dict[btax_name] += float(line_list[4])
+                try:
+                    line_list = filter_list(line.split())
+                    btax_name = _get_btax_name(line_list[8], btax_names)
+                    if btax_name:
+                        query_scores_dict[btax_name] += float(line_list[4])
+                except:
+                    pass
         if remove_scan_out:
             os.remove(PROFILES_SCAN_OUT)
 
