@@ -39,7 +39,7 @@ def explore_genes(in_fasta,
     btax_names = get_btax(in_fasta,
                           db_info["db_repr_profiles"],
                           btax_names=db_info.keys(),
-                          working_dir=out_dir,
+                          work_dir=out_dir,
                           mode=conf_constants.mode,
                           num_threads=conf_constants.num_threads,
                           method=btax_det_method,
@@ -67,7 +67,8 @@ def explore_genes(in_fasta,
                                                orfs_fasta_path=orfs_fasta_path,
                                                btax_data=db_info[btax_name],
                                                res_gtf_json=res_gtf_json,
-                                               num_threads=conf_constants.num_threads)
+                                               num_threads=conf_constants.num_threads,
+                                               work_dir=out_dir)
     else:
         # TODO: write blast for contigs mode
         pass
@@ -79,7 +80,7 @@ def explore_genes(in_fasta,
 def get_btax(in_fasta,
              profiles_db,
              btax_names,
-             working_dir="",
+             work_dir="",
              mode=conf_constants.mode,
              num_threads=conf_constants.num_threads,
              method="hmmer",
@@ -89,20 +90,20 @@ def get_btax(in_fasta,
 
     if method.lower() == "hmmer":
         hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir,
-                                     tmp_dir=os.path.join(working_dir, "hmmer_tmp"),
+                                     tmp_dir=os.path.join(work_dir, "hmmer_tmp"),
                                      config_path=config_path,
                                      logger=EAGLE_logger)
         EAGLE_logger.info("hmmscan started")
         hmmer_handler.run_hmmscan(profiles_db,
                                   in_fasta,
                                   num_threads=num_threads,
-                                  out_path=os.path.join(working_dir, PROFILES_SCAN_OUT))
+                                  out_path=os.path.join(work_dir, PROFILES_SCAN_OUT))
         EAGLE_logger.info("hmmscan finished")
         queries_scores_dict = defaultdict(dict)
         query_scores_dict = defaultdict(float)
         lines_from_query = 0
         query = None
-        profiles_scan_f = open(os.path.join(working_dir, PROFILES_SCAN_OUT))
+        profiles_scan_f = open(os.path.join(work_dir, PROFILES_SCAN_OUT))
         for line_ in profiles_scan_f:
             line = None
             line = line_.strip()
@@ -127,7 +128,7 @@ def get_btax(in_fasta,
                 except:
                     pass
         if remove_scan_out:
-            os.remove(os.path.join(working_dir, PROFILES_SCAN_OUT))
+            os.remove(os.path.join(work_dir, PROFILES_SCAN_OUT))
 
     if mode == "genome":
         queries_scores_dict = _aggregate_queries(in_fasta, queries_scores_dict)
@@ -170,7 +171,9 @@ def analyze_tblastn_out(tblastn_out_path,
                         orfs_fasta_path,
                         btax_data,
                         res_gtf_json,
-                        num_threads=conf_constants.num_threads):
+                        num_threads=conf_constants.num_threads,
+                        work_dir=""):
+
     orfs_stats = mp.Manager().dict()
     seq_ids_to_orgs = dict((seq_id, {"organism_name": org_tax[-1]}) for seq_id, org_tax in btax_data["chr_id"].items())
     tblatn_out_dict = read_blast_out(blast_out_path=tblastn_out_path)
@@ -185,6 +188,7 @@ def analyze_tblastn_out(tblastn_out_path,
             "btax_fna_path": btax_data["fam_fna"],
             "seq_ids_to_orgs": seq_ids_to_orgs,
             "orfs_stats": orfs_stats,
+            "work_dir": work_dir,
         })
 
     pool = mp.Pool(num_threads)
@@ -200,8 +204,20 @@ def analyze_tblastn_out(tblastn_out_path,
     return res_gtf_json
 
 
-def get_orf_stats(orf_id, orf_homologs_seqs, homologs_list, btax_fna_path, seq_ids_to_orgs, orfs_stats, **kwargs):
+def get_orf_stats(orf_id,
+                  orf_homologs_seqs,
+                  homologs_list,
+                  btax_fna_path,
+                  seq_ids_to_orgs,
+                  orfs_stats,
+                  work_dir,
+                  **kwargs):
+
     orf_stats = dict()
+    if not homologs_list:
+        orf_stats = {"p_uniformity": None, "phylo_diff": None}
+        orfs_stats[orf_id] = orf_stats
+        return
     btax_fna = load_fasta_to_dict(fasta_path=btax_fna_path)
     for hom in homologs_list:
         if hom["subj_start"] <= hom["subj_end"]:
@@ -216,7 +232,7 @@ def get_orf_stats(orf_id, orf_homologs_seqs, homologs_list, btax_fna_path, seq_i
                                       aln_name=orf_id+"_aln",
                                       aln_type="prot",
                                       method="MUSCLE",
-                                      tmp_dir=orf_id+"_aln_tmp",
+                                      tmp_dir=os.path.join(work_dir, orf_id + "_aln_tmp"),
                                       logger=EAGLE_logger)
 
     # Uniformity
@@ -231,7 +247,7 @@ def get_orf_stats(orf_id, orf_homologs_seqs, homologs_list, btax_fna_path, seq_i
     orf_homs_tree = build_tree_by_dist(dist_matrix=orf_mult_aln.get_distance_matrix(),
                                        method="FastME",
                                        full_seq_names=reverse_dict(orf_mult_aln.full_to_short_seq_names),
-                                       tmp_dir=orf_id+"_phylo_tmp",
+                                       tmp_dir=os.path.join(work_dir, orf_id+"_phylo_tmp"),
                                        logger=EAGLE_logger)
 
     orfs_stats[orf_id] = orf_stats
