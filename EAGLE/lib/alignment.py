@@ -115,7 +115,15 @@ class MultAln(ConfBase):
                 seq_coord_list.append(seq_c_dict)
             return pandas.DataFrame(seq_coord_list)
         else:
-            pass  # TODO: write output as alignment
+            if inplace:
+                seqs_ids = self.mult_aln_dict.keys()
+                for seq_id in seqs_ids:
+                    self.mult_aln_dict[seq_id] = "".join(self.mult_aln_dict[seq_id][c1: c2] for c1, c2 in coords)
+            else:
+                impr_mult_aln_dict = dict()
+                for seq_id in self.mult_aln_dict:
+                    impr_mult_aln_dict[seq_id] = "".join(self.mult_aln_dict[seq_id][c1: c2] for c1, c2 in coords)
+                return MultAln(impr_mult_aln_dict)  # TODO: set MultAln properly
 
     @staticmethod
     def _update_coords(i, coords):
