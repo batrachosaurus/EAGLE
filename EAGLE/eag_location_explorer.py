@@ -185,7 +185,7 @@ def analyze_tblastn_out(tblastn_out_path,
             "orf_id": seq_id,
             "orf_homologs_seqs": {seq_id: orfs_fasta_dict[seq_id]},
             "homologs_list": tblatn_out_dict[seq_id],
-            "btax_fna_path": btax_data["fam_fna"],
+            "btax_data": btax_data,
             "seq_ids_to_orgs": seq_ids_to_orgs,
             "orfs_stats": orfs_stats,
             "work_dir": work_dir,
@@ -207,7 +207,7 @@ def analyze_tblastn_out(tblastn_out_path,
 def get_orf_stats(orf_id,
                   orf_homologs_seqs,
                   homologs_list,
-                  btax_fna_path,
+                  btax_data,
                   seq_ids_to_orgs,
                   orfs_stats,
                   work_dir,
@@ -218,7 +218,7 @@ def get_orf_stats(orf_id,
         orf_stats = {"p_uniformity": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
         return
-    btax_fna = load_fasta_to_dict(fasta_path=btax_fna_path)
+    btax_fna = load_fasta_to_dict(fasta_path=btax_data["fam_fna"])
     for hom in homologs_list:
         if hom["subj_start"] <= hom["subj_end"]:
             orf_homologs_seqs[hom["subj_id"]] = \
@@ -232,7 +232,7 @@ def get_orf_stats(orf_id,
                                       aln_name=orf_id+"_aln",
                                       aln_type="prot",
                                       method="MUSCLE",
-                                      tmp_dir=os.path.join(work_dir, orf_id + "_aln_tmp"),
+                                      tmp_dir=os.path.join(work_dir, orf_id.replace("|", "_")+"_aln_tmp"),
                                       logger=EAGLE_logger)
 
     # Uniformity
@@ -242,12 +242,21 @@ def get_orf_stats(orf_id,
         window_l=conf_constants.unif_window_l,
         windows_step=conf_constants.unif_windows_step
     )
+    # Ka/Ks
     # Phylo
     del orf_mult_aln[orf_id]
     orf_homs_tree = build_tree_by_dist(dist_matrix=orf_mult_aln.get_distance_matrix(),
                                        method="FastME",
-                                       full_seq_names=reverse_dict(orf_mult_aln.full_to_short_seq_names),
-                                       tmp_dir=os.path.join(work_dir, orf_id+"_phylo_tmp"),
+                                       full_seq_names=orf_mult_aln.short_to_full_seq_names,
+                                       tmp_dir=os.path.join(work_dir, orf_id.replace("|", "_")+"_phylo_tmp"),
                                        logger=EAGLE_logger)
+    orf_homs_tree.set_full_names(inplace=True)
+    btax_tree = PhyloTree.load_tree(
+        newick_path=btax_data["16S_rRNA_tree"]["newick"],
+        full_seq_names=dict((short_name, name_dict["organism_name"]) for short_name, name_dict in
+                            btax_data["16S_rRNA_tree"]["full_seq_names"].items())
+    )
+    btax_tree.set_full_names(inplace=True)
+    orf_stats["phylo_diff"] = compare_trees(phylo_tree1=orf_homs_tree, phylo_tree2=btax_tree, method="Robinson-Foulds")
 
     orfs_stats[orf_id] = orf_stats
