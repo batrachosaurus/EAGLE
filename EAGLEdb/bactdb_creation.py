@@ -377,13 +377,12 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
                                   logger=EAGLE_logger)
     EAGLE_logger.info("%s rRNA alignment constructed" % family_name)
     rRNA_aln.short_to_full_seq_names = short_ids_dict
-    rRNA_aln.mult_aln_dict = dict(map(
-        lambda x: (rRNA_aln.short_to_full_seq_names[x[0]], rRNA_aln.mult_aln_dict_short_id[x[0]]),
-        rRNA_aln.mult_aln_dict_short_id.items()))
+    # May be errors: not tested
     rRNA_aln.remove_paralogs(ids_to_org_dict, method="min_dist", inplace=True)  # If I use my own alignment method: method="spec_pos"
-    rRNA_tree = build_tree_by_dist(rRNA_aln.get_distance_matrix(), tmp_dir=tmp_fam_dir, logger=EAGLE_logger)
-    rRNA_tree.full_seq_names = dict(map(lambda x: (x, ids_to_org_dict[short_ids_dict[x]]),
-                                        rRNA_aln.mult_aln_dict_short_id.keys()))
+    rRNA_tree = build_tree_by_dist(rRNA_aln.get_distance_matrix(),
+                                   full_seq_names=rRNA_aln.full_to_short_seq_names,
+                                   tmp_dir=tmp_fam_dir,
+                                   logger=EAGLE_logger)
     # TODO: write it for not only repr bacteria usage
     # fam_tax = {family_name: get_tree_from_dict(family_data, stop_level=3, special_keys=special_keys)}
     # rRNA_tree, removed_seqs = rRNA_tree.according_to_taxonomy(taxonomy=fam_tax)
