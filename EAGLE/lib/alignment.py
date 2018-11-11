@@ -328,7 +328,7 @@ class MultAln(ConfBase):
                 return 1
         pass
 
-    def estimate_uniformity(self, cons_thr=conf_constants.cons_thr, window_l=50, windows_step=25):
+    def estimate_uniformity(self, cons_thr=conf_constants.cons_thr, window_l=10, windows_step=5):
         windows_list = list()
         i = 0
         while i < (len(self.mult_aln_dict[self.mult_aln_dict.keys()[0]])):
