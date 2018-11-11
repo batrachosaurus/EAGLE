@@ -55,17 +55,21 @@ def explore_genes(in_fasta,
                                  config_path=config_path,
                                  logger=EAGLE_logger)
     if mode == "genome":
-        fam_name = btax_names.items()[0][1]
-        if fam_name == "Unclassified":
+        btax_name = btax_names.items()[0][1]
+        if btax_name == "Unclassified":
             EAGLE_logger.warning("The family was not detected - cannot run further analysis")
         else:
-            EAGLE_logger.info("Family %s detected for sequence from %s" % (fam_name, in_fasta))
+            EAGLE_logger.info("Family %s detected for sequence from %s" % (btax_name, in_fasta))
             tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
             blast_handler.run_blast_search(blast_type="tblastn",
                                            query=orfs_fasta_path,
-                                           db=db_info[fam_name]["blastdb"],
+                                           db=db_info[btax_name]["blastdb"],
                                            out=tblastn_out_path)
-            res_gtf_json = analyze_tblastn_out(tblastn_out_path, orfs_fasta_path, res_gtf_json, num_threads=num_threads)
+            res_gtf_json = analyze_tblastn_out(tblastn_out_path=tblastn_out_path,
+                                               orfs_fasta_path=orfs_fasta_path,
+                                               btax_data=db_info[btax_name],
+                                               res_gtf_json=res_gtf_json,
+                                               num_threads=num_threads)
     else:
         # TODO: write blast for contigs mode
         pass
@@ -164,6 +168,10 @@ def _get_queries_btax(queries_scores_dict):
     return queries_btax
 
 
-def analyze_tblastn_out(tblastn_out_path, orfs_fasta_path, res_gtf_json, num_threads=conf_constants.num_threads):
+def analyze_tblastn_out(tblastn_out_path,
+                        orfs_fasta_path,
+                        btax_data,
+                        res_gtf_json,
+                        num_threads=conf_constants.num_threads):
 
     return res_gtf_json
