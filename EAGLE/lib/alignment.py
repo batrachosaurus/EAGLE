@@ -339,8 +339,7 @@ class MultAln(ConfBase):
                                              for seq_id in self.mult_aln_dict)))
             i += windows_step
         cons_cols_by_windows = np.array([w.cons_cols_num(cons_thr=cons_thr) for w in windows_list])
-        print(cons_cols_by_windows, cons_cols_by_windows.mean())
-        return chisquare(cons_cols_by_windows)
+        return chisquare(cons_cols_by_windows).pvalue
 
     def cons_cols_num(self, cons_thr=conf_constants.cons_thr):
         cln = 0
