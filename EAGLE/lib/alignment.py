@@ -55,11 +55,23 @@ class MultAln(ConfBase):
     def __setitem__(self, seq_id, seq):
         self.mult_aln_dict[seq_id] = seq
 
+    @property
     def seqs(self):
         if self.mult_aln_dict:
             return list(self.mult_aln_dict.keys())
         else:
             return list()
+
+    @property
+    def length(self):
+        if self.mult_aln_dict:
+            return len(self.mult_aln_dict.values()[0])
+        else:
+            return 0
+
+    @property
+    def num_seqs(self):
+        return len(self.mult_aln_dict)
 
     def dump_alignment(self, aln_fasta_path):
         pass
@@ -117,7 +129,7 @@ class MultAln(ConfBase):
             return pandas.DataFrame(seq_coord_list)
         else:
             if inplace:
-                seqs_ids = self.mult_aln_dict.keys()
+                seqs_ids = self.seqs
                 for seq_id in seqs_ids:
                     self.mult_aln_dict[seq_id] = "".join(self.mult_aln_dict[seq_id][c1: c2] for c1, c2 in coords)
             else:
