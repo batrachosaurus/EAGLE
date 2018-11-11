@@ -320,7 +320,7 @@ class MultAln(ConfBase):
                 return 1
         pass
 
-    def estimate_irregularity(self, cons_thr=conf_constants.cons_thr, window_l=50, windows_step=25):
+    def estimate_uniformity(self, cons_thr=conf_constants.cons_thr, window_l=50, windows_step=25):
         windows_list = list()
         i = 0
         while i < (len(self.mult_aln_dict[self.mult_aln_dict.keys()[0]])):
@@ -375,8 +375,14 @@ class BlastHandler(ConfBase):
             makeblastdb_cmd = os.path.join(self.inst_dir, "makeblastdb") + " -in " + in_fasta + " -dbtype " + dbtype
         subprocess.call(makeblastdb_cmd, shell=True)
 
-    def run_blast_search(self, blast_type, query, db, out, outfmt=7, max_hsps=100):
-        pass
+    def run_blast_search(self, blast_type, query, db, out, num_threads=4, outfmt=7, max_hsps=100):
+        subprocess.call(os.path.join(self.inst_dir, blast_type) +
+                        " -query " + query +
+                        " -db " + db +
+                        " -out " + out +
+                        " -num_threads " + str(num_threads) +
+                        " -outfmt " + str(outfmt) +
+                        " -max_hsps " + str(max_hsps), shell=True)
 
 
 class HmmerHandler(ConfBase):

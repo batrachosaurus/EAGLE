@@ -3,9 +3,12 @@ import json
 import os
 from collections import defaultdict
 
+import pandas as pd
+
 from EAGLE.constants import conf_constants, EAGLE_logger, PROFILES_SCAN_OUT
-from EAGLE.lib.alignment import HmmerHandler
+from EAGLE.lib.alignment import HmmerHandler, BlastHandler
 from EAGLE.lib.general import filter_list
+from EAGLE.lib.seqs import get_orfs
 
 
 def explore_genes(in_fasta,
@@ -25,7 +28,8 @@ def explore_genes(in_fasta,
         conf_constants.mode = None
         conf_constants.mode = mode
 
-    db_info = json.load(open(db_json))
+    with open(db_json) as db_json_f:
+        db_info = json.load(db_json_f)
     btax_names = get_btax(in_fasta,
                           db_info["db_repr_profiles"],
                           btax_names=db_info.keys(),
@@ -39,6 +43,31 @@ def explore_genes(in_fasta,
     resp_f = io.open("responsed_bacteria.json", 'a', newline="\n")
     resp_f.write(unicode("  "+json.dumps({in_fasta: btax_names.items()[0][1]})+",\n"))
     resp_f.close()
+    # analysis continuation
+    orfs_fasta_path = os.path.join(out_dir, os.path.basename(in_fasta)+".orfs")
+    res_gtf_json = get_orfs(in_fasta_path=in_fasta,
+                            out_fasta_path=orfs_fasta_path)
+    blast_handler = BlastHandler(inst_dir=conf_constants.blast_inst_dir,
+                                 config_path=config_path,
+                                 logger=EAGLE_logger)
+    if mode == "genome":
+        fam_name = btax_names.items()[0][1]
+        if fam_name == "Unclassified":
+            EAGLE_logger.warning("The family was not detected - cannot run further analysis")
+        else:
+            EAGLE_logger.info("Family %s detected for sequence from %s" % (fam_name, in_fasta))
+            tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
+            blast_handler.run_blast_search(blast_type="tblastn",
+                                           query=orfs_fasta_path,
+                                           db=db_info[fam_name]["blastdb"],
+                                           out=tblastn_out_path)
+            res_gtf_json = analyze_tblastn_out(tblastn_out_path, orfs_fasta_path, res_gtf_json)
+    else:
+        # TODO: write blast for contigs mode
+        pass
+    res_gtf_df = pd.DataFrame(res_gtf_json.values())
+    res_gtf_df.sort_values("start", inplace=True)
+    res_gtf_df.to_csv(os.path.join(out_dir, os.path.basename(in_fasta)+".gtf"), sep="\t", index=False)
 
 
 def get_btax(in_fasta,
@@ -129,3 +158,8 @@ def _get_queries_btax(queries_scores_dict):
         except IndexError:
             queries_btax[query] = "Unclassified"
     return queries_btax
+
+
+def analyze_tblastn_out(tblastn_out_path, orfs_fasta_path, res_gtf_json):
+    
+    return res_gtf_json

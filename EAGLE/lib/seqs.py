@@ -167,5 +167,43 @@ def _get_part_size_list(num_letters, num_words):
 
 
 def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_constants.emboss_inst_dir):
+    orfs_info = dict()
     subprocess.call(os.path.join(emboss_inst_dir, "getorf") + " " + in_fasta_path + " " + out_fasta_path + " -minsize "
                     + str(minsize), shell=True)
+    orfs_fasta_dict = load_fasta_to_dict(out_fasta_path)
+    orfs_ids = orfs_fasta_dict.keys()
+    for orf_id in orfs_ids:
+        corr_orf_id = None
+        ori = None
+        corr_orf_id, c_start, c_end, ori = _get_orf_info(orf_id)
+        orfs_fasta_dict[corr_orf_id] = orfs_fasta_dict.pop(orf_id)
+        orfs_info[corr_orf_id] = {
+            "seqid": corr_orf_id,
+            "source ": "EAGLE",
+            "type": "ORF",
+            "start": c_start,
+            "end": c_end,
+            "score": "-",
+            "strand": ori,
+            "frame": ".",
+            "attribute": {},
+        }
+    dump_fasta_dict(orfs_fasta_dict, out_fasta_path)
+    return orfs_info
+
+
+def _get_orf_info(orf_title):
+    orf_title_list = orf_title.split()
+    c1 = int(orf_title_list[1].strip("[]"))
+    c2 = int(orf_title_list[3].strip("[]"))
+    if c2 >= c1:
+        ori = "+"
+        c_start = c1
+        c_end = c2
+        orf_id = "_".join(orf_title_list[0][1:].split("_")[:-1]) + "|:" + str(c1) + "-" + str(c2)
+    else:
+        ori = "-"
+        c_start = c2
+        c_end = c1
+        orf_id = "_".join(orf_title_list[0][1:].split("_")[:-1]) + "|:c" + str(c1) + "-" + str(c2)
+    return orf_id, c_start, c_end, ori
