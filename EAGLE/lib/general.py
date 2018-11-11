@@ -2,6 +2,7 @@
 import ConfigParser
 import gzip
 import io
+import gc
 import logging
 import logging.config
 import multiprocessing as mp
@@ -187,14 +188,15 @@ def worker(kwargs, use_try=False):
                 if logger:
                     logger.warning("%s %s" % (kwargs['try_err_message'], sys.exc_info()))
                 else:
-                    print "%s %s" % (kwargs['try_err_message'], sys.exc_info())
+                    print("%s %s" % (kwargs['try_err_message'], sys.exc_info()))
         else:
             func(**kwargs)
     else:
         if logger:
             logger.warning("No function to run")
         else:
-            print "No function to run"
+            print("No function to run")
+    gc.collect()
 
 
 def filter_list(in_list):
