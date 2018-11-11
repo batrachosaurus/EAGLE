@@ -39,7 +39,7 @@ class MultAln(ConfBase):
         self.states_seq = states_seq
         self.aln_type = aln_type
         if not self.aln_type:
-            self.aln_type = detect_seqs_type(self.mult_aln_dict)
+            self.aln_type = detect_seqs_type(fasta_dict=self.mult_aln_dict)
         self.distance_matrix = None
         self.aln_name = aln_name
         self.tmp_dir = tmp_dir
@@ -352,7 +352,7 @@ class MultAln(ConfBase):
             seq_id = None
             seq_id = seqs_ids.pop(np.random.randint(len(seqs_ids)))
             rarefied_aln_dict[seq_id] = self.mult_aln_dict[seq_id]
-        return rarefied_aln_dict
+        return MultAln(rarefied_aln_dict)  # TODO: set MultAln properly
 
 
 class BlastHandler(ConfBase):

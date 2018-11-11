@@ -2,6 +2,7 @@ import io
 import json
 import os
 from collections import defaultdict
+import multiprocessing as mp
 
 import pandas as pd
 
@@ -27,6 +28,9 @@ def explore_genes(in_fasta,
     if mode:
         conf_constants.mode = None
         conf_constants.mode = mode
+
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
 
     with open(db_json) as db_json_f:
         db_info = json.load(db_json_f)
@@ -61,7 +65,7 @@ def explore_genes(in_fasta,
                                            query=orfs_fasta_path,
                                            db=db_info[fam_name]["blastdb"],
                                            out=tblastn_out_path)
-            res_gtf_json = analyze_tblastn_out(tblastn_out_path, orfs_fasta_path, res_gtf_json)
+            res_gtf_json = analyze_tblastn_out(tblastn_out_path, orfs_fasta_path, res_gtf_json, num_threads=num_threads)
     else:
         # TODO: write blast for contigs mode
         pass
@@ -160,6 +164,6 @@ def _get_queries_btax(queries_scores_dict):
     return queries_btax
 
 
-def analyze_tblastn_out(tblastn_out_path, orfs_fasta_path, res_gtf_json):
-    
+def analyze_tblastn_out(tblastn_out_path, orfs_fasta_path, res_gtf_json, num_threads=conf_constants.num_threads):
+
     return res_gtf_json
