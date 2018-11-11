@@ -229,10 +229,10 @@ def get_orf_stats(orf_id,
     btax_fna = None
 
     orf_mult_aln = construct_mult_aln(seq_dict=orf_homologs_seqs,
-                                      aln_name=orf_id+"_aln",
+                                      aln_name=orf_id.replace("|:", "_")+"_aln",
                                       aln_type="prot",
                                       method="MUSCLE",
-                                      tmp_dir=os.path.join(work_dir, orf_id.replace("|", "_")+"_aln_tmp"),
+                                      tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_aln_tmp"),
                                       logger=EAGLE_logger)
 
     # Uniformity
@@ -248,7 +248,7 @@ def get_orf_stats(orf_id,
     orf_homs_tree = build_tree_by_dist(dist_matrix=orf_mult_aln.get_distance_matrix(),
                                        method="FastME",
                                        full_seq_names=orf_mult_aln.short_to_full_seq_names,
-                                       tmp_dir=os.path.join(work_dir, orf_id.replace("|", "_")+"_phylo_tmp"),
+                                       tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp"),
                                        logger=EAGLE_logger)
     orf_homs_tree.set_full_names(inplace=True)
     btax_tree = PhyloTree.load_tree(
