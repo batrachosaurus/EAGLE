@@ -3,6 +3,7 @@ import ConfigParser
 import gzip
 import io
 import gc
+from collections import OrderedDict
 import logging
 import logging.config
 import multiprocessing as mp
@@ -207,6 +208,13 @@ def filter_list(in_list):
         if elm:
             filtered_list.append(elm)
     return filtered_list
+
+
+def reverse_dict(in_dict):
+    out_dict = OrderedDict()
+    for key in in_dict:
+        out_dict[in_dict[key]] = key
+    return out_dict
 
 
 def get_un_fix(un_num, fix_len):

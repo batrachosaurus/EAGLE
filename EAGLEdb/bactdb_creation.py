@@ -377,7 +377,6 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
                                   logger=EAGLE_logger)
     EAGLE_logger.info("%s rRNA alignment constructed" % family_name)
     rRNA_aln.short_to_full_seq_names = short_ids_dict
-    rRNA_aln.full_to_short_seq_names = None
     rRNA_aln.mult_aln_dict = dict(map(
         lambda x: (rRNA_aln.short_to_full_seq_names[x[0]], rRNA_aln.mult_aln_dict_short_id[x[0]]),
         rRNA_aln.mult_aln_dict_short_id.items()))
