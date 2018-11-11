@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+from copy import deepcopy
 from collections import defaultdict, OrderedDict, Counter
 
 import numpy as np
@@ -120,10 +121,12 @@ class MultAln(ConfBase):
                 for seq_id in seqs_ids:
                     self.mult_aln_dict[seq_id] = "".join(self.mult_aln_dict[seq_id][c1: c2] for c1, c2 in coords)
             else:
-                impr_mult_aln_dict = dict()
+                impr_mult_aln = deepcopy(self)
+                impr_mult_aln.mult_aln_dict = dict()
                 for seq_id in self.mult_aln_dict:
-                    impr_mult_aln_dict[seq_id] = "".join(self.mult_aln_dict[seq_id][c1: c2] for c1, c2 in coords)
-                return MultAln(impr_mult_aln_dict)  # TODO: set MultAln properly
+                    impr_mult_aln.mult_aln_dict[seq_id] = \
+                        "".join(self.mult_aln_dict[seq_id][c1:c2] for c1, c2 in coords)
+                return impr_mult_aln
 
     @staticmethod
     def _update_coords(i, coords):
@@ -246,7 +249,7 @@ class MultAln(ConfBase):
             else:
                 print("paralogs removed")
         else:
-            filtered_aln = self
+            filtered_aln = deepcopy(self)
             filtered_aln.mult_aln_dict = mult_aln_dict_filt
             filtered_aln.mult_aln_dict_short_id = mult_aln_dict_short_id_filt
             filtered_aln.short_to_full_seq_names = short_to_full_seq_names_filt
@@ -355,12 +358,13 @@ class MultAln(ConfBase):
         seqs_ids = self.mult_aln_dict.keys()
         if len(seqs_ids) <= seqs_to_remain:
             return self.mult_aln_dict
-        rarefied_aln_dict = dict()
+        rarefied_aln = deepcopy(self)
+        rarefied_aln.mult_aln_dict = dict()
         for i in range(seqs_to_remain):
             seq_id = None
             seq_id = seqs_ids.pop(np.random.randint(len(seqs_ids)))
-            rarefied_aln_dict[seq_id] = self.mult_aln_dict[seq_id]
-        return MultAln(rarefied_aln_dict)  # TODO: set MultAln properly
+            rarefied_aln.mult_aln_dict[seq_id] = self.mult_aln_dict[seq_id]
+        return rarefied_aln
 
 
 class BlastHandler(ConfBase):
