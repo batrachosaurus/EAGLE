@@ -28,6 +28,9 @@ class PhyloTree(ConfBase):
                    config_path=config_path,
                    logger=logger)
 
+    def set_full_names(self, inplace=False):
+        pass
+
     def according_to_taxonomy(self, taxonomy):
         # NOT inplace method!
         pass
@@ -78,8 +81,8 @@ def build_tree_by_dist(dist_matrix=None,
     return phylo_tree
 
 
-def compare_trees(newick1, newick2):
-    pass
+def compare_trees(phylo_tree1, phylo_tree2, method="Robinson-Foulds", phylip_inst_dir=conf_constants.emboss_inst_dir):
+    return None
 
 
 def load_phylip_dist_matrix(matrix_path):
