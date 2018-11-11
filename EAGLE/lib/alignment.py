@@ -29,14 +29,10 @@ class MultAln(ConfBase):
 
         if mult_aln_dict:
             self.mult_aln_dict = mult_aln_dict
-            self.mult_aln_dict_short_id, self.short_to_full_seq_names = reduce_seq_names(fasta_dict=mult_aln_dict,
-                                                                                num_letters=10)
-            self.full_to_short_seq_names = dict(map(lambda x: (x[1], x[0]), self.short_to_full_seq_names.items()))
         else:
-            self.mult_aln_dict = None
-            self.mult_aln_dict_short_id = None
-            self.short_to_full_seq_names = None
-            self.full_to_short_seq_names = None
+            self.mult_aln_dict = dict()
+        self.short_to_full_seq_names = dict()
+        self._short_to_full_seq_names = self.short_to_full_seq_names
         self.states_seq = states_seq
         self.aln_type = aln_type
         if not self.aln_type:
@@ -57,9 +53,17 @@ class MultAln(ConfBase):
 
     def __delitem__(self, seq_id):
         del self.mult_aln_dict[seq_id]
+        if self.distance_matrix:
+            self.distance_matrix = None
+            self.get_distance_matrix()
+
 
     def pop(self, seq_id):
-        return self.mult_aln_dict.pop(seq_id)
+        seq = self.mult_aln_dict.pop(seq_id)
+        if self.distance_matrix:
+            self.distance_matrix = None
+            self.get_distance_matrix()
+        return seq
 
     @property
     def seqs(self):
@@ -78,6 +82,30 @@ class MultAln(ConfBase):
     @property
     def num_seqs(self):
         return len(self.mult_aln_dict)
+
+    @property
+    def mult_aln_dict_short_id(self):
+        if self.mult_aln_dict:
+            mult_aln_dict_short_ids, short_to_full_seq_names = reduce_seq_names(fasta_dict=self.mult_aln_dict,
+                                                                                num_letters=10)
+            if self.short_to_full_seq_names:
+                self._short_to_full_seq_names = self.short_to_full_seq_names
+            else:
+                self._short_to_full_seq_names = short_to_full_seq_names
+            return mult_aln_dict_short_ids
+        else:
+            return dict()
+
+    @property
+    def full_to_short_seq_names(self):
+        if self._short_to_full_seq_names:
+            return dict(filter(None, map(lambda x: (x[1], x[0]) if x[1] in self.seqs else None,
+                                         self._short_to_full_seq_names.items())))
+        elif self.short_to_full_seq_names:
+            return dict(filter(None, map(lambda x: (x[1], x[0]) if x[1] in self.seqs else None,
+                                         self.short_to_full_seq_names.items())))
+        else:
+            return dict()
 
     def dump_alignment(self, aln_fasta_path):
         pass
@@ -176,13 +204,7 @@ class MultAln(ConfBase):
         if method.lower() == "phylip":
             aln_fasta_path = os.path.join(self.tmp_dir, self.aln_name+".fasta")
             phylip_matrix_path = os.path.join(self.tmp_dir, self.aln_name+".phylip")
-            if self.mult_aln_dict:
-                if not self.mult_aln_dict_short_id:
-                    self.mult_aln_dict_short_id, self.short_to_full_seq_names = \
-                        reduce_seq_names(fasta_dict=self.mult_aln_dict, num_letters=10)
-                    self.full_to_short_seq_names = dict(map(lambda x: (x[1], x[0]),
-                                                            self.short_to_full_seq_names.items()))
-            else:
+            if not self.mult_aln_dict:
                 if self.logger:
                     self.logger.warning("No sequences in alignment")
                 else:
@@ -244,24 +266,19 @@ class MultAln(ConfBase):
             short_to_full_seq_names_filt = dict(
                 filter(lambda x: x[0] == org_dist_dict.get(short_seq_ids_to_org.get(x[0], None),
                                                            ((None, None), None))[0][0],
-                       self.short_to_full_seq_names.items())
+                       self._short_to_full_seq_names.items())
                        )
             full_to_short_seq_names_filt = dict(map(lambda x: (x[1], x[0]), short_to_full_seq_names_filt.items()))
             mult_aln_dict_filt = dict(filter(lambda x: x[0] in full_to_short_seq_names_filt.keys(),
                                              self.mult_aln_dict.items()))
-            mult_aln_dict_short_id_filt = dict(filter(lambda x: x[0] in short_to_full_seq_names_filt.keys(),
-                                                      self.mult_aln_dict_short_id.items()))
         else:
             # TODO: write spec_pos method
             short_to_full_seq_names_filt = None
             full_to_short_seq_names_filt = None
             mult_aln_dict_filt = None
-            mult_aln_dict_short_id_filt = None
         if inplace:
             self.mult_aln_dict = mult_aln_dict_filt
-            self.mult_aln_dict_short_id = mult_aln_dict_short_id_filt
-            self.short_to_full_seq_names = short_to_full_seq_names_filt
-            self.full_to_short_seq_names = full_to_short_seq_names_filt
+            self._short_to_full_seq_names = short_to_full_seq_names_filt
             if self.logger:
                 self.logger.info("paralogs removed")
             else:
@@ -269,9 +286,7 @@ class MultAln(ConfBase):
         else:
             filtered_aln = deepcopy(self)
             filtered_aln.mult_aln_dict = mult_aln_dict_filt
-            filtered_aln.mult_aln_dict_short_id = mult_aln_dict_short_id_filt
-            filtered_aln.short_to_full_seq_names = short_to_full_seq_names_filt
-            filtered_aln.full_to_short_seq_names = full_to_short_seq_names_filt
+            filtered_aln._short_to_full_seq_names = short_to_full_seq_names_filt
             if self.logger:
                 self.logger.info("paralogs removed")
             else:
@@ -280,11 +295,11 @@ class MultAln(ConfBase):
 
     def _check_seq_ids_to_org(self, seq_ids_to_orgs):
         to_short_dict = dict()
-        for key in self.short_to_full_seq_names.keys():
+        for key in self._short_to_full_seq_names.keys():
             if seq_ids_to_orgs.get(key, None):
                 to_short_dict[key] = seq_ids_to_orgs[key]["organism_name"]
-            if seq_ids_to_orgs.get(self.short_to_full_seq_names[key], None):
-                to_short_dict[key] = seq_ids_to_orgs[self.short_to_full_seq_names[key]]["organism_name"]
+            if seq_ids_to_orgs.get(self._short_to_full_seq_names[key], None):
+                to_short_dict[key] = seq_ids_to_orgs[self._short_to_full_seq_names[key]]["organism_name"]
         return to_short_dict
 
     def get_blocks_tsv(self, tsv_path, fasta_path, split_into_blocks=False, meta_dict=None):

@@ -9,7 +9,8 @@ from Bio.Seq import Seq
 
 from EAGLE.constants import conf_constants, EAGLE_logger, PROFILES_SCAN_OUT
 from EAGLE.lib.alignment import HmmerHandler, BlastHandler, MultAln, construct_mult_aln
-from EAGLE.lib.general import filter_list, worker
+from EAGLE.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees
+from EAGLE.lib.general import filter_list, worker, reverse_dict
 from EAGLE.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out
 
 
@@ -44,11 +45,7 @@ def explore_genes(in_fasta,
                           method=btax_det_method,
                           hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                           config_path=config_path)
-    # for statistics
-    resp_f = io.open("responsed_bacteria.json", 'a', newline="\n")
-    resp_f.write(unicode("  "+json.dumps({in_fasta: btax_names.items()[0][1]})+",\n"))
-    resp_f.close()
-    # analysis continuation
+
     orfs_fasta_path = os.path.join(out_dir, os.path.basename(in_fasta)+".orfs")
     res_gtf_json = get_orfs(in_fasta_path=in_fasta,
                             out_fasta_path=orfs_fasta_path)
@@ -175,7 +172,7 @@ def analyze_tblastn_out(tblastn_out_path,
                         res_gtf_json,
                         num_threads=conf_constants.num_threads):
     orfs_stats = mp.Manager().dict()
-    seq_ids_to_orgs = dict((seq_id, org_tax[-1]) for seq_id, org_tax in btax_data["chr_id"].items())
+    seq_ids_to_orgs = dict((seq_id, {"organism_name": org_tax[-1]}) for seq_id, org_tax in btax_data["chr_id"].items())
     tblatn_out_dict = read_blast_out(blast_out_path=tblastn_out_path)
     orfs_fasta_dict = load_fasta_to_dict(fasta_path=orfs_fasta_path)
     params_list = list()
@@ -183,7 +180,7 @@ def analyze_tblastn_out(tblastn_out_path,
         params_list.append({
             "function": get_orf_stats,
             "orf_id": seq_id,
-            "orf_homologs_seqs": {seq_id, orfs_fasta_dict[seq_id]},
+            "orf_homologs_seqs": {seq_id: orfs_fasta_dict[seq_id]},
             "homologs_list": tblatn_out_dict[seq_id],
             "btax_fna_path": btax_data["fam_fna"],
             "seq_ids_to_orgs": seq_ids_to_orgs,
@@ -218,11 +215,23 @@ def get_orf_stats(orf_id, orf_homologs_seqs, homologs_list, btax_fna_path, seq_i
     orf_mult_aln = construct_mult_aln(seq_dict=orf_homologs_seqs,
                                       aln_name=orf_id+"_aln",
                                       aln_type="prot",
+                                      method="MUSCLE",
                                       tmp_dir=orf_id+"_aln_tmp",
                                       logger=EAGLE_logger)
+
+    # Uniformity
     orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
-    orfs_stats["p_uniformity"] = orf_mult_aln.estimate_uniformity(cons_thr=conf_constants.cons_thr,
-                                                                  window_l=conf_constants.unif_window_l,
-                                                                  windows_step=conf_constants.unif_windows_step)
+    orfs_stats["p_uniformity"] = orf_mult_aln.improve_aln(inplace=False).estimate_uniformity(
+        cons_thr=conf_constants.cons_thr,
+        window_l=conf_constants.unif_window_l,
+        windows_step=conf_constants.unif_windows_step
+    )
+    # Phylo
+    del orf_mult_aln[orf_id]
+    orf_homs_tree = build_tree_by_dist(dist_matrix=orf_mult_aln.get_distance_matrix(),
+                                       method="FastME",
+                                       full_seq_names=reverse_dict(orf_mult_aln.full_to_short_seq_names),
+                                       tmp_dir=orf_id+"_phylo_tmp",
+                                       logger=EAGLE_logger)
 
     orfs_stats[orf_id] = orf_stats

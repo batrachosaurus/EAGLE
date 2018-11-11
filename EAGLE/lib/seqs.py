@@ -186,7 +186,7 @@ def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_co
             "score": "-",
             "strand": ori,
             "frame": ".",
-            "attribute": {},
+            "attribute": dict(),
         }
     dump_fasta_dict(orfs_fasta_dict, out_fasta_path)
     return orfs_info
@@ -200,12 +200,12 @@ def _get_orf_info(orf_title):
         ori = "+"
         c_start = c1
         c_end = c2
-        orf_id = "_".join(orf_title_list[0][1:].split("_")[:-1]) + "|:" + str(c1) + "-" + str(c2)
+        orf_id = "_".join(orf_title_list[0].split("_")[:-1]) + "|:" + str(c1) + "-" + str(c2)
     else:
         ori = "-"
         c_start = c2
         c_end = c1
-        orf_id = "_".join(orf_title_list[0][1:].split("_")[:-1]) + "|:c" + str(c1) + "-" + str(c2)
+        orf_id = "_".join(orf_title_list[0].split("_")[:-1]) + "|:c" + str(c1) + "-" + str(c2)
     return orf_id, c_start, c_end, ori
 
 
