@@ -5,11 +5,12 @@ from collections import defaultdict
 import multiprocessing as mp
 
 import pandas as pd
+from Bio.Seq import Seq
 
 from EAGLE.constants import conf_constants, EAGLE_logger, PROFILES_SCAN_OUT
-from EAGLE.lib.alignment import HmmerHandler, BlastHandler
-from EAGLE.lib.general import filter_list
-from EAGLE.lib.seqs import get_orfs
+from EAGLE.lib.alignment import HmmerHandler, BlastHandler, MultAln, construct_mult_aln
+from EAGLE.lib.general import filter_list, worker
+from EAGLE.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out
 
 
 def explore_genes(in_fasta,
@@ -69,7 +70,7 @@ def explore_genes(in_fasta,
                                                orfs_fasta_path=orfs_fasta_path,
                                                btax_data=db_info[btax_name],
                                                res_gtf_json=res_gtf_json,
-                                               num_threads=num_threads)
+                                               num_threads=conf_constants.num_threads)
     else:
         # TODO: write blast for contigs mode
         pass
@@ -173,5 +174,55 @@ def analyze_tblastn_out(tblastn_out_path,
                         btax_data,
                         res_gtf_json,
                         num_threads=conf_constants.num_threads):
+    orfs_stats = mp.Manager().dict()
+    seq_ids_to_orgs = dict((seq_id, org_tax[-1]) for seq_id, org_tax in btax_data["chr_id"].items())
+    tblatn_out_dict = read_blast_out(blast_out_path=tblastn_out_path)
+    orfs_fasta_dict = load_fasta_to_dict(fasta_path=orfs_fasta_path)
+    params_list = list()
+    for seq_id in orfs_fasta_dict:
+        params_list.append({
+            "function": get_orf_stats,
+            "orf_id": seq_id,
+            "orf_homologs_seqs": {seq_id, orfs_fasta_dict[seq_id]},
+            "homologs_list": tblatn_out_dict[seq_id],
+            "btax_fna_path": btax_data["fam_fna"],
+            "seq_ids_to_orgs": seq_ids_to_orgs,
+            "orfs_stats": orfs_stats,
+        })
 
+    pool = mp.Pool(num_threads)
+    pool.map(worker, params_list)
+    pool.close()
+    pool.join()
+
+    tblatn_out_dict = None
+    orfs_fasta_dict = None
+    for orf_id in orfs_stats:
+        res_gtf_json[orf_id]["attribute"] = orfs_stats[orf_id]
+    orfs_stats = None
     return res_gtf_json
+
+
+def get_orf_stats(orf_id, orf_homologs_seqs, homologs_list, btax_fna_path, seq_ids_to_orgs, orfs_stats, **kwargs):
+    orf_stats = dict()
+    btax_fna = load_fasta_to_dict(fasta_path=btax_fna_path)
+    for hom in homologs_list:
+        if hom["subj_start"] <= hom["subj_end"]:
+            orf_homologs_seqs[hom["subj_id"]] = \
+                str(Seq(btax_fna[hom["subj_id"]][hom["subj_start"]-1:hom["subj_end"]]).translate())
+        else:
+            orf_homologs_seqs[hom["subj_id"]] = \
+                str(Seq(btax_fna[hom["subj_id"]][hom["subj_end"]-1:hom["subj_start"]]).reverse_complement().translate())
+    btax_fna = None
+
+    orf_mult_aln = construct_mult_aln(seq_dict=orf_homologs_seqs,
+                                      aln_name=orf_id+"_aln",
+                                      aln_type="prot",
+                                      tmp_dir=orf_id+"_aln_tmp",
+                                      logger=EAGLE_logger)
+    orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
+    orfs_stats["p_uniformity"] = orf_mult_aln.estimate_uniformity(cons_thr=conf_constants.cons_thr,
+                                                                  window_l=conf_constants.unif_window_l,
+                                                                  windows_step=conf_constants.unif_windows_step)
+
+    orfs_stats[orf_id] = orf_stats

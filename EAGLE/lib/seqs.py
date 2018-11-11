@@ -207,3 +207,38 @@ def _get_orf_info(orf_title):
         c_end = c1
         orf_id = "_".join(orf_title_list[0][1:].split("_")[:-1]) + "|:c" + str(c1) + "-" + str(c2)
     return orf_id, c_start, c_end, ori
+
+
+def read_blast_out(blast_out_path, ev_thr=1.0e-06, aln_l_thr=180, ident_thr=0.35):
+    """
+    Reads blast outfmt 6 or 7
+    :param blast_out_path:
+    :param ev_thr:
+    :param aln_l_thr:
+    :param ident_thr:
+    :return:
+    """
+    blast_res_dict = defaultdict(list)
+    blast_out_f = open(blast_out_path)
+    for line_ in blast_out_f:
+        orf_id = None
+        line = None
+        line = line_.strip()
+        if not line:
+            continue
+        if line[0] == "#":
+            continue
+        line_list = line.split("\t")
+        ev = float(line_list[10].strip())
+        aln_l = abs(int(line_list[9].strip())-int(line_list[8].strip())+1)
+        ident = float(line_list[2].strip())/100.0
+        if ev <= ev_thr and aln_l >= aln_l_thr and ident >= ident_thr:
+            blast_res_dict[line_list[0].strip()].append({
+                "subj_id": line_list[1].strip(),
+                "identity": ident,
+                "aln_l": aln_l,
+                "evalue": ev,
+                "subj_start": int(line_list[8].strip()),
+                "subj_end": int(line_list[9].strip()),
+            })
+    return blast_res_dict

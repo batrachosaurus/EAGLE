@@ -22,8 +22,8 @@ class MultAln(ConfBase):
                  states_seq=None,
                  aln_name="mult_aln",
                  tmp_dir="tmp",
-                 emboss_inst_dir="",
-                 hmmer_inst_dir="",
+                 emboss_inst_dir=conf_constants.emboss_inst_dir,
+                 hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                  config_path=None,
                  logger=None):
 
@@ -54,6 +54,12 @@ class MultAln(ConfBase):
 
     def __setitem__(self, seq_id, seq):
         self.mult_aln_dict[seq_id] = seq
+
+    def __delitem__(self, seq_id):
+        del self.mult_aln_dict[seq_id]
+
+    def pop(self, seq_id):
+        return self.mult_aln_dict.pop(seq_id)
 
     @property
     def seqs(self):
@@ -343,7 +349,11 @@ class MultAln(ConfBase):
                 return 1
         pass
 
-    def estimate_uniformity(self, cons_thr=conf_constants.cons_thr, window_l=10, windows_step=5):
+    def estimate_uniformity(self,
+                            cons_thr=conf_constants.cons_thr,
+                            window_l=conf_constants.unif_window_l,
+                            windows_step=conf_constants.unif_windows_step):
+
         windows_list = list()
         i = 0
         while i < (len(self.mult_aln_dict[self.mult_aln_dict.keys()[0]])):
