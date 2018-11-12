@@ -62,7 +62,7 @@ def explore_genes(in_fasta,
         if btax_name == "Unclassified":
             EAGLE_logger.warning("The family was not detected - cannot run further analysis")
         else:
-            EAGLE_logger.info("Family %s detected for sequence from %s" % (btax_name, in_fasta))
+            EAGLE_logger.info("Family %s will be for sequence from %s" % (btax_name, in_fasta))
             tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
             blast_handler.run_blast_search(blast_type="tblastn",
                                            query=orfs_fasta_path,
@@ -203,8 +203,12 @@ def analyze_tblastn_out(tblastn_out_path,
 
     tblatn_out_dict = None
     orfs_fasta_dict = None
+    EAGLE_logger.info("ORFs stats calculated")
     for orf_id in orfs_stats:
-        res_gtf_json[orf_id]["attribute"] = orfs_stats[orf_id]
+        try:
+            res_gtf_json[orf_id]["attribute"] = orfs_stats[orf_id]
+        except KeyError:
+            pass
     orfs_stats = None
     return res_gtf_json
 
@@ -219,7 +223,7 @@ def get_orf_stats(orf_id,
                   **kwargs):
 
     orf_stats = dict()
-    if len(homologs_list) < 4:
+    if len(homologs_list) < 3:
         orf_stats = {"p_uniformity": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
         EAGLE_logger.warning("A few homologs number for ORF '%s'" % orf_id)
@@ -234,14 +238,14 @@ def get_orf_stats(orf_id,
             orf_homologs_seqs[hom["subj_id"]] = \
                 str(Seq(btax_fna[hom["subj_id"]][hom["subj_end"]-1:hom["subj_start"]]).reverse_complement().translate())
     btax_fna = None
-
+    EAGLE_logger.info("got homologs sequences for ORF '%s'" % orf_id)
     orf_mult_aln = construct_mult_aln(seq_dict=orf_homologs_seqs,
                                       aln_name=orf_id.replace("|:", "_")+"_aln",
                                       aln_type="prot",
                                       method="MUSCLE",
                                       tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_aln_tmp"),
                                       logger=EAGLE_logger)
-
+    EAGLE_logger.info("got multiple alignment for ORF '%s' homologs" % orf_id)
     # Uniformity
     orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
     if len(orf_mult_aln.seqs) < 4:
@@ -257,7 +261,10 @@ def get_orf_stats(orf_id,
     EAGLE_logger.info("got p_uniformity for ORF '%s'" % orf_id)
     # Ka/Ks
     # Phylo
-    del orf_mult_aln[orf_id]
+    try:
+        del orf_mult_aln[orf_id]
+    except KeyError:
+        pass
     orf_homs_tree = build_tree_by_dist(
         dist_matrix=orf_mult_aln.get_distance_matrix(),
         method="FastME",
