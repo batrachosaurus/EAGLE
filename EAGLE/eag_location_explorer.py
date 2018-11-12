@@ -18,6 +18,7 @@ def explore_genes(in_fasta,
                   db_json,
                   out_dir="",
                   mode=None,
+                  btax_name=None,
                   num_threads=None,
                   btax_det_method="hmmer",
                   config_path=None,
@@ -36,15 +37,18 @@ def explore_genes(in_fasta,
 
     with open(db_json) as db_json_f:
         db_info = json.load(db_json_f)
-    btax_names = get_btax(in_fasta,
-                          db_info["db_repr_profiles"],
-                          btax_names=db_info.keys(),
-                          work_dir=out_dir,
-                          mode=conf_constants.mode,
-                          num_threads=conf_constants.num_threads,
-                          method=btax_det_method,
-                          hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                          config_path=config_path)
+    if btax_name is None or mode != "genome":
+        btax_names = get_btax(in_fasta,
+                              db_info["db_repr_profiles"],
+                              btax_names=db_info.keys(),
+                              work_dir=out_dir,
+                              mode=conf_constants.mode,
+                              num_threads=conf_constants.num_threads,
+                              method=btax_det_method,
+                              hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                              config_path=config_path)
+    else:
+        btax_names = {"btax_name": btax_name}
 
     orfs_fasta_path = os.path.join(out_dir, os.path.basename(in_fasta)+".orfs")
     res_gtf_json = get_orfs(in_fasta_path=in_fasta,
@@ -53,7 +57,8 @@ def explore_genes(in_fasta,
                                  config_path=config_path,
                                  logger=EAGLE_logger)
     if mode == "genome":
-        btax_name = btax_names.items()[0][1]
+        if btax_name is None:
+            btax_name = btax_names.items()[0][1]
         if btax_name == "Unclassified":
             EAGLE_logger.warning("The family was not detected - cannot run further analysis")
         else:
@@ -214,9 +219,10 @@ def get_orf_stats(orf_id,
                   **kwargs):
 
     orf_stats = dict()
-    if not homologs_list or len(homologs_list) < 2:
+    if len(homologs_list) < 4:
         orf_stats = {"p_uniformity": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
+        EAGLE_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
     seq_ids_to_orgs[orf_id] = {"organism_name": "Input_Organism_X"}
     btax_fna = load_fasta_to_dict(fasta_path=btax_data["fam_fna"])
@@ -238,15 +244,17 @@ def get_orf_stats(orf_id,
 
     # Uniformity
     orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
-    if len(orf_mult_aln.seqs) < 2:
+    if len(orf_mult_aln.seqs) < 4:
         orf_stats = {"p_uniformity": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
+        EAGLE_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
-    orfs_stats["p_uniformity"] = orf_mult_aln.improve_aln(inplace=False).estimate_uniformity(
+    orf_stats["p_uniformity"] = orf_mult_aln.improve_aln(inplace=False).estimate_uniformity(
         cons_thr=conf_constants.cons_thr,
         window_l=conf_constants.unif_window_l,
         windows_step=conf_constants.unif_windows_step
     )
+    EAGLE_logger.info("got p_uniformity for ORF '%s'" % orf_id)
     # Ka/Ks
     # Phylo
     del orf_mult_aln[orf_id]
@@ -278,5 +286,7 @@ def get_orf_stats(orf_id,
                                             phylo_tree2=btax_tree,
                                             tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp"),
                                             method="Robinson-Foulds")
+    EAGLE_logger.info("got phylo_diff for ORF '%s'" % orf_id)
 
     orfs_stats[orf_id] = orf_stats
+    EAGLE_logger.info("got ORF '%s' stats" % orf_id)

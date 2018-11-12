@@ -28,6 +28,12 @@ def _parse_cmd_args(*args):
                              "independent contigs",
                         required=False,
                         default='genome')
+    parser.add_argument("-btn",
+                        "--btax-name",
+                        help="The name of base taxon. If specified EAGLE will not scan the EAGLEdb and "
+                             "will work straight with this base taxon. Compatible only with 'genome' mode",
+                        required=False,
+                        default=None)
     parser.add_argument("-nt",
                         "--num-threads",
                         help="Number of threads",
