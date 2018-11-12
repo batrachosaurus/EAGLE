@@ -56,14 +56,17 @@ All this commands can be run as Python functions: see below EAGLEdb package refe
   
 ### Run the analysis
 ```
-EAGLE ...
+EAGLE -i <fasta/path> -db <EAGLEdb/scheme/json/path> -m <run_mode> -nt <threads_number> -o <out/dir/path>
+```
+for detailed parameters description type:
+```
+EAGLE -h
 ```
 or from Python
 ```
-from EAGLE import ...
+from EAGLE import explore_genes
 
-
-...(...)
+explore_genes(...)
 ```
   
 ## Packages reference
