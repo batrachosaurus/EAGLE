@@ -219,7 +219,7 @@ class MultAln(ConfBase):
                 else:
                     print("protdist is starting")
                 phylip_cmd = os.path.join(self.emboss_inst_dir, "fprotdist") + " -sequence " + aln_fasta_path + \
-                             " -outfile " + phylip_matrix_path
+                             " -method d -outfile " + phylip_matrix_path
                 if self.logger:
                     self.logger.info("protdist finished")
                 else:

@@ -1,7 +1,6 @@
 import io
 import json
 import os
-from StringIO import StringIO
 from collections import defaultdict
 import multiprocessing as mp
 
@@ -10,7 +9,7 @@ from Bio.Seq import Seq
 
 from EAGLE.constants import conf_constants, EAGLE_logger, PROFILES_SCAN_OUT
 from EAGLE.lib.alignment import HmmerHandler, BlastHandler, MultAln, construct_mult_aln
-from EAGLE.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees
+from EAGLE.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees, dump_tree_newick
 from EAGLE.lib.general import filter_list, worker, reverse_dict
 from EAGLE.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out
 
@@ -239,6 +238,10 @@ def get_orf_stats(orf_id,
 
     # Uniformity
     orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
+    if len(orf_mult_aln.seqs) < 2:
+        orf_stats = {"p_uniformity": None, "phylo_diff": None}
+        orfs_stats[orf_id] = orf_stats
+        return
     orfs_stats["p_uniformity"] = orf_mult_aln.improve_aln(inplace=False).estimate_uniformity(
         cons_thr=conf_constants.cons_thr,
         window_l=conf_constants.unif_window_l,
@@ -247,15 +250,23 @@ def get_orf_stats(orf_id,
     # Ka/Ks
     # Phylo
     del orf_mult_aln[orf_id]
-    orf_homs_tree = build_tree_by_dist(dist_matrix=orf_mult_aln.get_distance_matrix(),
-                                       method="FastME",
-                                       full_seq_names=orf_mult_aln.short_to_full_seq_names,
-                                       tree_name=orf_id.replace("|:", "_")+"_tree",
-                                       tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp"),
-                                       logger=EAGLE_logger)
+    orf_homs_tree = build_tree_by_dist(
+        dist_matrix=orf_mult_aln.get_distance_matrix(),
+        method="FastME",
+        full_seq_names=dict((short_id, seq_ids_to_orgs[full_id]["organism_name"])
+                            for short_id, full_id in orf_mult_aln.short_to_full_seq_names.items()),
+        tree_name=orf_id.replace("|:", "_")+"_tree",
+        tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp"),
+        logger=EAGLE_logger
+    )
     orf_homs_tree.set_full_names(inplace=True)
+    tmp_dir = os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp")
+    if not os.path.exists(tmp_dir):
+        os.makedirs(tmp_dir)
+    btax_tree_path = os.path.join(tmp_dir, "btax_tree.nwk")
+    dump_tree_newick(tree_newick=btax_data["16S_rRNA_tree"]["newick"], newick_f_path=btax_tree_path)
     btax_tree = PhyloTree.load_tree(
-        tree_file=StringIO(btax_data["16S_rRNA_tree"]["newick"]),
+        tree_file=btax_tree_path,
         full_seq_names=dict((short_name, name_dict["organism_name"]) for short_name, name_dict in
                             btax_data["16S_rRNA_tree"]["full_seq_names"].items()),
         tree_name="btax_tree",

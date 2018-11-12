@@ -62,7 +62,11 @@ class PhyloTree(ConfBase):
             to_remove = set(map(self._full_name_clade, self.tree.get_terminals()))
             self.tree.collapse_all(lambda c: c.name in to_remove)
         else:
+            logger = self.logger
+            self.logger = None
             full_names_pht = deepcopy(self)
+            full_names_pht.logger = logger
+            self.logger = logger
             if not full_names_pht.tree.rooted:
                 full_names_pht.tree.root_at_midpoint()
             to_remove = set(map(full_names_pht._full_name_clade, full_names_pht.tree.get_terminals()))
