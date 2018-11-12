@@ -81,10 +81,10 @@ class PhyloTree(ConfBase):
                     break
             return full_names_pht
 
-    def remain_only(self, names_to_remain):
+    def remove_names(self, names_to_remove):
         while True:
             try:
-                self.tree.collapse(lambda c: c.name not in names_to_remain)
+                self.tree.collapse(lambda c: c.name in names_to_remove)
             except ValueError:
                 break
 
@@ -155,8 +155,8 @@ def compare_trees(phylo_tree1,
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
     names_to_remain = set(phylo_tree1.names) & set(phylo_tree2.names)
-    phylo_tree1.remain_only(names_to_remain)
-    phylo_tree2.remain_only(names_to_remain)
+    phylo_tree1.remove_names(set(phylo_tree1.names) - names_to_remain)
+    phylo_tree2.remove_names(set(phylo_tree2.names) - names_to_remain)
     to_comp_path = os.path.join(tmp_dir, "to_comp.nwk")
     comp_res_path = os.path.join(tmp_dir, "comp.res")
     Phylo.write([phylo_tree1.tree, phylo_tree2.tree], file=to_comp_path, format="newick")
