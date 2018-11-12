@@ -60,7 +60,11 @@ class PhyloTree(ConfBase):
             if not self.tree.rooted:
                 self.tree.root_at_midpoint()
             to_remove = set(map(self._full_name_clade, self.tree.get_terminals()))
-            self.tree.collapse_all(lambda c: c.name in to_remove)
+            while True:
+                try:
+                    self.tree.collapse(lambda c: c.name in to_remove)
+                except ValueError:
+                    break
         else:
             logger = self.logger
             self.logger = None
@@ -70,11 +74,19 @@ class PhyloTree(ConfBase):
             if not full_names_pht.tree.rooted:
                 full_names_pht.tree.root_at_midpoint()
             to_remove = set(map(full_names_pht._full_name_clade, full_names_pht.tree.get_terminals()))
-            full_names_pht.tree.collapse_all(lambda c: c.name in to_remove)
+            while True:
+                try:
+                    full_names_pht.tree.collapse(lambda c: c.name in to_remove)
+                except ValueError:
+                    break
             return full_names_pht
 
     def remain_only(self, names_to_remain):
-        self.tree.collapse_all(lambda c: c.name not in names_to_remain)
+        while True:
+            try:
+                self.tree.collapse(lambda c: c.name not in names_to_remain)
+            except ValueError:
+                break
 
     def _full_name_clade(self, c):
         try:
