@@ -437,7 +437,7 @@ class BlastHandler(ConfBase):
                         " -query " + query +
                         " -db " + db +
                         " -out " + out +
-                        " -num_threads " + str(num_threads) +
+                        " -word_size 2 -num_threads " + str(num_threads) +
                         " -outfmt " + str(outfmt) +
                         " -max_hsps " + str(max_hsps), shell=True)
 

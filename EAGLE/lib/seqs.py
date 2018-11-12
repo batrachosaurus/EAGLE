@@ -230,7 +230,7 @@ def read_blast_out(blast_out_path, ev_thr=1.0e-06, aln_l_thr=180, ident_thr=0.35
             continue
         line_list = line.split("\t")
         ev = float(line_list[10].strip())
-        aln_l = abs(int(line_list[9].strip())-int(line_list[8].strip())+1)
+        aln_l = abs(int(line_list[9].strip())-int(line_list[8].strip())) + 1
         ident = float(line_list[2].strip())/100.0
         if ev <= ev_thr and aln_l >= aln_l_thr and ident >= ident_thr:
             blast_res_dict[line_list[0].strip()].append({
