@@ -27,11 +27,12 @@ class MultAln(ConfBase):
                  config_path=None,
                  logger=None):
 
+        self.short_to_full_seq_names = dict()
         if mult_aln_dict:
             self.mult_aln_dict = mult_aln_dict
+            self.mult_aln_dict_short_id  # to initialize self.short_to_full_seq_names
         else:
             self.mult_aln_dict = dict()
-        self.short_to_full_seq_names = dict()
         self.states_seq = states_seq
         self.aln_type = aln_type
         if not self.aln_type:
@@ -51,13 +52,14 @@ class MultAln(ConfBase):
         self.mult_aln_dict[seq_id] = seq
 
     def __delitem__(self, seq_id):
+        del self.short_to_full_seq_names[self.full_to_short_seq_names[seq_id]]
         del self.mult_aln_dict[seq_id]
         if self.distance_matrix:
             self.distance_matrix = None
             self.get_distance_matrix()
 
-
     def pop(self, seq_id):
+        del self.short_to_full_seq_names[self.full_to_short_seq_names[seq_id]]
         seq = self.mult_aln_dict.pop(seq_id)
         if self.distance_matrix:
             self.distance_matrix = None
@@ -235,7 +237,6 @@ class MultAln(ConfBase):
         return self.distance_matrix
 
     def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):
-        # TODO: seems to work not always properly => test it carefully
         short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)
         if type(self.distance_matrix) is not pandas.DataFrame:
             self.distance_matrix= None
@@ -255,26 +256,25 @@ class MultAln(ConfBase):
         short_seq_ids = self.distance_matrix.index
         for short_seq_id in short_seq_ids:
             org_dist_dict[short_seq_ids_to_org[short_seq_id]][short_seq_id] = \
-                sum(map(float, list(self.distance_matrix.loc[short_seq_id])))
-        for org in org_dist_dict.keys():
+                sum(map(float, self.distance_matrix.loc[short_seq_id]))
+        org_names = org_dist_dict.keys()
+        for org in org_names:
             org_dist_dict[org] = sorted(org_dist_dict[org].items(), key=lambda x: x[1])
         if method.lower() in ("minimal_distance", "min_dist", "md"):
             short_to_full_seq_names_filt = dict(
-                filter(lambda x: x[0] == org_dist_dict.get(short_seq_ids_to_org.get(x[0], None),
-                                                           ((None, None), None))[0][0],
+                filter(lambda x: x[0] == org_dist_dict.get(short_seq_ids_to_org.get(x[0], None), ((None,),))[0][0],
                        self.short_to_full_seq_names.items())
-                       )
-            full_to_short_seq_names_filt = dict(map(lambda x: (x[1], x[0]), short_to_full_seq_names_filt.items()))
-            mult_aln_dict_filt = dict(filter(lambda x: x[0] in full_to_short_seq_names_filt.keys(),
+                )
+            mult_aln_dict_filt = dict(filter(lambda x: x[0] in short_to_full_seq_names_filt.values(),
                                              self.mult_aln_dict.items()))
         else:
             # TODO: write spec_pos method
             short_to_full_seq_names_filt = None
-            full_to_short_seq_names_filt = None
             mult_aln_dict_filt = None
         if inplace:
             self.mult_aln_dict = mult_aln_dict_filt
             self.short_to_full_seq_names = short_to_full_seq_names_filt
+            self.distance_matrix = None
             if self.logger:
                 self.logger.info("paralogs removed")
             else:
@@ -283,6 +283,7 @@ class MultAln(ConfBase):
             filtered_aln = deepcopy(self)
             filtered_aln.mult_aln_dict = mult_aln_dict_filt
             filtered_aln.short_to_full_seq_names = short_to_full_seq_names_filt
+            filtered_aln.distance_matrix = None
             if self.logger:
                 self.logger.info("paralogs removed")
             else:
