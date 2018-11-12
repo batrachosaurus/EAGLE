@@ -165,7 +165,11 @@ class MultAln(ConfBase):
                 for seq_id in seqs_ids:
                     self.mult_aln_dict[seq_id] = "".join(self.mult_aln_dict[seq_id][c1: c2] for c1, c2 in coords)
             else:
+                logger = self.logger
+                self.logger = None
                 impr_mult_aln = deepcopy(self)
+                impr_mult_aln.logger = logger
+                self.logger = logger
                 impr_mult_aln.mult_aln_dict = dict()
                 for seq_id in self.mult_aln_dict:
                     impr_mult_aln.mult_aln_dict[seq_id] = \
@@ -280,7 +284,11 @@ class MultAln(ConfBase):
             else:
                 print("paralogs removed")
         else:
+            logger = self.logger
+            self.logger = None
             filtered_aln = deepcopy(self)
+            filtered_aln.logger = logger
+            self.logger = logger
             filtered_aln.mult_aln_dict = mult_aln_dict_filt
             filtered_aln.short_to_full_seq_names = short_to_full_seq_names_filt
             filtered_aln.distance_matrix = None
@@ -391,7 +399,11 @@ class MultAln(ConfBase):
         seqs_ids = self.mult_aln_dict.keys()
         if len(seqs_ids) <= seqs_to_remain:
             return self.mult_aln_dict
+        logger = self.logger
+        self.logger = None
         rarefied_aln = deepcopy(self)
+        rarefied_aln.logger = logger
+        self.logger = logger
         rarefied_aln.mult_aln_dict = dict()
         for i in range(seqs_to_remain):
             seq_id = None
