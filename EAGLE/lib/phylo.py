@@ -172,7 +172,7 @@ def compare_trees(phylo_tree1,
         try:
             trees_diff = float(list(filter(lambda s: s.strip(), list(filter(lambda l: l.strip(),
                                                                             comp_res_f.readlines()))[-1].split()))[-1])
-        except (ValueError, TypeError):
+        except (IndexError, ValueError, TypeError):
             trees_diff = None
     shutil.rmtree(tmp_dir, ignore_errors=True)
     return trees_diff
