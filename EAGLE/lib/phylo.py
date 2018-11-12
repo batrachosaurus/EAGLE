@@ -168,8 +168,14 @@ def compare_trees(phylo_tree1,
         method = "b"
     subprocess.call(os.path.join(emboss_inst_dir, "ftreedist") + " " + to_comp_path + " " +
                     comp_res_path + " -dtype " + method, shell=True)
-
-    #shutil.rmtree(tmp_dir, ignore_errors=True)
+    with open(comp_res_path) as comp_res_f:
+        try:
+            trees_diff = float(list(filter(lambda s: s.strip(), list(filter(lambda l: l.strip(),
+                                                                            comp_res_f.readlines()))[-1].split()))[-1])
+        except (ValueError, TypeError):
+            trees_diff = None
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+    return trees_diff
 
 
 def load_phylip_dist_matrix(matrix_path):
