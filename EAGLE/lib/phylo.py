@@ -4,6 +4,7 @@ import subprocess
 from collections import OrderedDict
 
 import pandas
+from Bio import Phylo
 
 from EAGLE.constants import conf_constants, EAGLE_logger
 from EAGLE.lib.general import ConfBase, filter_list
@@ -11,20 +12,41 @@ from EAGLE.lib.general import ConfBase, filter_list
 
 class PhyloTree(ConfBase):
 
-    def __init__(self, newick, full_seq_names=None, config_path=None, logger=None):
-        self.newick = newick
+    def __init__(self, tree, full_seq_names=None, tree_name="phylo_tree", tmp_dir="tmp", config_path=None, logger=None):
+        self.tree = tree
         self.full_seq_names = full_seq_names
+        self.tree_name = tree_name
+        self.tmp_dir = tmp_dir
         self.logger = logger
 
         super(PhyloTree, self).__init__(config_path=config_path)
 
-    def dump_tree(self):
-        pass
+    @property
+    def newick(self):
+        if not os.path.exists(self.tmp_dir):
+            os.makedirs(self.tmp_dir)
+        newick_path = os.path.join(self.tmp_dir, self.tree_name+".nwk")
+        self.dump_tree(tree_path=newick_path, format="newick")
+        shutil.rmtree(self.tmp_dir)
+        return load_newick(newick_path=newick_path)
+
+    def dump_tree(self, tree_path, format="newick"):
+        Phylo.write(trees=[self.tree], file=tree_path, format=format)
 
     @classmethod
-    def load_tree(cls, newick_path, full_seq_names=None, config_path=None, logger=None):
-        return cls(newick=load_newick(newick_path=newick_path),
+    def load_tree(cls,
+                  tree_file,
+                  tree_name="phylo_tree",
+                  tmp_dir="tmp",
+                  format="newick",
+                  full_seq_names=None,
+                  config_path=None,
+                  logger=None):
+
+        return cls(tree=Phylo.read(tree_file, format=format),
                    full_seq_names=full_seq_names,
+                   tree_name=tree_name,
+                   tmp_dir=tmp_dir,
                    config_path=config_path,
                    logger=logger)
 
@@ -39,6 +61,7 @@ class PhyloTree(ConfBase):
 def build_tree_by_dist(dist_matrix=None,
                        dist_matrix_path=None,
                        full_seq_names=None,
+                       tree_name="phylo_tree",
                        tmp_dir="tmp",
                        method="FastME",
                        fastme_exec_path=conf_constants.fastme_exec_path,
@@ -67,7 +90,8 @@ def build_tree_by_dist(dist_matrix=None,
         tree_path = os.path.join(tmp_dir, "tree.nwk")
         fastme_cmd = fastme_exec_path + " -i " + dist_matrix_path + " -o " + tree_path
         subprocess.call(fastme_cmd, shell=True)
-        phylo_tree = PhyloTree.load_tree(newick_path=tree_path,
+        phylo_tree = PhyloTree.load_tree(tree_file=tree_path,
+                                         format="newick",
                                          full_seq_names=full_seq_names,
                                          config_path=config_path,
                                          logger=logger)
@@ -108,7 +132,7 @@ def load_phylip_dist_matrix(matrix_path):
             seqs_list.append(line_list[0])
             seq_dists_list.__iadd__(line_list[1:])
             got_seqs += len(line_list[1:])
-        else:
+        elif got_seqs <= num_seqs:
             seq_dists_list.__iadd__(line_list)
             got_seqs += len(line_list)
         if got_seqs == num_seqs:
