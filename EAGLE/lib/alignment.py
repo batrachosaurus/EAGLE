@@ -117,7 +117,7 @@ class MultAln(ConfBase):
                    logger=logger)
 
     def improve_aln(self,
-                    max_gap_fract=0.95,  # maximal fraction of gaps in a column to keep it in alignment
+                    max_gap_fract=0.75,  # maximal fraction of gaps in a column to keep it in alignment
                     max_mismatch_fract=1.0,  # maximal fraction of mismatches in a column to keep it in alignment
                     remove_seq=False,  # if True can remove sequences for cleaning gaps between aln blocks
                     dist_filt=False,  # if True returns a list of alignments (or blocks coordinates) with different strictness of sequences removing (different thresholds for clustering)

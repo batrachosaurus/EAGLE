@@ -63,7 +63,7 @@ def explore_genes(in_fasta,
         if btax_name == "Unclassified":
             EAGLE_logger.warning("The family was not detected - cannot run further analysis")
         else:
-            EAGLE_logger.info("Family %s will be for sequence from %s" % (btax_name, in_fasta))
+            EAGLE_logger.info("Family %s will be used for sequence from %s" % (btax_name, in_fasta))
             tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
             blast_handler.run_blast_search(blast_type="tblastn",
                                            query=orfs_fasta_path,

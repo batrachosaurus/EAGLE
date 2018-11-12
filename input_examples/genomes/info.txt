@@ -3,3 +3,4 @@ NC_003198   Salmonella enterica subsp. enterica serovar Typhi str. CT18,
 NC_004337   Shigella flexneri 2a str. 301
 NC_015663   Enterobacter aerogenes KCTC 2190
 NC_009778   Cronobacter sakazakii ATCC BAA-894
+NC_013961   Erwinia amylovora CFBP1430
