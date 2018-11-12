@@ -1,5 +1,6 @@
 import os
 import shutil
+from copy import deepcopy
 import subprocess
 from collections import OrderedDict
 
@@ -22,12 +23,16 @@ class PhyloTree(ConfBase):
         super(PhyloTree, self).__init__(config_path=config_path)
 
     @property
+    def names(self):
+        return map(lambda c: c.name, self.tree.get_terminals())
+
+    @property
     def newick(self):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
         newick_path = os.path.join(self.tmp_dir, self.tree_name+".nwk")
         self.dump_tree(tree_path=newick_path, format="newick")
-        shutil.rmtree(self.tmp_dir)
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
         return load_newick(newick_path=newick_path)
 
     def dump_tree(self, tree_path, format="newick"):
@@ -51,7 +56,27 @@ class PhyloTree(ConfBase):
                    logger=logger)
 
     def set_full_names(self, inplace=False):
-        pass
+        if inplace:
+            if not self.tree.rooted:
+                self.tree.root_at_midpoint()
+            to_remove = set(map(self._full_name_clade, self.tree.get_terminals()))
+            self.tree.collapse_all(lambda c: c.name in to_remove)
+        else:
+            full_names_pht = deepcopy(self)
+            if not full_names_pht.tree.rooted:
+                full_names_pht.tree.root_at_midpoint()
+            to_remove = set(map(full_names_pht._full_name_clade, full_names_pht.tree.get_terminals()))
+            full_names_pht.tree.collapse_all(lambda c: c.name in to_remove)
+            return full_names_pht
+
+    def remain_only(self, names_to_remain):
+        self.tree.collapse_all(lambda c: c.name not in names_to_remain)
+
+    def _full_name_clade(self, c):
+        try:
+            c.name = self.full_seq_names[c.name]
+        except KeyError:
+            return c.name
 
     def according_to_taxonomy(self, taxonomy):
         # NOT inplace method!
@@ -101,12 +126,34 @@ def build_tree_by_dist(dist_matrix=None,
             print("Phylogenetic tree built with FastME")
     else:
         return 1
-    shutil.rmtree(tmp_dir)
+    shutil.rmtree(tmp_dir, ignore_errors=True)
     return phylo_tree
 
 
-def compare_trees(phylo_tree1, phylo_tree2, method="Robinson-Foulds", phylip_inst_dir=conf_constants.emboss_inst_dir):
-    return None
+def compare_trees(phylo_tree1,
+                  phylo_tree2,
+                  method="Robinson-Foulds",
+                  tmp_dir="tmp",
+                  emboss_inst_dir=conf_constants.emboss_inst_dir):
+
+    if not os.path.exists(tmp_dir):
+        os.makedirs(tmp_dir)
+    names_to_remain = set(phylo_tree1.names) & set(phylo_tree2.names)
+    phylo_tree1.remain_only(names_to_remain)
+    phylo_tree2.remain_only(names_to_remain)
+    to_comp_path = os.path.join(tmp_dir, "to_comp.nwk")
+    comp_res_path = os.path.join(tmp_dir, "comp.res")
+    Phylo.write([phylo_tree1.tree, phylo_tree2.tree], file=to_comp_path, format="newick")
+    if method.lower() in ("robinson-foulds", "rf", "s"):
+        method = None
+        method = "s"
+    else:
+        method = None
+        method = "b"
+    subprocess.call(os.path.join(emboss_inst_dir, "ftreedist") + " " + to_comp_path + " " +
+                    comp_res_path + " -dtype " + method, shell=True)
+
+    #shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def load_phylip_dist_matrix(matrix_path):
