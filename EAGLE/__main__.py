@@ -25,13 +25,13 @@ def _parse_cmd_args(*args):
                         "--mode",
                         help="Mode to run EAGLE: 'genome' - parses input fasta file as single genome "
                              "even if there not only one aequence; 'contigs' - parses input fasta files as "
-                             "independent contigs",
+                             "independent contigs (default: 'genome')",
                         required=False,
                         default='genome')
     parser.add_argument("-btn",
                         "--btax-name",
                         help="The name of base taxon. If specified EAGLE will not scan the EAGLEdb and "
-                             "will work straight with this base taxon. Compatible only with 'genome' mode",
+                             "will work straight with this base taxon. Applicable only with 'genome' mode",
                         required=False,
                         default=None)
     parser.add_argument("-nt",
@@ -41,7 +41,7 @@ def _parse_cmd_args(*args):
                         default=conf_constants.num_threads)
     parser.add_argument("-btd",
                         "--btax-det-method",
-                        help="Method name to detect base taxon for input sequence",
+                        help="Method name to detect base taxon for input sequence (default: 'hmmer')",
                         required=False,
                         default="hmmer")
     parser.add_argument("-c",

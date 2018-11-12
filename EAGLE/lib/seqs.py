@@ -179,7 +179,7 @@ def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_co
         orfs_fasta_dict[corr_orf_id] = orfs_fasta_dict.pop(orf_id)
         orfs_info[corr_orf_id] = {
             "seqid": corr_orf_id,
-            "source ": "EAGLE",
+            "source": "EAGLE",
             "type": "ORF",
             "start": c_start,
             "end": c_end,

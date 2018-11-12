@@ -4,6 +4,7 @@ import os
 from collections import defaultdict
 import multiprocessing as mp
 
+import numpy as np
 import pandas as pd
 from Bio.Seq import Seq
 
@@ -79,6 +80,7 @@ def explore_genes(in_fasta,
         pass
     res_gtf_df = pd.DataFrame(res_gtf_json.values())
     res_gtf_df.sort_values("start", inplace=True)
+    res_gtf_df = res_gtf_df[["seqid", "source", "type", "start", "end", "score", "strand", "frame", "attribute"]]
     res_gtf_df.to_csv(os.path.join(out_dir, os.path.basename(in_fasta)+".gtf"), sep="\t", index=False)
 
 
@@ -258,6 +260,8 @@ def get_orf_stats(orf_id,
         window_l=conf_constants.unif_window_l,
         windows_step=conf_constants.unif_windows_step
     )
+    if np.isnan(orf_stats["p_uniformity"]):
+        orf_stats["p_uniformity"] = None
     EAGLE_logger.info("got p_uniformity for ORF '%s'" % orf_id)
     # Ka/Ks
     # Phylo
