@@ -1,6 +1,7 @@
 import io
 import json
 import os
+from StringIO import StringIO
 from collections import defaultdict
 import multiprocessing as mp
 
@@ -214,10 +215,11 @@ def get_orf_stats(orf_id,
                   **kwargs):
 
     orf_stats = dict()
-    if not homologs_list:
+    if not homologs_list or len(homologs_list) < 2:
         orf_stats = {"p_uniformity": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
         return
+    seq_ids_to_orgs[orf_id] = "Input_Organism_X"
     btax_fna = load_fasta_to_dict(fasta_path=btax_data["fam_fna"])
     for hom in homologs_list:
         if hom["subj_start"] <= hom["subj_end"]:
@@ -252,9 +254,12 @@ def get_orf_stats(orf_id,
                                        logger=EAGLE_logger)
     orf_homs_tree.set_full_names(inplace=True)
     btax_tree = PhyloTree.load_tree(
-        newick_path=btax_data["16S_rRNA_tree"]["newick"],
+        tree_file=StringIO(btax_data["16S_rRNA_tree"]["newick"]),
         full_seq_names=dict((short_name, name_dict["organism_name"]) for short_name, name_dict in
-                            btax_data["16S_rRNA_tree"]["full_seq_names"].items())
+                            btax_data["16S_rRNA_tree"]["full_seq_names"].items()),
+        tree_name=orf_id.replace("|:", "_")+"_tree",
+        tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_tree_tmp"),
+        logger=EAGLE_logger
     )
     btax_tree.set_full_names(inplace=True)
     orf_stats["phylo_diff"] = compare_trees(phylo_tree1=orf_homs_tree, phylo_tree2=btax_tree, method="Robinson-Foulds")

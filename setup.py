@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.16.5',
+      version='0.16.6',
       packages=find_packages(exclude=find_packages("Research").__add__(["EAGLE.tests", "EAGLEdb.tests", "Research"])),
       package_data={'EAGLE': ['configs/*', 'tests/*'],
                     'EAGLEdb': ['org_tables/*', 'tests/*']},
@@ -10,6 +10,7 @@ setup(name='EAGLE',
             'pyaml >= 3.12',
             'numpy >= 1.14.3',
             'pandas == 0.22.0',
+            'matplotlib >= 2.2.3',
             'scipy >= 1.1.0',
             'biopython >= 1.72',
             'redis >= 2.10.6',
