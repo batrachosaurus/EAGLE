@@ -282,10 +282,8 @@ def get_orf_stats(orf_id,
     tmp_dir = os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp")
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
-    btax_tree_path = os.path.join(tmp_dir, "btax_tree.nwk")
-    dump_tree_newick(tree_newick=btax_data["16S_rRNA_tree"]["newick"], newick_f_path=btax_tree_path)
-    btax_tree = PhyloTree.load_tree(
-        tree_file=btax_tree_path,
+    btax_tree = PhyloTree.load_tree_from_str(
+        tree_str=btax_data["16S_rRNA_tree"]["newick"],
         full_seq_names=dict((short_name, name_dict["organism_name"]) for short_name, name_dict in
                             btax_data["16S_rRNA_tree"]["full_seq_names"].items()),
         tree_name="btax_tree",

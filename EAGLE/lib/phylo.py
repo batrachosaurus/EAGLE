@@ -5,7 +5,7 @@ import subprocess
 from collections import OrderedDict
 
 import pandas
-from Bio import Phylo
+import dendropy
 
 from EAGLE.constants import conf_constants, EAGLE_logger
 from EAGLE.lib.general import ConfBase, filter_list
@@ -24,31 +24,56 @@ class PhyloTree(ConfBase):
 
     @property
     def names(self):
-        return map(lambda c: c.name, self.tree.get_terminals())
+        return map(lambda c: c.name, self.tree.get_terminals())###
 
     @property
     def newick(self):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
         newick_path = os.path.join(self.tmp_dir, self.tree_name+".nwk")
-        self.dump_tree(tree_path=newick_path, format="newick")
+        self.dump_tree(tree_path=newick_path, tree_format="newick")
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
         return load_newick(newick_path=newick_path)
 
-    def dump_tree(self, tree_path, format="newick"):
-        Phylo.write(trees=[self.tree], file=tree_path, format=format)
+    def dump_tree(self, tree_path, tree_format="newick"):
+        tree_str = self.tree.as_string(schema=tree_format)
+        if tree_format == "newick":
+            dump_tree_newick(tree_newick=tree_str, newick_f_path=tree_path)
 
     @classmethod
     def load_tree(cls,
                   tree_file,
                   tree_name="phylo_tree",
                   tmp_dir="tmp",
-                  format="newick",
+                  tree_format="newick",
                   full_seq_names=None,
                   config_path=None,
                   logger=None):
 
-        return cls(tree=Phylo.read(tree_file, format=format),
+        if tree_format == "newick":
+            tree = load_newick(tree_file)
+        else:
+            print("loading trees from %s not implemented yet - use load_tree_from_str method" % tree_format)
+            return
+
+        return cls(tree=dendropy.Tree.get_from_string(tree, schema=tree_format),
+                   full_seq_names=full_seq_names,
+                   tree_name=tree_name,
+                   tmp_dir=tmp_dir,
+                   config_path=config_path,
+                   logger=logger)
+
+    @classmethod
+    def load_tree_from_str(cls,
+                           tree_str,
+                           tree_name="phylo_tree",
+                           tmp_dir="tmp",
+                           tree_format="newick",
+                           full_seq_names=None,
+                           config_path=None,
+                           logger=None):
+
+        return cls(tree=dendropy.Tree.get_from_string(tree_str, schema=tree_format),
                    full_seq_names=full_seq_names,
                    tree_name=tree_name,
                    tmp_dir=tmp_dir,
@@ -57,10 +82,10 @@ class PhyloTree(ConfBase):
 
     def set_full_names(self, inplace=False):
         if inplace:
-            if not self.tree.rooted:
-                self.tree.root_at_midpoint()
             to_remove = set(map(self._full_name_clade, self.tree.get_terminals()))
-            while True:
+            for name in self.names:
+                node_to_rename = self.tree.find_node_with_taxon_label(name)
+                
                 try:
                     self.tree.collapse(lambda c: c.name in to_remove)
                 except ValueError:
@@ -71,14 +96,7 @@ class PhyloTree(ConfBase):
             full_names_pht = deepcopy(self)
             full_names_pht.logger = logger
             self.logger = logger
-            if not full_names_pht.tree.rooted:
-                full_names_pht.tree.root_at_midpoint()
-            to_remove = set(map(full_names_pht._full_name_clade, full_names_pht.tree.get_terminals()))
-            while True:
-                try:
-                    full_names_pht.tree.collapse(lambda c: c.name in to_remove)
-                except ValueError:
-                    break
+            full_names_pht.set_full_names(inplace=True)
             return full_names_pht
 
     def remove_names(self, names_to_remove):
@@ -132,7 +150,7 @@ def build_tree_by_dist(dist_matrix=None,
         fastme_cmd = fastme_exec_path + " -i " + dist_matrix_path + " -o " + tree_path
         subprocess.call(fastme_cmd, shell=True)
         phylo_tree = PhyloTree.load_tree(tree_file=tree_path,
-                                         format="newick",
+                                         tree_format="newick",
                                          full_seq_names=full_seq_names,
                                          config_path=config_path,
                                          logger=logger)
