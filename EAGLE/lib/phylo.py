@@ -28,10 +28,10 @@ class PhyloTree(ConfBase):
 
     @property
     def newick(self):
-        return self.tree.as_string(schema="newick")
+        return self.tree.as_string(schema="newick").replace(" ", "_")
 
     def dump_tree(self, tree_path, tree_format="newick"):
-        tree_str = self.tree.as_string(schema=tree_format)
+        tree_str = self.tree.as_string(schema=tree_format).replace(" ", "_")
         if tree_format == "newick":
             dump_tree_newick(tree_newick=tree_str, newick_f_path=tree_path)
 
@@ -81,7 +81,7 @@ class PhyloTree(ConfBase):
             for name in self.names:
                 node_to_rename = self.tree.find_node_with_taxon_label(name)
                 try:
-                    node_to_rename.taxon.label = self.full_seq_names[name]
+                    node_to_rename.taxon.label = self.full_seq_names[name.replace(" ", "_")]
                 except KeyError:
                     names_to_remove.append(name)
             self.tree.prune_taxa_with_labels(names_to_remove)
