@@ -158,6 +158,8 @@ def compare_trees(phylo_tree1,
     phylo_tree1.remove_names(list(set(phylo_tree1.names) - names_to_remain))
     phylo_tree2.remove_names(list(set(phylo_tree2.names) - names_to_remain))
     if method.lower() in ("robinson-foulds", "rf"):
+        phylo_tree1.tree.encode_bipartitions()
+        phylo_tree2.tree.encode_bipartitions()
         trees_diff = dendropy.treecalc.treecompare.symmetric_difference(tree1=phylo_tree1.tree, tree2=phylo_tree2.tree)
     else:
         return
