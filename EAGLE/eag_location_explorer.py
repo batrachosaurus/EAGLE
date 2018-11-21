@@ -279,9 +279,6 @@ def get_orf_stats(orf_id,
         logger=EAGLE_logger
     )
     orf_homs_tree.set_full_names(inplace=True)
-    tmp_dir = os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp")
-    if not os.path.exists(tmp_dir):
-        os.makedirs(tmp_dir)
     btax_tree = PhyloTree.load_tree_from_str(
         tree_str=btax_data["16S_rRNA_tree"]["newick"],
         full_seq_names=dict((short_name, name_dict["organism_name"]) for short_name, name_dict in
@@ -293,7 +290,6 @@ def get_orf_stats(orf_id,
     btax_tree.set_full_names(inplace=True)
     orf_stats["phylo_diff"] = compare_trees(phylo_tree1=orf_homs_tree,
                                             phylo_tree2=btax_tree,
-                                            tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp"),
                                             method="Robinson-Foulds")
     EAGLE_logger.info("got phylo_diff for ORF '%s'" % orf_id)
 
