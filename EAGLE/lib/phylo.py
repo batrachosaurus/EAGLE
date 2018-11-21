@@ -77,12 +77,14 @@ class PhyloTree(ConfBase):
 
     def set_full_names(self, inplace=False):
         if inplace:
+            names_to_remove = list()
             for name in self.names:
                 node_to_rename = self.tree.find_node_with_taxon_label(name)
                 try:
                     node_to_rename.taxon.label = self.full_seq_names[name]
                 except KeyError:
-                    self.tree.prune_taxa_with_labels([name])
+                    names_to_remove.append(name)
+            self.tree.prune_taxa_with_labels(names_to_remove)
         else:
             logger = self.logger
             self.logger = None
