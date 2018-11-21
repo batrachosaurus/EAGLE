@@ -24,16 +24,11 @@ class PhyloTree(ConfBase):
 
     @property
     def names(self):
-        return map(lambda c: c.name, self.tree.get_terminals())###
+        return filter(None, map(lambda node: node.taxon.label if node.taxon else None, self.tree.nodes()))
 
     @property
     def newick(self):
-        if not os.path.exists(self.tmp_dir):
-            os.makedirs(self.tmp_dir)
-        newick_path = os.path.join(self.tmp_dir, self.tree_name+".nwk")
-        self.dump_tree(tree_path=newick_path, tree_format="newick")
-        shutil.rmtree(self.tmp_dir, ignore_errors=True)
-        return load_newick(newick_path=newick_path)
+        return self.tree.as_string(schema="newick")
 
     def dump_tree(self, tree_path, tree_format="newick"):
         tree_str = self.tree.as_string(schema=tree_format)
@@ -82,35 +77,24 @@ class PhyloTree(ConfBase):
 
     def set_full_names(self, inplace=False):
         if inplace:
-            to_remove = set(map(self._full_name_clade, self.tree.get_terminals()))
             for name in self.names:
                 node_to_rename = self.tree.find_node_with_taxon_label(name)
-                
                 try:
-                    self.tree.collapse(lambda c: c.name in to_remove)
-                except ValueError:
-                    break
+                    node_to_rename.taxon.label = self.full_seq_names[name]
+                except KeyError:
+                    self.tree.prune_taxa_with_labels([name])
         else:
             logger = self.logger
             self.logger = None
             full_names_pht = deepcopy(self)
+            full_names_pht.full_seq_names = None
             full_names_pht.logger = logger
             self.logger = logger
             full_names_pht.set_full_names(inplace=True)
             return full_names_pht
 
     def remove_names(self, names_to_remove):
-        while True:
-            try:
-                self.tree.collapse(lambda c: c.name in names_to_remove)
-            except ValueError:
-                break
-
-    def _full_name_clade(self, c):
-        try:
-            c.name = self.full_seq_names[c.name]
-        except KeyError:
-            return c.name
+        self.tree.prune_taxa_with_labels(names_to_remove)
 
     def according_to_taxonomy(self, taxonomy):
         # NOT inplace method!
@@ -166,33 +150,15 @@ def build_tree_by_dist(dist_matrix=None,
 
 def compare_trees(phylo_tree1,
                   phylo_tree2,
-                  method="Robinson-Foulds",
-                  tmp_dir="tmp",
-                  emboss_inst_dir=conf_constants.emboss_inst_dir):
+                  method="Robinson-Foulds"):
 
-    if not os.path.exists(tmp_dir):
-        os.makedirs(tmp_dir)
     names_to_remain = set(phylo_tree1.names) & set(phylo_tree2.names)
     phylo_tree1.remove_names(set(phylo_tree1.names) - names_to_remain)
     phylo_tree2.remove_names(set(phylo_tree2.names) - names_to_remain)
-    to_comp_path = os.path.join(tmp_dir, "to_comp.nwk")
-    comp_res_path = os.path.join(tmp_dir, "comp.res")
-    Phylo.write([phylo_tree1.tree, phylo_tree2.tree], file=to_comp_path, format="newick")
-    if method.lower() in ("robinson-foulds", "rf", "s"):
-        method = None
-        method = "s"
+    if method.lower() in ("robinson-foulds", "rf"):
+        trees_diff = dendropy.treecalc.treecompare.symmetric_difference(tree1=phylo_tree1.tree, tree2=phylo_tree2.tree)
     else:
-        method = None
-        method = "b"
-    subprocess.call(os.path.join(emboss_inst_dir, "ftreedist") + " " + to_comp_path + " " +
-                    comp_res_path + " -dtype " + method, shell=True)
-    with open(comp_res_path) as comp_res_f:
-        try:
-            trees_diff = float(list(filter(lambda s: s.strip(), list(filter(lambda l: l.strip(),
-                                                                            comp_res_f.readlines()))[-1].split()))[-1])
-        except (IndexError, ValueError, TypeError):
-            trees_diff = None
-    shutil.rmtree(tmp_dir, ignore_errors=True)
+        return
     return trees_diff
 
 
