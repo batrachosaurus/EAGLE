@@ -45,7 +45,7 @@ def _parse_cmd_args(*args):
                         required=False,
                         default="hmmer")
     parser.add_argument("-c",
-                        "--config_path",
+                        "--config-path",
                         help="Path to a config file",
                         required=False,
                         default=None)
