@@ -56,6 +56,9 @@ EAGLEdb -dbt bacteria -igenbank <prepared/genomes/list/path>
 All this commands can be run as Python functions: see below EAGLEdb package reference  
   
 ### Run the analysis
+NOTE: sequences names in input fasta file cannot be longer than 10 symbols.  
+  
+Type the command below to start the analysis:
 ```
 EAGLE -i <fasta/path> -db <EAGLEdb/scheme/json/path> -m <run_mode> -nt <threads_number> -o <out/dir/path>
 ```
