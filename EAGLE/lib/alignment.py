@@ -6,7 +6,6 @@ from collections import defaultdict, OrderedDict, Counter
 
 import numpy as np
 import pandas
-from scipy.stats import chisquare
 
 from EAGLE.constants import conf_constants
 from EAGLE.lib.phylo import load_phylip_dist_matrix
@@ -381,7 +380,7 @@ class MultAln(ConfBase):
                                              for seq_id in self.mult_aln_dict)))
             i += windows_step
         cons_cols_by_windows = np.array([w.cons_cols_num(cons_thr=cons_thr) for w in windows_list])
-        return chisquare(cons_cols_by_windows).pvalue
+        return np.var(cons_cols_by_windows)
 
     def cons_cols_num(self, cons_thr=conf_constants.cons_thr):
         cln = 0
