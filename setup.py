@@ -2,6 +2,15 @@ from setuptools import setup, find_packages
 
 setup(name='EAGLE',
       version='0.19.4',
+      author="Denis Moshensky",
+      author_email="loven-doo@fbb.msu.ru", 
+      description="Essential and Advantageous Genes Location Explorer",
+      url="https://github.com/loven-doo/EAGLE",
+      classifiers=[
+          "Programming Language :: Python :: 2.7",
+          "License :: OSI Approved :: MIT License",  #
+          "Operating System :: OS Independent",
+      ],
       packages=find_packages(exclude=find_packages("Research").__add__(["EAGLE.tests", "EAGLEdb.tests", "Research"])),
       package_data={'EAGLE': ['configs/*', 'tests/*'],
                     'EAGLEdb': ['org_tables/*', 'tests/*']},
