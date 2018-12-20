@@ -25,7 +25,9 @@ def _parse_cmd_args(*args):
                         "--mode",
                         help="Mode to run EAGLE: 'genome' - parses input fasta file as single genome "
                              "even if there not only one aequence; 'contigs' - parses input fasta files as "
-                             "independent contigs (default: 'genome')",
+                             "independent contigs (default: 'genome'). NOTE: sequences in one file can not be " 
+                             "analyzed with different modes. If you need this split your input fasta into " 
+                             "several files each of them could be analyzed using proper mode",
                         required=False,
                         default='genome')
     parser.add_argument("-btn",
