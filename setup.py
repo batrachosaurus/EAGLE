@@ -8,7 +8,7 @@ setup(name='EAGLE',
       url="https://github.com/loven-doo/EAGLE",
       classifiers=[
           "Programming Language :: Python :: 2.7",
-          "License :: OSI Approved :: MIT License",  #
+          "License :: OSI Approved :: MIT License",
           "Operating System :: OS Independent",
       ],
       packages=find_packages(exclude=find_packages("Research").__add__(["EAGLE.tests", "EAGLEdb.tests", "Research"])),
