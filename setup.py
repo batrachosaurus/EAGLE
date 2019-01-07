@@ -22,7 +22,7 @@ setup(name='EAGLE',
             'matplotlib >= 2.2.3',
             'scipy >= 1.1.0',
             'biopython >= 1.72',
-            'DendroPy>=4.4.0',
+            'DendroPy >= 4.4.0',
             'redis >= 2.10.6',
       ],
       entry_points={
