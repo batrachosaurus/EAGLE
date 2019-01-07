@@ -265,6 +265,7 @@ def get_orf_stats(orf_id,
     EAGLE_logger.info("got p_uniformity for ORF '%s'" % orf_id)
     # Ka/Ks
     # Phylo
+    phylo_tmp_dir = os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp")
     try:
         del orf_mult_aln[orf_id]
     except KeyError:
@@ -275,7 +276,7 @@ def get_orf_stats(orf_id,
         full_seq_names=dict((short_id, seq_ids_to_orgs[full_id]["organism_name"])
                             for short_id, full_id in orf_mult_aln.short_to_full_seq_names.items()),
         tree_name=orf_id.replace("|:", "_")+"_tree",
-        tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp"),
+        tmp_dir=phylo_tmp_dir,
         logger=EAGLE_logger
     )
     orf_homs_tree.set_full_names(inplace=True)
@@ -284,7 +285,7 @@ def get_orf_stats(orf_id,
         full_seq_names=dict((short_name, name_dict["organism_name"]) for short_name, name_dict in
                             btax_data["16S_rRNA_tree"]["full_seq_names"].items()),
         tree_name="btax_tree",
-        tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_tree_tmp"),
+        tmp_dir=phylo_tmp_dir,
         logger=EAGLE_logger
     )
     btax_tree.set_full_names(inplace=True)
