@@ -17,6 +17,7 @@ Python 2.7
 &nbsp; - pandas == 0.22.0  
 &nbsp; - matplotlib >= 2.2.3  
 &nbsp; - scipy >= 1.1.0  
+&nbsp; - DendroPy >= 4.4.0  
 &nbsp; - biopython >= 1.72  
 &nbsp; - redis >= 2.10.6  
 

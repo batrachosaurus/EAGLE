@@ -155,8 +155,14 @@ def compare_trees(phylo_tree1,
                   method="Robinson-Foulds"):
 
     names_to_remain = set(phylo_tree1.names) & set(phylo_tree2.names)
+    if not os.path.exists(phylo_tree1.tmp_dir):###
+        os.makedirs(phylo_tree1.tmp_dir)###
+    phylo_tree1.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree1_0.nwk"))###
+    phylo_tree2.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree2_0.nwk"))###
     phylo_tree1.remove_names(list(set(phylo_tree1.names) - names_to_remain))
     phylo_tree2.remove_names(list(set(phylo_tree2.names) - names_to_remain))
+    phylo_tree1.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree1_1.nwk"))###
+    phylo_tree2.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree2_1.nwk"))###
     if method.lower() in ("robinson-foulds", "rf"):
         phylo_tree1.tree.encode_bipartitions()
         phylo_tree2.tree.encode_bipartitions()
