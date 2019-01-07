@@ -164,22 +164,28 @@ def compare_trees(phylo_tree1,
                   phylo_tree2,
                   method="Robinson-Foulds"):
 
+    taxa = dendropy.TaxonNamespace()
     names_to_remain = set(phylo_tree1.names) & set(phylo_tree2.names)
-    if not os.path.exists(phylo_tree1.tmp_dir):###
-        os.makedirs(phylo_tree1.tmp_dir)###
-    phylo_tree1.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree1_0.nwk"))###
-    phylo_tree2.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree2_0.nwk"))###
-    pht1 = phylo_tree1.remove_names(list(set(phylo_tree1.names) - names_to_remain))
-    pht2 = phylo_tree2.remove_names(list(set(phylo_tree2.names) - names_to_remain))
-    pht2.taxon_namespace = pht1.taxon_namespace
-    pht1.tree.reroot_at_midpoint()
-    pht2.tree.reroot_at_midpoint()
-    pht1.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree1_1.nwk"))###
-    pht2.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree2_1.nwk"))###
+    #if not os.path.exists(phylo_tree1.tmp_dir):###
+    #    os.makedirs(phylo_tree1.tmp_dir)###
+    #phylo_tree1.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree1_0.nwk"))###
+    #phylo_tree2.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree2_0.nwk"))###
+    pht1 = dendropy.Tree.get_from_string(phylo_tree1.remove_names(list(set(phylo_tree1.names)-names_to_remain)).newick,
+                                         schema='newick',
+                                         taxon_namespace=taxa)
+    pht2 = dendropy.Tree.get_from_string(phylo_tree2.remove_names(list(set(phylo_tree2.names)-names_to_remain)).newick,
+                                         schema='newick',
+                                         taxon_namespace=taxa)
+    #pht1.reroot_at_midpoint()
+    #pht2.reroot_at_midpoint()
+    #pht1.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree1_1.nwk"))###
+    #pht2.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree2_1.nwk"))###
     if method.lower() in ("robinson-foulds", "rf"):
-        pht1.tree.encode_bipartitions()
-        pht2.tree.encode_bipartitions()
-        trees_diff = dendropy.treecalc.treecompare.symmetric_difference(tree1=pht1.tree, tree2=pht2.tree)
+        pht1.encode_bipartitions()
+        pht2.encode_bipartitions()
+        trees_diff = dendropy.treecalc.treecompare.symmetric_difference(tree1=pht1,
+                                                                        tree2=pht2,
+                                                                        is_bipartitions_updated=True)
     else:
         return
     return trees_diff
