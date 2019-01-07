@@ -89,14 +89,23 @@ class PhyloTree(ConfBase):
             logger = self.logger
             self.logger = None
             full_names_pht = deepcopy(self)
-            full_names_pht.full_seq_names = None
+            #full_names_pht.full_seq_names = None
             full_names_pht.logger = logger
             self.logger = logger
             full_names_pht.set_full_names(inplace=True)
             return full_names_pht
 
-    def remove_names(self, names_to_remove):
-        self.tree.prune_taxa_with_labels(names_to_remove)
+    def remove_names(self, names_to_remove, inplace=False):
+        if inplace:
+            self.tree.prune_taxa_with_labels(names_to_remove)
+        else:
+            logger = self.logger
+            self.logger = None
+            rem_names_pht = deepcopy(self)
+            rem_names_pht.logger = logger
+            self.logger = logger
+            rem_names_pht.remove_names(names_to_remove, inplace=True)
+            return rem_names_pht
 
     def according_to_taxonomy(self, taxonomy):
         # NOT inplace method!
@@ -138,6 +147,7 @@ def build_tree_by_dist(dist_matrix=None,
         phylo_tree = PhyloTree.load_tree(tree_file=tree_path,
                                          tree_format="newick",
                                          full_seq_names=full_seq_names,
+                                         tmp_dir=tmp_dir,
                                          config_path=config_path,
                                          logger=logger)
         if logger:
@@ -159,14 +169,17 @@ def compare_trees(phylo_tree1,
         os.makedirs(phylo_tree1.tmp_dir)###
     phylo_tree1.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree1_0.nwk"))###
     phylo_tree2.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree2_0.nwk"))###
-    phylo_tree1.remove_names(list(set(phylo_tree1.names) - names_to_remain))
-    phylo_tree2.remove_names(list(set(phylo_tree2.names) - names_to_remain))
-    phylo_tree1.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree1_1.nwk"))###
-    phylo_tree2.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree2_1.nwk"))###
+    pht1 = phylo_tree1.remove_names(list(set(phylo_tree1.names) - names_to_remain))
+    pht2 = phylo_tree2.remove_names(list(set(phylo_tree2.names) - names_to_remain))
+    pht2.taxon_namespace = pht1.taxon_namespace
+    pht1.tree.reroot_at_midpoint()
+    pht2.tree.reroot_at_midpoint()
+    pht1.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree1_1.nwk"))###
+    pht2.dump_tree(tree_path=os.path.join(phylo_tree1.tmp_dir, "tree2_1.nwk"))###
     if method.lower() in ("robinson-foulds", "rf"):
-        phylo_tree1.tree.encode_bipartitions()
-        phylo_tree2.tree.encode_bipartitions()
-        trees_diff = dendropy.treecalc.treecompare.symmetric_difference(tree1=phylo_tree1.tree, tree2=phylo_tree2.tree)
+        pht1.tree.encode_bipartitions()
+        pht2.tree.encode_bipartitions()
+        trees_diff = dendropy.treecalc.treecompare.symmetric_difference(tree1=pht1.tree, tree2=pht2.tree)
     else:
         return
     return trees_diff
