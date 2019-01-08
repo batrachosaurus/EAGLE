@@ -175,9 +175,11 @@ def compare_trees(phylo_tree1,
     if method.lower() in ("robinson-foulds", "rf"):
         pht1.encode_bipartitions()
         pht2.encode_bipartitions()
-        trees_diff = dendropy.treecalc.treecompare.symmetric_difference(tree1=pht1,
-                                                                        tree2=pht2,
-                                                                        is_bipartitions_updated=True)
+        trees_diff = float(dendropy.treecalc.treecompare.symmetric_difference(
+            tree1=pht1,
+            tree2=pht2,
+            is_bipartitions_updated=True,
+        )) / float(len(pht1.leaf_nodes())-1)
     else:
         return
     return trees_diff
