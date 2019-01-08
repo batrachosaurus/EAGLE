@@ -82,7 +82,7 @@ def explore_genes(in_fasta,
     res_gtf_df = pd.DataFrame(res_gtf_json.values())
     res_gtf_df.sort_values("start", inplace=True)
     res_gtf_df = res_gtf_df[["seqid", "source", "type", "start", "end", "score", "strand", "frame", "attribute"]]
-    res_gtf_df.to_csv(os.path.join(out_dir, os.path.basename(in_fasta)+".gtf"), sep="\t", index=False)
+    res_gtf_df.to_csv(os.path.join(out_dir, os.path.basename(in_fasta)+".gtf"), sep="\t", index=False, quotechar="'")
 
 
 def get_btax(in_fasta,
@@ -209,7 +209,7 @@ def analyze_tblastn_out(tblastn_out_path,
     EAGLE_logger.info("ORFs stats calculated")
     for orf_id in orfs_stats.keys():
         try:
-            res_gtf_json[orf_id]["attribute"] = "'"+json.dumps(orfs_stats[orf_id])+"'"
+            res_gtf_json[orf_id]["attribute"] = json.dumps(orfs_stats[orf_id])
         except KeyError:
             pass
     orfs_stats = None
