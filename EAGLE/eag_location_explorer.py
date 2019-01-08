@@ -7,6 +7,7 @@ import multiprocessing as mp
 import numpy as np
 import pandas as pd
 from Bio.Seq import Seq
+from Bio.Data.CodonTable import TranslationError
 
 from EAGLE.constants import conf_constants, EAGLE_logger, PROFILES_SCAN_OUT
 from EAGLE.lib.alignment import HmmerHandler, BlastHandler, MultAln, construct_mult_aln
@@ -233,12 +234,16 @@ def get_orf_stats(orf_id,
     seq_ids_to_orgs[orf_id] = {"organism_name": "Input_Organism_X"}
     btax_fna = load_fasta_to_dict(fasta_path=btax_data["fam_fna"])
     for hom in homologs_list:
-        if hom["subj_start"] <= hom["subj_end"]:
-            orf_homologs_seqs[hom["subj_id"]] = \
-                str(Seq(btax_fna[hom["subj_id"]][hom["subj_start"]-1:hom["subj_end"]]).translate())
-        else:
-            orf_homologs_seqs[hom["subj_id"]] = \
-                str(Seq(btax_fna[hom["subj_id"]][hom["subj_end"]-1:hom["subj_start"]]).reverse_complement().translate())
+        try:
+            if hom["subj_start"] <= hom["subj_end"]:
+                orf_homologs_seqs[hom["subj_id"]] = \
+                    str(Seq(btax_fna[hom["subj_id"]][hom["subj_start"]-1:hom["subj_end"]]).translate())
+            else:
+                orf_homologs_seqs[hom["subj_id"]] = \
+                    str(Seq(btax_fna[hom["subj_id"]][hom["subj_end"]-1:
+                                                     hom["subj_start"]]).reverse_complement().translate())
+        except TranslationError:
+            continue
     btax_fna = None
     EAGLE_logger.info("got homologs sequences for ORF '%s'" % orf_id)
     orf_mult_aln = construct_mult_aln(seq_dict=orf_homologs_seqs,
