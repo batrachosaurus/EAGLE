@@ -227,7 +227,7 @@ def get_orf_stats(orf_id,
 
     orf_stats = dict()
     if len(homologs_list) < 3:
-        orf_stats = {"p_uniformity": None, "phylo_diff": None}
+        orf_stats = {"uniformity_std": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
         EAGLE_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
@@ -256,18 +256,18 @@ def get_orf_stats(orf_id,
     # Uniformity
     orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
     if len(orf_mult_aln.seqs) < 4:
-        orf_stats = {"p_uniformity": None, "phylo_diff": None}
+        orf_stats = {"uniformity_std": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
         EAGLE_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
-    orf_stats["p_uniformity"] = orf_mult_aln.improve_aln(inplace=False).estimate_uniformity(
+    orf_stats["uniformity_std"] = orf_mult_aln.improve_aln(inplace=False).estimate_uniformity(
         cons_thr=conf_constants.cons_thr,
         window_l=conf_constants.unif_window_l,
         windows_step=conf_constants.unif_windows_step
     )
-    if np.isnan(orf_stats["p_uniformity"]):
-        orf_stats["p_uniformity"] = None
-    EAGLE_logger.info("got p_uniformity for ORF '%s'" % orf_id)
+    if np.isnan(orf_stats["uniformity_std"]):
+        orf_stats["uniformity_std"] = None
+    EAGLE_logger.info("got uniformity_std for ORF '%s'" % orf_id)
     # Ka/Ks
     # Phylo
     phylo_tmp_dir = os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp")
