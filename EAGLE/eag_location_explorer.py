@@ -209,7 +209,7 @@ def analyze_tblastn_out(tblastn_out_path,
     EAGLE_logger.info("ORFs stats calculated")
     for orf_id in orfs_stats.keys():
         try:
-            res_gtf_json[orf_id]["attribute"] = orfs_stats[orf_id]
+            res_gtf_json[orf_id]["attribute"] = json.dumps(orfs_stats[orf_id])
         except KeyError:
             pass
     orfs_stats = None
