@@ -6,9 +6,7 @@ MUSCLE
 HMMER3  
 EMBOSS + PHYLIPNEW (EMBASSY package)  
 FastME 2.07  
-KaKs Calculator 2.0  
 Blast+  
-Redis  
 Python 2.7  
 ### Python packages:  
 &nbsp; - wget >= 3.2  
@@ -23,7 +21,10 @@ Python 2.7
 
 ## How to use
 
-### Install it:
+### Instal the requirements
+It can be very difficult to install some requirements on Windows. Linux is recommended to use.
+
+### Install the package:
 ```
 pip install git+https://github.com/loven-doo/EAGLE.git --upgrade  
 ```
