@@ -172,14 +172,14 @@ def compare_trees(phylo_tree1,
     pht2 = dendropy.Tree.get_from_string(phylo_tree2.remove_names(list(set(phylo_tree2.names)-names_to_remain)).newick,
                                          schema='newick',
                                          taxon_namespace=taxa)
-    if method.lower() in ("robinson-foulds", "rf"):
+    if method.lower() in ("robinson-foulds", "rf") and len(pht1.leaf_nodes()) > 3:
         pht1.encode_bipartitions()
         pht2.encode_bipartitions()
         trees_diff = float(dendropy.treecalc.treecompare.symmetric_difference(
             tree1=pht1,
             tree2=pht2,
             is_bipartitions_updated=True,
-        )) / float(len(pht1.leaf_nodes())-1)
+        )) / float(2*len(pht1.leaf_nodes())-6)
     else:
         return
     return trees_diff

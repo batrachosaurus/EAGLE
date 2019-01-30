@@ -1,13 +1,15 @@
 FROM python:2
 
+ADD embassy-phylip_3.69.660-3_amd64.deb /src/
+
 RUN apt-get update && apt-get install -y \
     ncbi-blast+ \
     muscle \
     emboss \
-    embassy-phylip \
-    hmmer 
+    hmmer \
+    /src/embassy-phylip_3.69.660-3_amd64.deb
 
 ADD fastme /bin/
-ADD EAGLE-0.20.6.tar.gz /
+ADD EAGLE-*.tar.gz /src/
 
-RUN pip install /EAGLE-0.20.6.tar.gz
+RUN pip install /src/EAGLE-*
