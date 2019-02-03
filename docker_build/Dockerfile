@@ -13,3 +13,7 @@ ADD fastme /bin/
 ADD EAGLE-*.tar.gz /src/
 
 RUN pip install /src/EAGLE-*
+
+RUN mkdir /EAGLE
+CMD cd /EAGLE
+
