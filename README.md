@@ -21,6 +21,18 @@ Python 2.7
 
 ## How to use
 
+### Pull the docker image
+```
+docker pull loven7doo/eagle
+```
+The workdir in this image is '/EAGLE' so to run all commands from the image use this way:
+```
+docker run -v </host/system/workdr/location/>:/EAGLE <any command>
+```
+Do not forget to replace the path to the host system workdir with '/EAGLE' in commands
+
+If docker is not the appropriate way follow steps below (requirements installation and the package installation)
+
 ### Instal the requirements
 It can be very difficult to install some requirements on Windows. Linux is recommended to use.
 
