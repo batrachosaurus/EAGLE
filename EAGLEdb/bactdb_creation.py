@@ -29,9 +29,6 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                            remove_bact_list_f=False,
                            config_path=None):
 
-    if not refseq_bacteria_table and not genbank_bacteria_table:
-        refseq_bacteria_table = DEFAULT_REFSEQ_BACTERIA_TABLE
-        genbank_bacteria_table = DEFAULT_GENBANK_BACTERIA_TABLE
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
         conf_constants_db.update_by_config(config_path=config_path)
@@ -424,6 +421,10 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
 
 def create_bactdb(input_table_refseq=None,
                   input_table_genbank=None,
+                  input_table_custom=None,
+                  btax_level=int(),
+                  btax_class_profile=None,
+                  btax_rep_profile=None,
                   db_dir=DEFAULT_BACTDB_DIR,
                   num_threads=None,
                   analyzed_organisms=ANALYZED_BACTERIA_F_NAME,
@@ -434,6 +435,10 @@ def create_bactdb(input_table_refseq=None,
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
         conf_constants_db.update_by_config(config_path=config_path)
+    if not btax_level:
+        btax_level = conf_constants_db.btax_level
+    else:
+        conf_constants_db.btax_level = btax_level
     if not db_dir:
         db_dir = DEFAULT_BACTDB_DIR
     if num_threads:
@@ -446,19 +451,33 @@ def create_bactdb(input_table_refseq=None,
     if not analyzed_organisms:
         analyzed_organisms = ANALYZED_BACTERIA_F_NAME
 
-    bacteria_list = get_bacteria_from_ncbi(refseq_bacteria_table=input_table_refseq,
-                                           genbank_bacteria_table=input_table_genbank,
-                                           bactdb_dir=db_dir,
-                                           num_threads=num_threads,
-                                           analyzed_bacteria_f_path=analyzed_organisms)
+    # TODO: this code should not get the btax classification sequence (16S rRNA)
+    if input_table_custom is None and input_table_refseq is None and input_table_genbank is None:
+        input_table_refseq = DEFAULT_REFSEQ_BACTERIA_TABLE
+        input_table_genbank = DEFAULT_GENBANK_BACTERIA_TABLE
+    if input_table_refseq is not None or input_table_genbank is not None:
+        bacteria_list = get_bacteria_from_ncbi(refseq_bacteria_table=input_table_refseq,
+                                               genbank_bacteria_table=input_table_genbank,
+                                               bactdb_dir=db_dir,
+                                               num_threads=num_threads,
+                                               analyzed_bacteria_f_path=analyzed_organisms)
+    if input_table_custom is not None:
+        print("custom genomes input is not implemented yet")
+        # TODO: implement custom genomes input
     if analyzed_organisms_info:
         bacteria_list = join_bacteria_lists(bacteria_list_1=bacteria_list,
                                             bacteria_list_2=json.load(open(analyzed_organisms_info)))
+    # TODO: impement code to obtain btax classification sequence from fna with hmm profile
+    btax_dict = get_btax_dict(genomes_list=bacteria_list,
+                              db_dir=db_dir,
+                              num_threads=num_threads,
+                              only_repr=True)
     families_dict = get_families_dict(bacteria_list=bacteria_list,
                                       db_dir=db_dir,
                                       num_threads=num_threads,
                                       only_repr=True)
-    create_profiles_db(families_dict,
+    create_profiles_db(btax_dict,
+
                        db_dir,
                        profiles_db_name=PROFILES_DB_NAME,
                        method="hmmer",

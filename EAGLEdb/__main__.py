@@ -28,6 +28,12 @@ def _parse_cmd_args(*args):
                         help="Path to a table with custom genomes and their taxonomy (not implemented yet)",
                         required=False,
                         default=None)
+    parser.add_argument("-btl",
+                        "--btax-level",
+                        help="The taxonomic level to split input genomes into base taxons "
+                             "(1 - species, 2 - genus, 3 - family, etc)",
+                        required=False,
+                        default=int())
     parser.add_argument("-btcp",
                         "--btax-class-profile",
                         help="The path to HMM profile of sequences that should be used for base taxons classification "
