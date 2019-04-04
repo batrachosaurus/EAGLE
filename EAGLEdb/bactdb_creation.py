@@ -126,37 +126,41 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
 
 
 def get_bacterium(ncbi_db_link, bacterium_name, repr, analyzed_bacteria, db_dir, source_db=None, **kwargs):
+    if conf_constants_db.only_repr and not repr:
+        return
     assembly_id = ncbi_db_link.split("/")[-1]
-    bacterium_info = {"family": None,
-                      "genus": None,
-                      "species": None,
+    bacterium_info = {"family": None,###
+                      "genus": None,###
+                      "species": None,###
+                      "taxonomy": [],
                       "strain": None,
-                      "download_prefix": (ncbi_db_link+"/"+assembly_id).replace("https", "ftp"),
-                      "16S_rRNA_file": None,
+                      "ncbi_download_prefix": (ncbi_db_link+"/"+assembly_id).replace("https", "ftp"),
+                      "fna_path": None,
+                      "16S_rRNA_file": None,###
+                      "btc_seq_path": None,
                       "source_db": source_db,
                       "repr": repr}
     EAGLE_logger.info("%s getting started" % bacterium_name)
     EAGLE_logger.info('bacterium link: %s' % bacterium_info["download_prefix"])
     if analyzed_bacteria.get(bacterium_name, None):
         EAGLE_logger.info("%s is in analyzed bacteria" % bacterium_name)
-        return 0
-    download_organism_files(bacterium_info["download_prefix"],
+        return
+    download_organism_files(bacterium_info["ncbi_download_prefix"],
                             ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"],
                             db_dir,
                             logger=EAGLE_logger)
     tax_f_name = assembly_id + "_wgsmaster.gbff.gz"
     if not os.path.exists(os.path.join(db_dir, tax_f_name)):
         tax_f_name = None
-        download_organism_files(bacterium_info["download_prefix"], "_genomic.gbff.gz", db_dir, logger=EAGLE_logger)
+        download_organism_files(bacterium_info["ncbi_download_prefix"], "_genomic.gbff.gz", db_dir, logger=EAGLE_logger)
         tax_f_name = assembly_id + "_genomic.gbff.gz"
-    bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
-        get_taxonomy(tax_f_name, db_dir)
+    bacterium_info["taxonomy"], bacterium_info["strain"] = get_taxonomy(tax_f_name, db_dir)
     EAGLE_logger.info("got %s taxonomy" % bacterium_info["strain"])
-    #if not os.path.exists():
-    #
-    bacterium_info["16S_rRNA_file"] = get_16S_fasta(assembly_id + "_rna_from_genomic.fna.gz",
-                                                    db_dir,
-                                                    bacterium_info["strain"])
+
+    # TODO: no need to obtain 16S rRNA during this stage
+    bacterium_info["btc_seq_path"] = get_16S_fasta(assembly_id + "_rna_from_genomic.fna.gz",
+                                                   db_dir,
+                                                   bacterium_info["strain"])
     EAGLE_logger.info("got %s 16S rRNA" % bacterium_info["strain"])
     f = io.open(os.path.join(db_dir, BACTERIA_LIST_F_NAME), 'a', newline="\n")
     f.write(unicode("  "+json.dumps(bacterium_info)+",\n"))
@@ -165,7 +169,7 @@ def get_bacterium(ncbi_db_link, bacterium_name, repr, analyzed_bacteria, db_dir,
 
 
 def get_taxonomy(f_name, f_dir, remove_tax_f=True):
-    family = None
+    prepared_taxonomy = list()
     genus = None
     species = None
     strain = None
@@ -178,7 +182,7 @@ def get_taxonomy(f_name, f_dir, remove_tax_f=True):
         line = line_.decode("utf-8").strip()
         if not line: continue
         if line[:9] == "REFERENCE" or line[:7] == "COMMENT" or line[:8] == "FEATURES":
-            family = get_family(tax_list, genus, species, strain)
+            prepared_taxonomy = prepare_tax_list(tax_list, genus, species, strain)
             break
         if line[:8] == "ORGANISM":
             org = True
@@ -187,11 +191,54 @@ def get_taxonomy(f_name, f_dir, remove_tax_f=True):
             species = genus + "_" + line_list[2]
             strain = "_".join(line_list[1:])
         elif org:
-            tax_list += list(prepare_tax_line(line))
+            tax_list.extend(list(prepare_tax_line(line)))
     f.close()
     if remove_tax_f:
         os.remove(f_path)
-    return family, genus, species, strain
+    return prepared_taxonomy, strain
+
+
+def prepare_tax_list(tax_list, genus, species, strain):
+    prepared_tax_list = list()
+    genus_match = False
+    species_match = False
+    strain_match = False
+    _aceae_seen = False
+    after_aceae = False
+    for tax in tax_list:
+        if tax == strain:
+            strain_match = True
+            break
+        elif tax == species:
+            species_match = True
+            if not prepared_tax_list:
+                prepared_tax_list = ["Unclassified", genus, species]
+            elif _aceae_seen and not after_aceae:
+                prepared_tax_list.extend([genus, species])
+                after_aceae = True
+            else:
+                prepared_tax_list.append(species)
+            break
+        elif tax == genus:
+            genus_match = True
+            prepared_tax_list.extend([genus, species])
+            if _aceae_seen:
+                after_aceae = True
+            break
+        else:
+            prepared_tax_list.append(tax)
+            if _aceae_seen:
+                after_aceae = True
+                prepared_tax_list.append(species)
+                break
+            elif tax[-5:] == "aceae":
+                _aceae_seen = True
+
+    if _aceae_seen and not after_aceae:
+        prepared_tax_list.extend([genus, species])
+    elif len(prepared_tax_list) < 2 or (not genus_match and not species_match and not strain_match and not _aceae_seen):
+        prepared_tax_list = ["Unclassified", genus, species]
+    return prepared_tax_list
 
 
 def get_family(tax_list, g, sp, st):
@@ -214,7 +261,8 @@ def prepare_tax_line(tax_line):
     for elm_ in tax_line_list:
         elm = None
         elm = elm_.strip(" .\t")
-        if elm: yield elm
+        if elm:
+            yield elm.replace(" ", "_")
 
 
 def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
@@ -455,6 +503,7 @@ def create_bactdb(input_table_refseq=None,
     if input_table_custom is None and input_table_refseq is None and input_table_genbank is None:
         input_table_refseq = DEFAULT_REFSEQ_BACTERIA_TABLE
         input_table_genbank = DEFAULT_GENBANK_BACTERIA_TABLE
+    bacteria_list = list()
     if input_table_refseq is not None or input_table_genbank is not None:
         bacteria_list = get_bacteria_from_ncbi(refseq_bacteria_table=input_table_refseq,
                                                genbank_bacteria_table=input_table_genbank,
@@ -464,6 +513,7 @@ def create_bactdb(input_table_refseq=None,
     if input_table_custom is not None:
         print("custom genomes input is not implemented yet")
         # TODO: implement custom genomes input
+        # bacteria_list.extend()
     if analyzed_organisms_info:
         bacteria_list = join_bacteria_lists(bacteria_list_1=bacteria_list,
                                             bacteria_list_2=json.load(open(analyzed_organisms_info)))
