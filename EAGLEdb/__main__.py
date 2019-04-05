@@ -25,7 +25,9 @@ def _parse_cmd_args(*args):
                         default=None)
     parser.add_argument("-icustom",
                         "--input-table-custom",
-                        help="Path to a table with custom genomes and their taxonomy (not implemented yet)",
+                        help="Path to a table with custom genomes and their taxonomy (not implemented yet). "
+                             "The table consists of two necessary columns (1 - genome path; 2 - genome taxonomy) "
+                             "and one optional column (3 - organism name)",
                         required=False,
                         default=None)
     parser.add_argument("-btl",
@@ -56,15 +58,15 @@ def _parse_cmd_args(*args):
                         help="Threads number (can be set in config file)",
                         required=False,
                         default=conf_constants.num_threads)
-    parser.add_argument("-anorgs",
-                        "--analyzed-organisms",
-                        help='Path to a json with organisms not to analyze listed. '
+    parser.add_argument("-po",
+                        "--prepared-organisms",
+                        help='Path to a json with organisms not to prepare listed. '
                              'Format as follows: {"org_name": true}',
                         required=False,
                         default=None)
-    parser.add_argument("-anorgsinf",
-                        "--analyzed-organisms-info",
-                        help='Path to a json with info for organisms just analyzed',
+    parser.add_argument("-poinf",
+                        "--prepared-organisms-info",
+                        help='Path to a json with info for organisms just prepared',
                         required=False,
                         default=None)
     parser.add_argument("-c",

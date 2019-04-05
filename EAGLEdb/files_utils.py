@@ -1,9 +1,10 @@
 import json
 import os
 import sys
-from collections import defaultdict
 
 import pandas
+
+from EAGLEdb.scheme import GenomeInfo  # may produce import error
 
 
 def are_bacteria_analyzed(bacteria_list_path=None, analyzed_bacteria_path=None):
@@ -44,44 +45,46 @@ def prepare_summary_table(summary_table=None, out_table_path=None):
     prepared_df.to_csv(out_table_path, sep="\t", index=False)
 
 
-def join_bacteria_list_files(bacteria_list_1_path=None, bacteria_list_2_path=None, joined_bacteria_list_path=None):
-    if not bacteria_list_1_path and not bacteria_list_2_path and not joined_bacteria_list_path:
+def join_genomes_list_files(genomes_list_1_path=None, genomes_list_2_path=None, joined_genomes_list_path=None):
+    if not genomes_list_1_path and not genomes_list_2_path and not joined_genomes_list_path:
         try:
-            bacteria_list_1_path = sys.argv[1]
-            bacteria_list_2_path = sys.argv[2]
-            joined_bacteria_list_path = sys.argv[3]
+            genomes_list_1_path = sys.argv[1]
+            genomes_list_2_path = sys.argv[2]
+            joined_genomes_list_path = sys.argv[3]
         except IndexError:
-            print("Number of arguments must be 3: 1 - bacteria list 1 json path; 2 - bacteria list 2 json path; "
-                  "3 - output joined bacteria list json path")
+            print("Error: number of arguments must be 3: 1 - genomes list 1 json path; 2 - genomes list 2 json path; "
+                  "3 - output joined genomes list json path")
 
-    bacteria_list_1_f = open(bacteria_list_1_path)
-    bacteria_list_1 = json.load(bacteria_list_1_f)
-    bacteria_list_1_f.close()
-    bacteria_list_2_f = open(bacteria_list_2_path)
-    bacteria_list_2 = json.load(bacteria_list_2_f)
-    bacteria_list_2_f.close()
+    genomes_list_1_f = open(genomes_list_1_path)
+    genomes_list_1 = json.load(genomes_list_1_f)
+    genomes_list_1_f.close()
+    genomes_list_2_f = open(genomes_list_2_path)
+    genomes_list_2 = json.load(genomes_list_2_f)
+    genomes_list_2_f.close()
 
-    joined_bacteria_list = join_bacteria_lists(bacteria_list_1, bacteria_list_2)
-    joined_bacteria_f = open(joined_bacteria_list_path)
-    json.dump(joined_bacteria_list, joined_bacteria_f)
-    joined_bacteria_f.close()
+    joined_genomes_list = join_genomes_lists(genomes_list_1, genomes_list_2)
+    joined_genomes_f = open(joined_genomes_list_path, "w")
+    json.dump(joined_genomes_list, joined_genomes_f)
+    joined_genomes_f.close()
 
 
-def join_bacteria_lists(bacteria_list_1, bacteria_list_2):
-    joined_bacteria = defaultdict(bool)
-    joined_bacteria_list = list()
+def join_genomes_lists(genomes_list_1, genomes_list_2):
+    joined_genome_info = set()
+    joined_genomes_list = list()
 
-    for bacterium in bacteria_list_1:
-        if not bacterium:
+    for genome_info in genomes_list_1:
+        if not genome_info:
             continue
-        joined_bacteria_list.append(bacterium)
-        joined_bacteria[bacterium["strain"]] = True
+        g_info = GenomeInfo.load_from_dict(genome_info)
+        joined_genomes_list.append(genome_info)
+        joined_genome_info.add(g_info.org_name)
 
-    for bacterium in bacteria_list_2:
-        if not bacterium:
+    for genome_info in genomes_list_2:
+        if not genome_info:
             continue
-        if not joined_bacteria[bacterium["strain"]]:
-            joined_bacteria_list.append(bacterium)
-            joined_bacteria[bacterium["strain"]] = True
+        g_info = GenomeInfo.load_from_dict(genome_info)
+        if g_info.org_name not in joined_genome_info:
+            joined_genomes_list.append(genome_info)
+            joined_genome_info.add(g_info.org_name)
 
-    return joined_bacteria_list
+    return joined_genomes_list

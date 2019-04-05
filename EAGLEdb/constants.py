@@ -7,7 +7,7 @@ CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_DIR = os.path.join(CONSTANTS_PATH, "tests")
 
 BACTERIA_LIST_F_NAME = "bacteria.json"
-ANALYZED_BACTERIA_F_NAME = "analyzed_bacteria.json"
+PREPARED_BACTERIA_F_NAME = "prepared_bacteria.json"
 BACT_FAM_F_NAME = "bact_fam.json"
 
 ORG_TABLES_DIR = os.path.join(CONSTANTS_PATH, "org_tables")
