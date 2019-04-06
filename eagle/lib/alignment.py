@@ -7,10 +7,10 @@ from collections import defaultdict, OrderedDict, Counter
 import numpy as np
 import pandas
 
-from EAGLE.constants import conf_constants
-from EAGLE.lib.phylo import load_phylip_dist_matrix
-from EAGLE.lib.general import ConfBase, join_files
-from EAGLE.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs
+from eagle.constants import conf_constants
+from eagle.lib.phylo import load_phylip_dist_matrix
+from eagle.lib.general import ConfBase, join_files
+from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs
 
 
 class MultAln(ConfBase):

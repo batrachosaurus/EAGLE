@@ -1,8 +1,8 @@
 import sys
 import argparse
 
-from EAGLE.constants import conf_constants
-from EAGLE import explore_genes
+from eagle.constants import conf_constants
+from eagle import explore_genes
 
 
 def _parse_cmd_args(*args):
@@ -14,7 +14,7 @@ def _parse_cmd_args(*args):
                         required=True)
     parser.add_argument("-db",
                         "--db-json",
-                        help="Path to json with EAGLEdb to use description",
+                        help="Path to json with eagledb to use description",
                         required=True)
     parser.add_argument("-o",
                         "--out-dir",
@@ -23,7 +23,7 @@ def _parse_cmd_args(*args):
                         default="")
     parser.add_argument("-m",
                         "--mode",
-                        help="Mode to run EAGLE: 'genome' - parses input fasta file as single genome "
+                        help="Mode to run eagle: 'genome' - parses input fasta file as single genome "
                              "even if there not only one aequence; 'contigs' - parses input fasta files as "
                              "independent contigs (default: 'genome'). NOTE: sequences in one file can not be " 
                              "analyzed with different modes. If you need this split your input fasta into " 
@@ -32,7 +32,7 @@ def _parse_cmd_args(*args):
                         default='genome')
     parser.add_argument("-btn",
                         "--btax-name",
-                        help="The name of base taxon. If specified EAGLE will not scan the EAGLEdb and "
+                        help="The name of base taxon. If specified eagle will not scan the eagledb and "
                              "will work straight with this base taxon. Applicable only with 'genome' mode",
                         required=False,
                         default=None)

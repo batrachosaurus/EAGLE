@@ -1,7 +1,7 @@
 import logging
 import os
 
-from EAGLE.lib.general import ConfBase, get_redis_server, setup_logging
+from eagle.lib.general import ConfBase, get_redis_server, setup_logging
 
 CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_DIR = os.path.join(CONSTANTS_PATH, "tests")
@@ -14,7 +14,7 @@ LOGGER_NAME = 'EAGLE_logger'
 PROFILES_SCAN_OUT = "profiles_scan.out"  # it is inner name (not configurable)
 
 setup_logging(os.path.join(CONF_DIR_PATH, LOG_CONFIG_NAME))
-EAGLE_logger = logging.getLogger(LOGGER_NAME)
+eagle_logger = logging.getLogger(LOGGER_NAME)
 
 
 class ConfConstants(ConfBase):
@@ -35,13 +35,13 @@ class ConfConstants(ConfBase):
         self.unif_windows_step = 5
         # PHYLO
         self.fastme_exec_path = "fastme"
-        # EAGLE
+        # eagle
         self.mode = "genome"
 
         super(ConfConstants, self).__init__(config_path=config_path)
 
     def get_redis_server(self, restart=True):
-        EAGLE_logger.info(get_redis_server(self.redis_host, self.redis_port, restart=restart))
+        eagle_logger.info(get_redis_server(self.redis_host, self.redis_port, restart=restart))
 
 
 conf_constants = ConfConstants()

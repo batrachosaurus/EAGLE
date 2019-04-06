@@ -2,12 +2,12 @@ import os
 import shutil
 import unittest
 
-from EAGLE.constants import EAGLE_logger
-from EAGLEdb.constants import TEST_DIR
-from EAGLEdb import bactdb_creation, files_utils
+from eagle.constants import eagle_logger
+from eagledb.constants import TEST_DIR
+from eagledb import bactdb_creation, files_utils
 
 
-PACKAGE_DIR = 'EAGLEdb'
+PACKAGE_DIR = 'eagledb'
 INPUT_DIR = os.path.join(TEST_DIR, 'test_data', PACKAGE_DIR)
 OUTPUT_DIR = os.path.join(TEST_DIR, 'test_results', PACKAGE_DIR)
 

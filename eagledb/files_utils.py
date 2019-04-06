@@ -4,7 +4,7 @@ import sys
 
 import pandas
 
-from EAGLEdb.scheme import GenomeInfo  # may produce import error
+from eagledb.scheme import GenomeInfo  # may produce import error
 
 
 def are_bacteria_analyzed(bacteria_list_path=None, analyzed_bacteria_path=None):

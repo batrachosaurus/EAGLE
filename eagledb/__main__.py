@@ -1,9 +1,9 @@
 import argparse
 import sys
 
-from EAGLE.constants import conf_constants, EAGLE_logger
-from EAGLEdb import create_bactdb
-from EAGLEdb.constants import conf_constants_db
+from eagle.constants import conf_constants, eagle_logger
+from eagledb import create_bactdb
+from eagledb.constants import conf_constants_db
 
 
 def _parse_cmd_args(*args):
@@ -86,7 +86,7 @@ def _parse_cmd_args(*args):
 def main():
     args_dict = _parse_cmd_args(*sys.argv[1:])
     if args_dict["dbtype"].lower() in ("bacteria", "bact", "b"):
-        EAGLE_logger.info("'Bacteria' mode selected")
+        eagle_logger.info("'Bacteria' mode selected")
         create_bactdb(**args_dict)
     # metagenomes mode
     if args_dict["dbtype"].lower() in ("eukaryota", "eukaryot", "eukar", "euk", "eu", "e"):

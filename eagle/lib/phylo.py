@@ -7,8 +7,8 @@ from collections import OrderedDict
 import pandas
 import dendropy
 
-from EAGLE.constants import conf_constants, EAGLE_logger
-from EAGLE.lib.general import ConfBase, filter_list
+from eagle.constants import conf_constants, eagle_logger
+from eagle.lib.general import ConfBase, filter_list
 
 
 class PhyloTree(ConfBase):

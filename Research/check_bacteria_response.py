@@ -6,11 +6,11 @@ import json
 import pandas
 
 
-from EAGLE import explore_genes
-from EAGLE.constants import EAGLE_logger
-from EAGLE.lib.general import gunzip
-from EAGLEdb.lib.db_creation import download_organism_files
-from EAGLEdb.bactdb_creation import get_taxonomy
+from eagle import explore_genes
+from eagle.constants import eagle_logger
+from eagle.lib.general import gunzip
+from eagledb.lib.db_creation import download_organism_files
+from eagledb.bactdb_creation import get_taxonomy
 
 
 SUMMARY_TABLES = sys.argv[1].split(",")
@@ -81,12 +81,12 @@ for ncbi_db_link in ncbi_db_links:
     assembly_id = ncbi_db_link.split("/")[-1]
     tax_f_name = assembly_id + "_genomic.gbff.gz"
     download_prefix = (ncbi_db_link + "/" + assembly_id).replace("https", "ftp")
-    download_organism_files(download_prefix, "_genomic.gbff.gz", download_dir=WORKING_DIR, logger=EAGLE_logger)
+    download_organism_files(download_prefix, "_genomic.gbff.gz", download_dir=WORKING_DIR, logger=eagle_logger)
     if os.path.exists(os.path.join(WORKING_DIR, tax_f_name)):
         bacterium_info["family"], bacterium_info["genus"], bacterium_info["species"], bacterium_info["strain"] = \
             get_taxonomy(tax_f_name, f_dir=WORKING_DIR)
         if bacterium_info["family"] in USABLE_FAMILIES:
-            download_organism_files(download_prefix, "_genomic.fna.gz", download_dir=WORKING_DIR, logger=EAGLE_logger)
+            download_organism_files(download_prefix, "_genomic.fna.gz", download_dir=WORKING_DIR, logger=eagle_logger)
             fna_f_path = os.path.join(WORKING_DIR, assembly_id+"_genomic.fna.gz")
             if os.path.exists(fna_f_path):
                 in_fasta = fna_f_path[:-3]

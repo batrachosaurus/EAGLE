@@ -1,7 +1,7 @@
 import os
 
-from EAGLE.constants import DEFAULT_CONFIG
-from EAGLE.lib.general import ConfBase
+from eagle.constants import DEFAULT_CONFIG
+from eagle.lib.general import ConfBase
 
 CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_DIR = os.path.join(CONSTANTS_PATH, "tests")
@@ -13,7 +13,7 @@ BACT_FAM_F_NAME = "bact_fam.json"
 ORG_TABLES_DIR = os.path.join(CONSTANTS_PATH, "org_tables")
 DEFAULT_REFSEQ_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "refseq_bacteria_table.txt")
 DEFAULT_GENBANK_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "genbank_bacteria_table.txt")
-DEFAULT_BACTDB_DIR = os.path.join("EAGLEdb", "bacteria")
+DEFAULT_BACTDB_DIR = os.path.join("eagledb", "bacteria")
 
 PROFILES_DB_NAME = "db_repr_profiles"  # it is inner name (not configurable)
 

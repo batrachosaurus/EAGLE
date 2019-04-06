@@ -1,7 +1,7 @@
 from functools import reduce
 from operator import getitem
 
-from EAGLE.constants import EAGLE_logger
+from eagle.constants import eagle_logger
 
 
 class GenomeInfo(object):
@@ -83,7 +83,7 @@ class GenomeInfo(object):
             try:
                 genome_info.__dict__[attr] = reduce(getitem, cls.attr_scheme[attr], in_dict)
             except KeyError:
-                EAGLE_logger.warning("the path '%s' is absent in the input dict - can not find a value for '%s'" %
+                eagle_logger.warning("the path '%s' is absent in the input dict - can not find a value for '%s'" %
                                      (str(cls.attr_scheme[attr]), attr))
                 continue
         return genome_info

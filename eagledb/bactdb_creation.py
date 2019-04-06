@@ -7,17 +7,17 @@ from collections import defaultdict
 
 import pandas
 
-from EAGLE.constants import EAGLE_logger, conf_constants
-from EAGLE.lib.alignment import construct_mult_aln
-from EAGLE.lib.general import worker, get_un_fix, bool_from_str
-from EAGLE.lib.phylo import build_tree_by_dist
-from EAGLE.lib.seqs import load_fasta_to_dict, reduce_seq_names
-from EAGLEdb import join_genomes_lists
-from EAGLEdb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
+from eagle.constants import eagle_logger, conf_constants
+from eagle.lib.alignment import construct_mult_aln
+from eagle.lib.general import worker, get_un_fix, bool_from_str
+from eagle.lib.phylo import build_tree_by_dist
+from eagle.lib.seqs import load_fasta_to_dict, reduce_seq_names
+from eagledb import join_genomes_lists
+from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME
-from EAGLEdb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
+from eagledb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
     generate_btax_profile, create_profiles_db, get_btax_fna
-from EAGLEdb.scheme import GenomeInfo
+from eagledb.scheme import GenomeInfo
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_table=None,
@@ -43,14 +43,14 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     try:
         os.makedirs(bactdb_dir)
     except OSError:
-        EAGLE_logger.warning("bactdb directory exists")
+        eagle_logger.warning("bactdb directory exists")
     prepared_bacteria = mp.Manager().dict()
     if os.path.exists(prepared_bacteria_f_path):
-        EAGLE_logger.info("loading prepared bacteria from '%s'" % prepared_bacteria_f_path)
+        eagle_logger.info("loading prepared bacteria from '%s'" % prepared_bacteria_f_path)
         prepared_bacteria_f = open(prepared_bacteria_f_path)
         prepared_bacteria.update(json.load(prepared_bacteria_f))
         prepared_bacteria_f.close()
-        EAGLE_logger.info("prepared bacteria loaded")
+        eagle_logger.info("prepared bacteria loaded")
     bacteria_list_f_path = os.path.join(bactdb_dir, BACTERIA_LIST_F_NAME)
     bacteria_list_f = io.open(bacteria_list_f_path, 'w', newline="\n")
     bacteria_list_f.write(u"[\n")
@@ -70,7 +70,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
             if i >= refseq_df.shape[0]:
                 params_list.append({'function': get_bacterium,
                                     'prepared_bacteria': prepared_bacteria,
-                                    'logger_name': EAGLE_logger.name,
+                                    'logger_name': eagle_logger.name,
                                     'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
                                     'bacterium_name': genbank_df.loc[j]["org_name"],
                                     'is_repr': bool_from_str(genbank_df.loc[j]["repr"]),
@@ -81,7 +81,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
             else:
                 params_list.append({'function': get_bacterium,
                                     'prepared_bacteria': prepared_bacteria,
-                                    'logger_name': EAGLE_logger.name,
+                                    'logger_name': eagle_logger.name,
                                     'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
                                     'bacterium_name': refseq_df.loc[i]["org_name"],
                                     'is_repr': bool_from_str(refseq_df.loc[i]["repr"]),
@@ -93,7 +93,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
             if genbank_df.loc[j]["org_name"] < refseq_df.loc[i]["org_name"]:
                 params_list.append({'function': get_bacterium,
                                     'prepared_bacteria': prepared_bacteria,
-                                    'logger_name': EAGLE_logger.name,
+                                    'logger_name': eagle_logger.name,
                                     'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
                                     'bacterium_name': genbank_df.loc[j]["org_name"],
                                     'is_repr': bool_from_str(genbank_df.loc[j]["repr"]),
@@ -104,7 +104,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
             else:
                 params_list.append({'function': get_bacterium,
                                     'prepared_bacteria': prepared_bacteria,
-                                    'logger_name': EAGLE_logger.name,
+                                    'logger_name': eagle_logger.name,
                                     'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
                                     'bacterium_name': refseq_df.loc[i]["org_name"],
                                     'is_repr': bool_from_str(refseq_df.loc[i]["repr"]),
@@ -137,28 +137,28 @@ def get_bacterium(ncbi_db_link, bacterium_name, is_repr, prepared_bacteria, db_d
                                 source_db=source_db,
                                 is_repr=is_repr)
 
-    EAGLE_logger.info("%s getting started" % bacterium_name)
-    EAGLE_logger.info('bacterium link: %s' % bacterium_info.ncbi_download_prefix)
+    eagle_logger.info("%s getting started" % bacterium_name)
+    eagle_logger.info('bacterium link: %s' % bacterium_info.ncbi_download_prefix)
     if prepared_bacteria.get(bacterium_name, None):
-        EAGLE_logger.info("%s is in prepared bacteria" % bacterium_name)
+        eagle_logger.info("%s is in prepared bacteria" % bacterium_name)
         return
     download_organism_files(bacterium_info.ncbi_download_prefix,
                             ["_wgsmaster.gbff.gz", "_rna_from_genomic.fna.gz"],
                             db_dir,
-                            logger=EAGLE_logger)
+                            logger=eagle_logger)
     tax_f_name = assembly_id + "_wgsmaster.gbff.gz"
     if not os.path.exists(os.path.join(db_dir, tax_f_name)):
         tax_f_name = None
-        download_organism_files(bacterium_info.ncbi_download_prefix, "_genomic.gbff.gz", db_dir, logger=EAGLE_logger)
+        download_organism_files(bacterium_info.ncbi_download_prefix, "_genomic.gbff.gz", db_dir, logger=eagle_logger)
         tax_f_name = assembly_id + "_genomic.gbff.gz"
     bacterium_info.taxonomy, bacterium_info.org_name = get_taxonomy(tax_f_name, db_dir)
-    EAGLE_logger.info("got %s taxonomy" % bacterium_info.org_name)
+    eagle_logger.info("got %s taxonomy" % bacterium_info.org_name)
 
     # TODO: no need to obtain 16S rRNA during this stage
     bacterium_info.btc_seqs_path = get_16S_fasta(assembly_id + "_rna_from_genomic.fna.gz",
                                                  db_dir,
                                                  bacterium_info.org_name)
-    EAGLE_logger.info("got %s 16S rRNA" % bacterium_info.org_name)
+    eagle_logger.info("got %s 16S rRNA" % bacterium_info.org_name)
     f = io.open(os.path.join(db_dir, BACTERIA_LIST_F_NAME), 'a', newline="\n")
     f.write(unicode("  "+json.dumps(bacterium_info.get_json())+",\n"))
     f.close()
@@ -362,7 +362,7 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
                             'family_data': families_dict[family],
                             'bact_fam_f_path': bact_fam_f_path,
                             'db_dir': db_dir,
-                            'logger_name': EAGLE_logger.name,
+                            'logger_name': eagle_logger.name,
                             'try_err_message': "%s is not prepared: " % family})
 
     pool = mp.Pool(num_threads)
@@ -404,7 +404,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
         short_ids_dict[short_seq_id] = rev_reduced_orgs[ids_to_org_dict[seq_id]]+"x"+seq_id
         ids_to_org_dict[short_ids_dict[short_seq_id]] = {"organism_name": ids_to_org_dict.pop(seq_id)}
         rRNA_seqs_dict[short_seq_id] = rRNA_seqs_dict.pop(seq_id)
-    EAGLE_logger.info("%s rRNA loaded" % family_name)
+    eagle_logger.info("%s rRNA loaded" % family_name)
     # TODO: follows
     ### This section will be upgraded with my own alignment method but now MUSCLE and hmmer 3 are used
     tmp_fam_dir = os.path.join(db_dir, family_name+"_tmp")
@@ -416,15 +416,15 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
                                   muscle_exec_path=conf_constants.muscle_exec_path,
                                   emboss_inst_dir=conf_constants.emboss_inst_dir,
                                   hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                                  logger=EAGLE_logger)
-    EAGLE_logger.info("%s rRNA alignment constructed" % family_name)
+                                  logger=eagle_logger)
+    eagle_logger.info("%s rRNA alignment constructed" % family_name)
     rRNA_aln.short_to_full_seq_names = short_ids_dict
     # May be errors: not tested
     rRNA_aln.remove_paralogs(ids_to_org_dict, method="min_dist", inplace=True)  # If I use my own alignment method: method="spec_pos"
     rRNA_tree = build_tree_by_dist(rRNA_aln.get_distance_matrix(),
                                    full_seq_names=rRNA_aln.full_to_short_seq_names,
                                    tmp_dir=tmp_fam_dir,
-                                   logger=EAGLE_logger)
+                                   logger=eagle_logger)
     # TODO: write it for not only repr bacteria usage
     # fam_tax = {family_name: get_tree_from_dict(family_data, stop_level=3, special_keys=special_keys)}
     # rRNA_tree, removed_seqs = rRNA_tree.according_to_taxonomy(taxonomy=fam_tax)
@@ -442,7 +442,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
     family_data = download_btax_files(key_prefix_pairs={"fna_file": "_genomic.fna.gz"},
                                       btax_data=family_data,
                                       download_dir=db_dir,
-                                      logger=EAGLE_logger)
+                                      logger=eagle_logger)
     family_data["fam_fna"], family_data["chr_id"] = get_btax_fna(fna_key="fna_file",
                                                                  btax_data=family_data,
                                                                  btax_name=family_name,
@@ -451,7 +451,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
                                                  btax_name=family_name,
                                                  db_dir=db_dir,
                                                  blast_inst_dir=conf_constants.blast_inst_dir,
-                                                 logger=EAGLE_logger)
+                                                 logger=eagle_logger)
     # repr_alns = <function that builds alignments for set of representative genes (returns dict = {aln_name: MultAln object})>
     family_data["repr_profile"] = generate_btax_profile(source={"16S_rRNA": rRNA_aln},
                                                         db_dir=db_dir,
@@ -461,7 +461,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
     bact_fam_json_f = open(bact_fam_f_path, 'a')
     bact_fam_json_f.write('  "'+family_name+'": '+json.dumps(family_data)+",\n")
     bact_fam_json_f.close()
-    EAGLE_logger.info("%s prepared" % family_name)
+    eagle_logger.info("%s prepared" % family_name)
 
 
 def create_bactdb(input_table_refseq=None,
@@ -508,7 +508,7 @@ def create_bactdb(input_table_refseq=None,
                                                num_threads=num_threads,
                                                prepared_bacteria_f_path=prepared_genomes)
     if input_table_custom is not None:
-        EAGLE_logger.warning("custom genomes input is not implemented yet")
+        eagle_logger.warning("custom genomes input is not implemented yet")
         # TODO: implement custom genomes input
         # bacteria_list.extend()
     if prepared_genomes_info:
@@ -535,4 +535,4 @@ def create_bactdb(input_table_refseq=None,
                        method="hmmer",
                        hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                        config_path=config_path,
-                       logger=EAGLE_logger)
+                       logger=eagle_logger)

@@ -2,8 +2,8 @@ import os
 import shutil
 import unittest
 
-from EAGLE.constants import TEST_DIR, EAGLE_logger
-from EAGLE.lib import general, alignment, phylo, seqs
+from eagle.constants import TEST_DIR, eagle_logger
+from eagle.lib import general, alignment, phylo, seqs
 
 
 PACKAGE_DIR = 'lib'

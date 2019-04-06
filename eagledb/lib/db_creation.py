@@ -13,10 +13,10 @@ import operator
 import wget
 
 
-from EAGLE.constants import conf_constants, EAGLE_logger
-from EAGLE.lib.general import join_files, gunzip
-from EAGLE.lib.alignment import BlastHandler, HmmerHandler
-from EAGLEdb.constants import PROFILES_DB_NAME
+from eagle.constants import conf_constants, eagle_logger
+from eagle.lib.general import join_files, gunzip
+from eagle.lib.alignment import BlastHandler, HmmerHandler
+from eagledb.constants import PROFILES_DB_NAME
 
 
 def get_links_from_html(html_link, n_tries=3, debug=False):
@@ -43,7 +43,7 @@ def _read_html_file_links(html_file, links, **kwargs):
 
 
 def download_organism_files(org_prefix, suffixes, download_dir="./", logger=None):
-    # TODO: rename and move to EAGLEdb.lib
+    # TODO: rename and move to eagledb.lib
     if type(suffixes) is str:
         suffixes_list = [suffixes]
     else:

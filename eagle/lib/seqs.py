@@ -4,8 +4,8 @@ import subprocess
 
 from Bio.Seq import Seq
 
-from EAGLE.constants import conf_constants
-from EAGLE.lib.general import filter_list, get_un_fix
+from eagle.constants import conf_constants
+from eagle.lib.general import filter_list, get_un_fix
 
 
 def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
@@ -179,7 +179,7 @@ def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_co
         orfs_fasta_dict[corr_orf_id] = orfs_fasta_dict.pop(orf_id)
         orfs_info[corr_orf_id] = {
             "seqid": corr_orf_id,
-            "source": "EAGLE",
+            "source": "eagle",
             "type": "ORF",
             "start": c_start,
             "end": c_end,

@@ -9,11 +9,11 @@ import pandas as pd
 from Bio.Seq import Seq
 from Bio.Data.CodonTable import TranslationError
 
-from EAGLE.constants import conf_constants, EAGLE_logger, PROFILES_SCAN_OUT
-from EAGLE.lib.alignment import HmmerHandler, BlastHandler, MultAln, construct_mult_aln
-from EAGLE.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees, dump_tree_newick
-from EAGLE.lib.general import filter_list, worker, reverse_dict
-from EAGLE.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out
+from eagle.constants import conf_constants, eagle_logger, PROFILES_SCAN_OUT
+from eagle.lib.alignment import HmmerHandler, BlastHandler, MultAln, construct_mult_aln
+from eagle.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees, dump_tree_newick
+from eagle.lib.general import filter_list, worker, reverse_dict
+from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out
 
 
 def explore_genes(in_fasta,
@@ -57,14 +57,14 @@ def explore_genes(in_fasta,
                             out_fasta_path=orfs_fasta_path)
     blast_handler = BlastHandler(inst_dir=conf_constants.blast_inst_dir,
                                  config_path=config_path,
-                                 logger=EAGLE_logger)
+                                 logger=eagle_logger)
     if mode == "genome":
         if btax_name is None:
             btax_name = btax_names.items()[0][1]
         if btax_name == "Unclassified":
-            EAGLE_logger.warning("The family was not detected - cannot run further analysis")
+            eagle_logger.warning("The family was not detected - cannot run further analysis")
         else:
-            EAGLE_logger.info("Family %s will be used for sequence from %s" % (btax_name, in_fasta))
+            eagle_logger.info("Family %s will be used for sequence from %s" % (btax_name, in_fasta))
             tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
             blast_handler.run_blast_search(blast_type="tblastn",
                                            query=orfs_fasta_path,
@@ -100,13 +100,13 @@ def get_btax(in_fasta,
         hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir,
                                      tmp_dir=os.path.join(work_dir, "hmmer_tmp"),
                                      config_path=config_path,
-                                     logger=EAGLE_logger)
-        EAGLE_logger.info("hmmscan started")
+                                     logger=eagle_logger)
+        eagle_logger.info("hmmscan started")
         hmmer_handler.run_hmmscan(profiles_db,
                                   in_fasta,
                                   num_threads=num_threads,
                                   out_path=os.path.join(work_dir, PROFILES_SCAN_OUT))
-        EAGLE_logger.info("hmmscan finished")
+        eagle_logger.info("hmmscan finished")
         queries_scores_dict = defaultdict(dict)
         query_scores_dict = defaultdict(float)
         lines_from_query = 0
@@ -206,7 +206,7 @@ def analyze_tblastn_out(tblastn_out_path,
 
     tblatn_out_dict = None
     orfs_fasta_dict = None
-    EAGLE_logger.info("ORFs stats calculated")
+    eagle_logger.info("ORFs stats calculated")
     for orf_id in orfs_stats.keys():
         try:
             res_gtf_json[orf_id]["attribute"] = json.dumps(orfs_stats[orf_id])
@@ -229,7 +229,7 @@ def get_orf_stats(orf_id,
     if len(homologs_list) < 3:
         orf_stats = {"uniformity_std": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
-        EAGLE_logger.warning("A few homologs number for ORF '%s'" % orf_id)
+        eagle_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
     seq_ids_to_orgs[orf_id] = {"organism_name": "Input_Organism_X"}
     btax_fna = load_fasta_to_dict(fasta_path=btax_data["fam_fna"])
@@ -245,20 +245,20 @@ def get_orf_stats(orf_id,
         except TranslationError:
             continue
     btax_fna = None
-    EAGLE_logger.info("got homologs sequences for ORF '%s'" % orf_id)
+    eagle_logger.info("got homologs sequences for ORF '%s'" % orf_id)
     orf_mult_aln = construct_mult_aln(seq_dict=orf_homologs_seqs,
                                       aln_name=orf_id.replace("|:", "_")+"_aln",
                                       aln_type="prot",
                                       method="MUSCLE",
                                       tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_aln_tmp"),
-                                      logger=EAGLE_logger)
-    EAGLE_logger.info("got multiple alignment for ORF '%s' homologs" % orf_id)
+                                      logger=eagle_logger)
+    eagle_logger.info("got multiple alignment for ORF '%s' homologs" % orf_id)
     # Uniformity
     orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
     if len(orf_mult_aln.seqs) < 4:
         orf_stats = {"uniformity_std": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
-        EAGLE_logger.warning("A few homologs number for ORF '%s'" % orf_id)
+        eagle_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
     orf_stats["uniformity_std"] = orf_mult_aln.improve_aln(inplace=False).estimate_uniformity(
         cons_thr=conf_constants.cons_thr,
@@ -267,7 +267,7 @@ def get_orf_stats(orf_id,
     )
     if np.isnan(orf_stats["uniformity_std"]):
         orf_stats["uniformity_std"] = None
-    EAGLE_logger.info("got uniformity_std for ORF '%s'" % orf_id)
+    eagle_logger.info("got uniformity_std for ORF '%s'" % orf_id)
     # Ka/Ks
     # Phylo
     phylo_tmp_dir = os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp")
@@ -282,7 +282,7 @@ def get_orf_stats(orf_id,
                             for short_id, full_id in orf_mult_aln.short_to_full_seq_names.items()),
         tree_name=orf_id.replace("|:", "_")+"_tree",
         tmp_dir=phylo_tmp_dir,
-        logger=EAGLE_logger
+        logger=eagle_logger
     )
     orf_homs_tree.set_full_names(inplace=True)
     btax_tree = PhyloTree.load_tree_from_str(
@@ -291,13 +291,13 @@ def get_orf_stats(orf_id,
                             btax_data["16S_rRNA_tree"]["full_seq_names"].items()),
         tree_name="btax_tree",
         tmp_dir=phylo_tmp_dir,
-        logger=EAGLE_logger
+        logger=eagle_logger
     )
     btax_tree.set_full_names(inplace=True)
     orf_stats["phylo_diff"] = compare_trees(phylo_tree1=orf_homs_tree,
                                             phylo_tree2=btax_tree,
                                             method="Robinson-Foulds")
-    EAGLE_logger.info("got phylo_diff for ORF '%s'" % orf_id)
+    eagle_logger.info("got phylo_diff for ORF '%s'" % orf_id)
 
     orfs_stats[orf_id] = orf_stats
-    EAGLE_logger.info("got ORF '%s' stats" % orf_id)
+    eagle_logger.info("got ORF '%s' stats" % orf_id)

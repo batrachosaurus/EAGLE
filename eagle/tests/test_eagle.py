@@ -2,11 +2,11 @@ import os
 import shutil
 import unittest
 
-from EAGLE.constants import TEST_DIR, EAGLE_logger
-from EAGLE import eag_location_explorer
+from eagle.constants import TEST_DIR, eagle_logger
+from eagle import eag_location_explorer
 
 
-PACKAGE_DIR = 'EAGLE'
+PACKAGE_DIR = 'eagle'
 INPUT_DIR = os.path.join(TEST_DIR, 'test_data', PACKAGE_DIR)
 OUTPUT_DIR = os.path.join(TEST_DIR, 'test_results', PACKAGE_DIR)
 

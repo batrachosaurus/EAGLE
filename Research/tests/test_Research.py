@@ -2,7 +2,7 @@ import os
 import shutil
 import unittest
 
-from EAGLE.constants import EAGLE_logger
+from eagle.constants import eagle_logger
 from Research.constants import TEST_DIR
 from Research import check_bacteria_response
 

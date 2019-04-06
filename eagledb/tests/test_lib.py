@@ -2,9 +2,9 @@ import os
 import shutil
 import unittest
 
-from EAGLE.constants import EAGLE_logger
-from EAGLEdb.constants import TEST_DIR
-from EAGLEdb.lib import db_creation
+from eagle.constants import eagle_logger
+from eagledb.constants import TEST_DIR
+from eagledb.lib import db_creation
 
 
 PACKAGE_DIR = 'lib'
