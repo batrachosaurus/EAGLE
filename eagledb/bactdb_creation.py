@@ -517,6 +517,7 @@ def create_bactdb(input_table_refseq=None,
                                                genomes_list_2=json.load(prep_genomes_info_f))
 
     # TODO: implement code to obtain btax classification sequence from fna with hmm profile
+    # profiles input should be a list of SeqProfilesInfo objects
     # result - btc_seqs_path field of GenomeInfo objects in bacteria_list filled
     # currently it is filled during get_bacteria_from_ncbi run - not good
 
