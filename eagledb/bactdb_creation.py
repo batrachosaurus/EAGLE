@@ -17,7 +17,7 @@ from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BA
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME
 from eagledb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
     generate_btax_profile, create_profiles_db, get_btax_fna
-from eagledb.scheme import GenomeInfo
+from eagledb.scheme import GenomeInfo, SeqProfileInfo
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_table=None,
@@ -155,9 +155,10 @@ def get_bacterium(ncbi_db_link, bacterium_name, is_repr, prepared_bacteria, db_d
     eagle_logger.info("got %s taxonomy" % bacterium_info.org_name)
 
     # TODO: no need to obtain 16S rRNA during this stage
-    bacterium_info.btc_seqs_path = get_16S_fasta(assembly_id + "_rna_from_genomic.fna.gz",
-                                                 db_dir,
-                                                 bacterium_info.org_name)
+    bacterium_info.btc_seqs_fasta, seq_id_list = get_16S_fasta(assembly_id + "_rna_from_genomic.fna.gz",
+                                                               db_dir,
+                                                               bacterium_info.org_name)
+    bacterium_info.btc_seqs_id = {seq_id: "16S_rRNA" for seq_id in seq_id_list}
     eagle_logger.info("got %s 16S rRNA" % bacterium_info.org_name)
     f = io.open(os.path.join(db_dir, BACTERIA_LIST_F_NAME), 'a', newline="\n")
     f.write(unicode("  "+json.dumps(bacterium_info.get_json())+",\n"))
@@ -268,6 +269,7 @@ def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
     f_path = os.path.join(f_dir, f_name)
     rRNA = False
     seq_list = []
+    seq_id_list = list()
     f = gzip.open(f_path, 'rb')
     for line_ in f:
         line = None
@@ -280,6 +282,7 @@ def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
             if "[product=16S ribosomal RNA]" in line:
                 rRNA = True
                 fasta_f.write(line + "\n")
+                seq_id_list.append(line[1:])
         elif rRNA:
             seq_list.append(line)
     if rRNA:
@@ -289,7 +292,7 @@ def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
     f.close()
     if remove_rna_f:
         os.remove(f_path)
-    return fasta_path
+    return fasta_path, seq_id_list
 
 
 def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, config_path=None):
@@ -495,6 +498,18 @@ def create_bactdb(input_table_refseq=None,
         num_threads = conf_constants.num_threads
     if not prepared_genomes:
         prepared_genomes = PREPARED_BACTERIA_F_NAME
+
+    if btax_class_profile is not None:
+        # TODO: implement loading btc_profiles from custom profiles
+        eagle_logger.warning("custom btax classification profiles are not implemented currently - default will be used")
+    # else:
+    btc_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl")]  # TODO: include it to 'else' bock
+
+    if btax_rep_profile is not None:
+        # TODO: implement loading btr_profiles from custom profiles
+        eagle_logger.warning("custom btax representative profiles are not implemented currently - default will be used")
+    # else:
+    btr_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl")]  # TODO: include it to 'else' bock
 
     # TODO: this code should not get the btax classification sequence (16S rRNA)
     if input_table_custom is None and input_table_refseq is None and input_table_genbank is None:

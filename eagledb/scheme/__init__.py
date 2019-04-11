@@ -1,1 +1,1 @@
-from eagledb.scheme.setup_db import GenomeInfo
+from eagledb.scheme.setup_db import GenomeInfo, SeqProfileInfo, JsonEntry

@@ -41,11 +41,16 @@ class TestBactDBCreation(unittest.TestCase):
     def test_get_16S_fasta(self):
         rna_f_name = "GCF_000160075.2_ASM16007v2_rna_from_genomic.fna.gz"
         test_16S_fasta_result = "Abiotrophia_defectiva_ATCC_49176_16S_rRNA.fasta"
+        exp_seq_id_list = ["lcl|NZ_KI535341.1_rrna_33 [locus_tag=GCWU000182_RS08290] [product=16S ribosomal RNA] "
+                           "[location=complement(179989..181551)] [gbkey=rRNA]",
+                           "lcl|NZ_KI535342.1_rrna_59 [locus_tag=GCWU000182_RS09510] [product=16S ribosomal RNA] "
+                           "[location=169454..>169911] [gbkey=rRNA]"]
         result = bactdb_creation.get_16S_fasta(rna_f_name, INPUT_DIR, strain=self.test_org_name,
                                                remove_rna_f=False)
-        result_f_name = os.path.split(result)[1].encode()
-        shutil.move(result, os.path.join(OUTPUT_DIR, result_f_name))
+        result_f_name = os.path.split(result[0])[1].encode()
+        shutil.move(result[0], os.path.join(OUTPUT_DIR, result_f_name))
         self.assertEqual(result_f_name, test_16S_fasta_result)
+        self.assertItemsEqual(result[1], exp_seq_id_list)
 
 
 class TestFilesUtils(unittest.TestCase):
