@@ -16,6 +16,8 @@ class JsonEntry(object):
     def attr_scheme():
         """
         json scheme (the keys must match attribute names defined in __init__)
+        CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
+        don't include it to the result dict
         :return: {attr_name: (path, in, json, entry,), ...}
         """
         return dict()
@@ -106,12 +108,13 @@ class GenomeInfo(JsonEntry):
     @staticmethod
     def attr_scheme():
         # json scheme (the keys must match attribute names defined in __init__)
+        # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
+        # don't include it to the result dict
         return {
             "org_name": (GenomeInfo.org_name_key,),
             "taxonomy": (GenomeInfo.taxonomy_key,),
             "ncbi_download_prefix": (GenomeInfo.ncbi_download_prefix_key,),
             "fna_path": (GenomeInfo.fna_path_key,),
-            "btc_seqs": (GenomeInfo.btc_seqs_key,),
             "btc_seqs_fasta": (GenomeInfo.btc_seqs_key, GenomeInfo.btc_seqs_fasta_key,),
             "btc_seqs_id": (GenomeInfo.btc_seqs_key, GenomeInfo.btc_seqs_id_key,),
             "source_db": (GenomeInfo.source_db_key,),
@@ -150,6 +153,8 @@ class SeqProfileInfo(JsonEntry):
     @staticmethod
     def attr_scheme():
         # json scheme (the keys must match attribute names defined in __init__)
+        # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
+        # don't include it to the result dict
         return {
             "name": (SeqProfileInfo.name_key,),
             "path": (SeqProfileInfo.path_key,),
