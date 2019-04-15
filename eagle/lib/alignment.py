@@ -15,6 +15,8 @@ from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names
 
 class MultAln(ConfBase):
 
+    dist_matr_method = "phylip"
+
     def __init__(self,
                  mult_aln_dict=None,
                  aln_type=None,
@@ -29,14 +31,14 @@ class MultAln(ConfBase):
         self.short_to_full_seq_names = dict()
         if mult_aln_dict:
             self.mult_aln_dict = mult_aln_dict
-            self.mult_aln_dict_short_id  # to initialize self.short_to_full_seq_names
+            # self.mult_aln_dict_short_id  # to initialize self.short_to_full_seq_names
         else:
             self.mult_aln_dict = dict()
         self.states_seq = states_seq
         self.aln_type = aln_type
         if not self.aln_type:
             self.aln_type = detect_seqs_type(fasta_dict=self.mult_aln_dict)
-        self.distance_matrix = None
+        self._distance_matrix = None
         self.aln_name = aln_name
         self.tmp_dir = tmp_dir
         self.emboss_inst_dir = emboss_inst_dir
@@ -54,14 +56,14 @@ class MultAln(ConfBase):
         del self.short_to_full_seq_names[self.full_to_short_seq_names[seq_id]]
         del self.mult_aln_dict[seq_id]
         if self.distance_matrix:
-            self.distance_matrix = None
+            self._distance_matrix = None
             self.get_distance_matrix()
 
     def pop(self, seq_id):
         del self.short_to_full_seq_names[self.full_to_short_seq_names[seq_id]]
         seq = self.mult_aln_dict.pop(seq_id)
         if self.distance_matrix:
-            self.distance_matrix = None
+            self._distance_matrix = None
             self.get_distance_matrix()
         return seq
 
@@ -163,6 +165,7 @@ class MultAln(ConfBase):
                 seqs_ids = self.seqs
                 for seq_id in seqs_ids:
                     self.mult_aln_dict[seq_id] = "".join(self.mult_aln_dict[seq_id][c1: c2] for c1, c2 in coords)
+                self._distance_matrix = None
             else:
                 logger = self.logger
                 self.logger = None
@@ -173,6 +176,7 @@ class MultAln(ConfBase):
                 for seq_id in self.mult_aln_dict:
                     impr_mult_aln.mult_aln_dict[seq_id] = \
                         "".join(self.mult_aln_dict[seq_id][c1:c2] for c1, c2 in coords)
+                impr_mult_aln._distance_matrix = None
                 return impr_mult_aln
 
     @staticmethod
@@ -196,10 +200,14 @@ class MultAln(ConfBase):
             no_gaps_coords.append((coord_pair[0]-c1_shift, coord_pair[1]-c2_shift))
         return no_gaps_coords
 
-    def get_distance_matrix(self, method="phylip"):
-        if type(self.distance_matrix) is pandas.DataFrame:
-            if not self.distance_matrix.empty:
-                return self.distance_matrix
+    @property
+    def distance_matrix(self):
+        if type(self._distance_matrix) is pandas.DataFrame:
+            if not self._distance_matrix.empty:
+                return self._distance_matrix
+        return self.get_distance_matrix()
+
+    def get_distance_matrix(self, method=dist_matr_method):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
         if method.lower() == "phylip":
@@ -235,39 +243,32 @@ class MultAln(ConfBase):
                 else:
                     print("dnadist finished")
             subprocess.call(phylip_cmd, shell=True)
-            self.distance_matrix = load_phylip_dist_matrix(matrix_path=phylip_matrix_path)
+            self._distance_matrix = load_phylip_dist_matrix(matrix_path=phylip_matrix_path)
         shutil.rmtree(self.tmp_dir)
-        return self.distance_matrix
+
+        return self._distance_matrix
 
     def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):
-        short_seq_ids_to_org = self._check_seq_ids_to_org(seq_ids_to_orgs)
-        if type(self.distance_matrix) is not pandas.DataFrame:
-            self.distance_matrix= None
-            self.get_distance_matrix()
-            if self.logger:
-                self.logger.info("got distance matrix")
-            else:
-                print("got distance matrix")
-        elif self.distance_matrix.empty:
-            self.get_distance_matrix()
-            if self.logger:
-                self.logger.info("got distance matrix")
-            else:
-                print("got distance matrix")
+        """
 
+        :param seq_ids_to_orgs: {seq_id: org_name}
+        :param method:
+        :param inplace:
+        :return:
+        """
         org_dist_dict = defaultdict(dict)
         short_seq_ids = self.distance_matrix.index
         for short_seq_id in short_seq_ids:
-            org_dist_dict[short_seq_ids_to_org[short_seq_id]][short_seq_id] = \
-                sum(map(float, self.distance_matrix.loc[short_seq_id]))
+            org_dist_dict[seq_ids_to_orgs[self.short_to_full_seq_names[short_seq_id]]][short_seq_id] = \
+                sum(map(float, self.distance_matrix[short_seq_id]))
         org_names = org_dist_dict.keys()
         for org in org_names:
             org_dist_dict[org] = sorted(org_dist_dict[org].items(), key=lambda x: x[1])
         if method.lower() in ("minimal_distance", "min_dist", "md"):
-            short_to_full_seq_names_filt = dict(
-                filter(lambda x: x[0] == org_dist_dict.get(short_seq_ids_to_org.get(x[0], None), ((None,),))[0][0],
-                       self.short_to_full_seq_names.items())
-                )
+            short_to_full_seq_names_filt = dict()
+            for short_seq_name, full_seq_name in self.short_to_full_seq_names.items():
+                if short_seq_name == org_dist_dict[seq_ids_to_orgs[full_seq_name]][0][0]:
+                    short_to_full_seq_names_filt[short_seq_name] = full_seq_name
             mult_aln_dict_filt = dict(filter(lambda x: x[0] in short_to_full_seq_names_filt.values(),
                                              self.mult_aln_dict.items()))
         else:
@@ -277,7 +278,7 @@ class MultAln(ConfBase):
         if inplace:
             self.mult_aln_dict = mult_aln_dict_filt
             self.short_to_full_seq_names = short_to_full_seq_names_filt
-            self.distance_matrix = None
+            self._distance_matrix = None
             if self.logger:
                 self.logger.info("paralogs removed")
             else:
@@ -290,7 +291,7 @@ class MultAln(ConfBase):
             self.logger = logger
             filtered_aln.mult_aln_dict = mult_aln_dict_filt
             filtered_aln.short_to_full_seq_names = short_to_full_seq_names_filt
-            filtered_aln.distance_matrix = None
+            filtered_aln._distance_matrix = None
             if self.logger:
                 self.logger.info("paralogs removed")
             else:

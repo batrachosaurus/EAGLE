@@ -1,15 +1,13 @@
 from functools import reduce
 from operator import getitem
 from abc import ABCMeta, abstractmethod
+from collections import defaultdict
 
 from eagle.constants import eagle_logger
 
 
 class JsonEntry(object):
     __metaclass__ = ABCMeta  # probably not compatible with Python 3
-
-    def __init__(self):
-        pass
 
     @staticmethod
     @abstractmethod
@@ -99,11 +97,9 @@ class GenomeInfo(JsonEntry):
         self.btc_seqs_fasta = btc_seqs_fasta
         self.btc_seqs_id = btc_seqs_id
         if self.btc_seqs_id is None:
-            self.btc_seqs_id = dict()
+            self.btc_seqs_id = defaultdict(str)  # {btc_seq_id: btc_profile_name}
         self.source_db = source_db
         self.is_repr = is_repr
-
-        super(GenomeInfo, self).__init__()
 
     @staticmethod
     def attr_scheme():
@@ -148,8 +144,6 @@ class SeqProfileInfo(JsonEntry):
         self.seq_type = seq_type
         self.weight = weight
 
-        super(SeqProfileInfo, self).__init__()
-
     @staticmethod
     def attr_scheme():
         # json scheme (the keys must match attribute names defined in __init__)
@@ -160,4 +154,83 @@ class SeqProfileInfo(JsonEntry):
             "path": (SeqProfileInfo.path_key,),
             "seq_type": (SeqProfileInfo.seq_type_key,),
             "weight": (SeqProfileInfo.weight_key,),
+        }
+
+
+class BtaxInfo(JsonEntry):
+
+    # json keys
+    name_key = "name"
+    genomes_key = "genomes"
+    btax_fna_key = "btax_fna"
+    fna_id_key = "fna_id"
+    blastdb_key = "blastdb"
+    repr_profiles_key = "repr_profiles"
+    ref_tree_key = "ref_tree"
+    ref_tree_newick_key = "newick"
+    ref_tree_full_names_key = "full_names"
+    distance_key = "distance"
+    average_d_key = "average"
+    median_d_key = "median"
+
+    # default values
+    name_0 = None
+    genomes_0 = None
+    btax_fna_0 = None
+    fna_id_0 = None
+    blastdb_0 = None
+    repr_profiles_0 = None
+    ref_tree_newick_0 = None
+    ref_tree_full_names_0 = None
+    average_d_0 = float()
+    median_d_0 = float()
+
+    def __init__(self,
+                 name=name_0,
+                 genomes=genomes_0,
+                 btax_fna=btax_fna_0,
+                 fna_id=fna_id_0,
+                 blastdb=blastdb_0,
+                 repr_profiles=repr_profiles_0,
+                 ref_tree_newick=ref_tree_newick_0,
+                 ref_tree_full_names=ref_tree_full_names_0,
+                 average_d=average_d_0,
+                 median_d=median_d_0):
+
+        # attribute names must match keys form SeqProfileInfo.attr_scheme()
+        self.name = name
+        self.genomes=genomes
+        if self.genomes is None:
+            self.genomes = list()
+        self.btax_fna = btax_fna
+        self.fna_id = fna_id
+        if self.fna_id is None:
+            self.fna_id = defaultdict(str)  # {seq_id: fna_path}
+        self.blastdb = blastdb
+        self.repr_profiles = repr_profiles
+        if self.repr_profiles is None:
+            self.repr_profiles = list()
+        self.ref_tree_newick = ref_tree_newick
+        self.ref_tree_full_names = ref_tree_full_names
+        if self.ref_tree_full_names is None:
+            self.ref_tree_full_names = defaultdict(str)  # {short_name: full_name}###
+        self.average_d = average_d
+        self.median_d = median_d
+
+    @staticmethod
+    def attr_scheme():
+        # json scheme (the keys must match attribute names defined in __init__)
+        # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
+        # don't include it to the result dict
+        return {
+            "name": (BtaxInfo.name_key,),
+            "genomes": (BtaxInfo.genomes_key,),
+            "btax_fna": (BtaxInfo.btax_fna_key,),
+            "fna_id": (BtaxInfo.fna_id_key,),
+            "blastdb": (BtaxInfo.blastdb_key,),
+            "repr_profiles": (BtaxInfo.repr_profiles_key,),
+            "ref_tree_newick": (BtaxInfo.ref_tree_key, BtaxInfo.ref_tree_newick_key,),
+            "ref_tree_full_names": (BtaxInfo.ref_tree_key, BtaxInfo.ref_tree_full_names_key,),
+            "average_d": (BtaxInfo.distance_key, BtaxInfo.average_d_key,),
+            "median_d": (BtaxInfo.distance_key, BtaxInfo.median_d_key,),
         }

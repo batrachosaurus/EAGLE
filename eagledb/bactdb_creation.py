@@ -15,9 +15,9 @@ from eagle.lib.seqs import load_fasta_to_dict, reduce_seq_names
 from eagledb import join_genomes_lists
 from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME
-from eagledb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, create_btax_blastdb, \
-    generate_btax_profile, create_profiles_db, get_btax_fna
-from eagledb.scheme import GenomeInfo, SeqProfileInfo
+from eagledb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, \
+    create_btax_blastdb, generate_btax_profile, create_profiles_db, get_btax_fna
+from eagledb.scheme import GenomeInfo, SeqProfileInfo, BtaxInfo
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_table=None,
@@ -303,6 +303,55 @@ def get_16S_fasta(f_name, f_dir, strain, remove_rna_f=True):
     return fasta_path, seq_id_list
 
 
+def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=None, config_path=None):
+    if config_path:
+        conf_constants.update_by_config(config_path=config_path)
+        conf_constants_db.update_by_config(config_path=config_path)
+    if not num_threads:
+        num_threads = conf_constants.num_threads
+    else:
+        conf_constants.num_threads = num_threads
+
+    btax_dict = defaultdict(BtaxInfo)
+    btc_fasta_dict = defaultdict(dict)
+    seq_ids_to_orgs = dict()
+    for genome_dict in genomes_list:
+        genome_info = GenomeInfo.load_from_dict(genome_dict)
+        btax_name = None
+        btax_name = genome_info.taxonomy[-btax_level]
+        btax_dict[btax_name].genomes.append(genome_info)
+        if btax_dict[btax_name].name is None:
+            btax_dict[btax_name].name = btax_name
+        btc_seqs_fasta_dict = load_fasta_to_dict(genome_info.btc_seqs_fasta)
+        for btc_seq_id in genome_info.btc_seqs_id:
+            seq_ids_to_orgs[btc_seq_id] = genome_info.org_name
+            btc_fasta_dict[genome_info.btc_seqs_id[btc_seq_id]][btc_seq_id] = btc_seqs_fasta_dict[btc_seq_id]
+
+    btc_dist_dict = defaultdict(pandas.DataFrame)
+    short_to_full_seq_names = dict()
+    for btc_profile_name in btc_fasta_dict:
+        btc_mult_aln = construct_mult_aln(seq_dict=btc_fasta_dict[btc_profile_name])
+        btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
+        btc_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, inplace=True)
+        btc_mult_aln.improve_aln(inplace=True)
+        btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()  # TODO: implement specific positions method
+        short_to_full_seq_names = btc_mult_aln.short_to_full_seq_names.copy()
+
+    btc_dist = get_global_dist(btc_dist_dict, btc_profiles, short_to_full_seq_names)###
+
+
+    for btax_name in btax_dict:
+        btax_dict[btax_name] = filter_btax(btax_dict[btax_name], ...)
+
+    while btax_to_merge and n_it < conf_constants_db.:
+        for btax_name in btax_to_merge:
+
+            btax_dict[]
+        n_it += 1
+
+    return btax_dict
+
+
 def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, config_path=None):
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
@@ -511,13 +560,13 @@ def create_bactdb(input_table_refseq=None,
         # TODO: implement loading btc_profiles from custom profiles
         eagle_logger.warning("custom btax classification profiles are not implemented currently - default will be used")
     # else:
-    btc_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl")]  # TODO: include it to 'else' bock
+    btc_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl").get_json()]  # TODO: include it to 'else' bock
 
     if btax_rep_profile is not None:
         # TODO: implement loading btr_profiles from custom profiles
         eagle_logger.warning("custom btax representative profiles are not implemented currently - default will be used")
     # else:
-    btr_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl")]  # TODO: include it to 'else' bock
+    btr_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl").get_json()]  # TODO: include it to 'else' bock
 
     # TODO: this code should not get the btax classification sequence (16S rRNA)
     if input_table_custom is None and input_table_refseq is None and input_table_genbank is None:
@@ -545,16 +594,14 @@ def create_bactdb(input_table_refseq=None,
     # currently it is filled during get_bacteria_from_ncbi run - not good
 
     btax_dict = get_btax_dict(genomes_list=bacteria_list,
+                              btax_level=btax_level,
+                              btc_profiles=btc_profiles,
                               db_dir=db_dir,
-                              num_threads=num_threads,
-                              only_repr=True)
-    families_dict = get_families_dict(bacteria_list=bacteria_list,
-                                      db_dir=db_dir,
-                                      num_threads=num_threads,
-                                      only_repr=True)
-    create_profiles_db(btax_dict,
+                              num_threads=num_threads)
 
-                       db_dir,
+    create_profiles_db(btax_dict,
+                       btr_profiles=btr_profiles,
+                       db_dir=db_dir,
                        profiles_db_name=PROFILES_DB_NAME,
                        method="hmmer",
                        hmmer_inst_dir=conf_constants.hmmer_inst_dir,
