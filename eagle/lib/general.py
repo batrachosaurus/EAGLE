@@ -10,6 +10,7 @@ import multiprocessing as mp
 import os
 import pickle
 import shutil
+import numbers
 import subprocess
 import sys
 import time
@@ -40,7 +41,8 @@ class ConfBase(object):
                     self.__dict__[param] = [elm.strip() for elm in new_value.split(",")]
                 elif type(self.__dict__[param]) is bool:
                     self.__dict__[param] = bool_from_str(new_value)
-                elif new_value.lower() in ("0", "false", "f", "no", "n", "na", "none", "null"):
+                elif not isinstance(self.__dict__[param], numbers.Number) and \
+                        new_value.lower() in ("0", "0.0", "false", "f", "no", "n", "na", "none", "null"):
                     self.__dict__[param] = None
                 else:
                     self.__dict__[param] = type(self.__dict__[param])(new_value)
