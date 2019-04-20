@@ -5,16 +5,18 @@ import multiprocessing as mp
 import os
 from collections import defaultdict
 
+import numpy as np
 import pandas
 
 from eagle.constants import eagle_logger, conf_constants
-from eagle.lib.alignment import construct_mult_aln
+from eagle.lib.alignment import construct_mult_aln, DistanceMatrix
 from eagle.lib.general import worker, get_un_fix, bool_from_str
 from eagle.lib.phylo import build_tree_by_dist
 from eagle.lib.seqs import load_fasta_to_dict, reduce_seq_names
 from eagledb import join_genomes_lists
 from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
-    DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME
+    DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME, \
+    BACTERIA_GLOBAL_DIST_MATRIX, BACTERIA_SHORT_TO_FULL_ORG_NAMES
 from eagledb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, \
     create_btax_blastdb, generate_btax_profile, create_profiles_db, get_btax_fna
 from eagledb.scheme import GenomeInfo, SeqProfileInfo, BtaxInfo
@@ -319,7 +321,7 @@ def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=No
         genome_info = GenomeInfo.load_from_dict(genome_dict)
         btax_name = None
         btax_name = genome_info.taxonomy[-btax_level]
-        btax_dict[btax_name].genomes.append(genome_info)
+        btax_dict[btax_name].genomes.append(genome_info.get_json())
         if btax_dict[btax_name].name is None:
             btax_dict[btax_name].name = btax_name
         btc_seqs_fasta_dict = load_fasta_to_dict(genome_info.btc_seqs_fasta)
@@ -335,22 +337,54 @@ def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=No
         btc_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, inplace=True)
         btc_mult_aln.improve_aln(inplace=True)
         btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()  # TODO: implement specific positions method
-        short_to_full_seq_names = btc_mult_aln.short_to_full_seq_names.copy()
+        short_to_full_seq_names.update(btc_mult_aln.short_to_full_seq_names)
 
-    btc_dist = get_global_dist(btc_dist_dict, btc_profiles, short_to_full_seq_names)###
+    global_dist_matr = get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs)
+    global_dist_matr_path = os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX)
+    short_to_full_seq_names_path = os.path.join(db_dir, BACTERIA_SHORT_TO_FULL_ORG_NAMES)
+    with open(short_to_full_seq_names_path) as short_to_full_org_names_f:
+        json.dump(global_dist_matr.dump(matrix_path=global_dist_matr_path, matr_format="phylip"),
+                  short_to_full_org_names_f)
 
+    # for btax_name in btax_dict:
+    #     btax_dict[btax_name] = filter_btax(btax_dict[btax_name], ...)
+
+    # while btax_to_merge and n_it < conf_constants_db.:
+    #    for btax_name in btax_to_merge:
+    #
+    #        btax_dict[]
+    #    n_it += 1
 
     for btax_name in btax_dict:
-        btax_dict[btax_name] = filter_btax(btax_dict[btax_name], ...)
-
-    while btax_to_merge and n_it < conf_constants_db.:
-        for btax_name in btax_to_merge:
-
-            btax_dict[]
-        n_it += 1
-
+        btax_orgs = set(GenomeInfo.load_from_dict(genome).org_name for genome in btax_dict[btax_name].genomes)
+        btax_dict[btax_name].mean_d = global_dist_matr[btax_orgs].mean_dist
+        btax_dict[btax_name].median_d = global_dist_matr[btax_orgs].median_dist
+        btax_dict[btax_name] = btax_dict[btax_name].get_json()
     return btax_dict
 
+
+def get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs):
+    seqs_order = {org_name: i for i, org_name in enumerate(set(seq_ids_to_orgs.values()))}
+    nseqs = len(seqs_order)
+    global_dist_matrix = DistanceMatrix(seqs_order=seqs_order,
+                                        matr=np.empty((nseqs, nseqs)),
+                                        aln_type="btc_global")
+    sumw = 0.0
+    for btc_profile in btc_profiles:
+        btc_profile_info = SeqProfileInfo.load_from_dict(btc_profile)
+        btc_profile_matr = btc_dist_dict[btc_profile_info.name]
+        dist_0 = btc_profile_matr.mean_dist
+        for seq_name in global_dist_matrix.seq_names:
+            if seq_name in btc_profile_matr.seq_names:
+                btc_seq_dist = btc_profile_matr[seq_name]
+                global_dist_matrix[seq_name] += \
+                    pandas.Series((btc_seq_dist.get(seq_name_, dist_0) for seq_name_ in global_dist_matrix.seq_names),
+                                  index=global_dist_matrix.seq_names)
+            else:
+                global_dist_matrix[seq_name] += pandas.Series([dist_0]*nseqs, index=global_dist_matrix.seq_names)
+        sumw += float(btc_profile_info.weight)
+    global_dist_matrix.matr = global_dist_matrix.matr / sumw
+    return global_dist_matrix
 
 def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, config_path=None):
     if config_path:

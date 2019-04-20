@@ -170,7 +170,7 @@ class BtaxInfo(JsonEntry):
     ref_tree_newick_key = "newick"
     ref_tree_full_names_key = "full_names"
     distance_key = "distance"
-    average_d_key = "average"
+    mean_d_key = "mean"
     median_d_key = "median"
 
     # default values
@@ -182,7 +182,7 @@ class BtaxInfo(JsonEntry):
     repr_profiles_0 = None
     ref_tree_newick_0 = None
     ref_tree_full_names_0 = None
-    average_d_0 = float()
+    mean_d_0 = float()
     median_d_0 = float()
 
     def __init__(self,
@@ -194,7 +194,7 @@ class BtaxInfo(JsonEntry):
                  repr_profiles=repr_profiles_0,
                  ref_tree_newick=ref_tree_newick_0,
                  ref_tree_full_names=ref_tree_full_names_0,
-                 average_d=average_d_0,
+                 mean_d=mean_d_0,
                  median_d=median_d_0):
 
         # attribute names must match keys form SeqProfileInfo.attr_scheme()
@@ -214,7 +214,7 @@ class BtaxInfo(JsonEntry):
         self.ref_tree_full_names = ref_tree_full_names
         if self.ref_tree_full_names is None:
             self.ref_tree_full_names = defaultdict(str)  # {short_name: full_name}###
-        self.average_d = average_d
+        self.mean_d = mean_d
         self.median_d = median_d
 
     @staticmethod
@@ -231,6 +231,6 @@ class BtaxInfo(JsonEntry):
             "repr_profiles": (BtaxInfo.repr_profiles_key,),
             "ref_tree_newick": (BtaxInfo.ref_tree_key, BtaxInfo.ref_tree_newick_key,),
             "ref_tree_full_names": (BtaxInfo.ref_tree_key, BtaxInfo.ref_tree_full_names_key,),
-            "average_d": (BtaxInfo.distance_key, BtaxInfo.average_d_key,),
+            "mean_d": (BtaxInfo.distance_key, BtaxInfo.mean_d_key,),
             "median_d": (BtaxInfo.distance_key, BtaxInfo.median_d_key,),
         }
