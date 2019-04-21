@@ -49,7 +49,7 @@ pip install git+https://github.com/loven-doo/EAGLE.git@dev --upgrade
 You can (recommended way) download the default database from [here](http://ma.fbb.msu.ru/loven-doo/EAGLE/EAGLEdb.tar.gz)  
 Other option is to build it from prepared lists of NCBI genomes:
 ```
-EAGLEdb -dbt bacteria
+eagle_db -dbt bacteria
 ```
   
 Also below is the instruction for building a database from NCBI if you do not like to use the default database or prepared lists (another option):  
@@ -58,12 +58,12 @@ Also below is the instruction for building a database from NCBI if you do not li
    
 2. Prepare genomes lists:
 ```
-EAGLEdb.prepare_ncbi_summary <downloaded/summary/path> <prepared/genomes/list/path>
+eagle_db.prepare_ncbi_summary <downloaded/summary/path> <prepared/genomes/list/path>
 ```
    
 3. Build the database
 ```
-EAGLEdb -dbt bacteria -igenbank <prepared/genomes/list/path>
+eagle_db -dbt bacteria -igenbank <prepared/genomes/list/path>
 ```
   
 
@@ -74,22 +74,22 @@ NOTE: sequences names in input fasta file cannot be longer than 10 symbols.
   
 Type the command below to start the analysis:
 ```
-EAGLE -i <fasta/path> -db <EAGLEdb/scheme/json/path> -m <run_mode> -nt <threads_number> -o <out/dir/path>
+eagle -i <fasta/path> -db <EAGLEdb/scheme/json/path> -m <run_mode> -nt <threads_number> -o <out/dir/path>
 ```
 for detailed parameters description type:
 ```
-EAGLE -h
+eagle -h
 ```
 or from Python
 ```
-from EAGLE import explore_genes
+from eagle import explore_genes
 
 explore_genes(...)
 ```
   
 ## Packages reference
 
-### EAGLE
+### eagle
 
-### EAGLEdb
+### eagledb
 
