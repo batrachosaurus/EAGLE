@@ -561,10 +561,12 @@ class DistanceMatrix(object):
         if matr_format == "phylip":
             matr_f = open(matrix_path, 'w')
             matr_f.write("    %s\n" % self.nseqs)
+            full_to_short_seq_names = self.full_to_short_seq_names
             for seq_name in self.seq_names:
-                num_spaces_to_add = 10 - len(seq_name)
+                num_spaces_to_add = 10 - len(full_to_short_seq_names[seq_name])
                 spaces_to_add = [" " for i in range(num_spaces_to_add)]
-                matr_f.write("%s %s\n" % (seq_name + "".join(spaces_to_add), " ".join(map(str, self[seq_name]))))
+                matr_f.write("%s %s\n" % (full_to_short_seq_names[seq_name] + "".join(spaces_to_add),
+                                          " ".join(map(str, self[seq_name]))))
             matr_f.close()
         return self.short_to_full_seq_names
 
@@ -714,10 +716,10 @@ def detect_seqs_type(fasta_path=None, fasta_dict=None, nuc_freq_thr=0.75):
     seqs_list = list()
     summ_l = 0
     if not fasta_dict and fasta_path:
-        fasta_dict = load_fasta_to_dict(fasta_path).lower().replace("-", "")
+        fasta_dict = load_fasta_to_dict(fasta_path)
         for seq_key in fasta_dict.keys():
-            seqs_list.append(fasta_dict[seq_key])
-            summ_l += len(fasta_dict[seq_key])
+            seqs_list.append(fasta_dict[seq_key].lower().replace("-", ""))
+            summ_l += len(seqs_list[-1])
         let_counts = Counter("".join(seqs_list))
         if float(let_counts.get("a", 0)+let_counts.get("c", 0)+let_counts.get("g", 0)+
                          let_counts.get("t", 0))/float(summ_l) >= nuc_freq_thr:

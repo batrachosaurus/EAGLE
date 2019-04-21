@@ -77,7 +77,7 @@ def join_genomes_lists(genomes_list_1, genomes_list_2):
             continue
         g_info = GenomeInfo.load_from_dict(genome_info)
         joined_genomes_list.append(genome_info)
-        joined_genome_info.add(g_info.org_name)
+        joined_genome_info.add(g_info.genome_id)
 
     for genome_info in genomes_list_2:
         if not genome_info:
@@ -85,6 +85,6 @@ def join_genomes_lists(genomes_list_1, genomes_list_2):
         g_info = GenomeInfo.load_from_dict(genome_info)
         if g_info.org_name not in joined_genome_info:
             joined_genomes_list.append(genome_info)
-            joined_genome_info.add(g_info.org_name)
+            joined_genome_info.add(g_info.genome_id)
 
     return joined_genomes_list

@@ -1,9 +1,11 @@
 import os
+import json
 import shutil
 import unittest
 
 from eagle.constants import eagle_logger
 from eagledb.constants import TEST_DIR
+from eagledb.scheme import SeqProfileInfo
 from eagledb import bactdb_creation, files_utils
 
 
@@ -22,6 +24,7 @@ class TestBactDBCreation(unittest.TestCase):
     test_taxonomy = ["Bacteria", "Firmicutes", "Bacilli", "Lactobacillales",
                      "Aerococcaceae", "Abiotrophia", "Abiotrophia_defectiva"]
     test_org_name = "Abiotrophia_defectiva_ATCC_49176"
+    test_genome_id = "GCF_000160075.2_ASM16007v2"
 
     def test_get_bacteria_from_ncbi(self):
         analyzed_bacteria_f_path = os.path.join(INPUT_DIR, "prepared_bacteria.json")
@@ -31,7 +34,7 @@ class TestBactDBCreation(unittest.TestCase):
         self.assertIs(type(result), list)
 
     def test_get_taxonomy(self):
-        tax_f_name = "GCF_000160075.2_ASM16007v2_wgsmaster.gbff.gz"
+        tax_f_name = self.test_genome_id + "_wgsmaster.gbff.gz"
 
         result_exp = (self.test_taxonomy, self.test_org_name)
 
@@ -39,18 +42,29 @@ class TestBactDBCreation(unittest.TestCase):
         self.assertEqual(result, result_exp)
 
     def test_get_16S_fasta(self):
-        rna_f_name = "GCF_000160075.2_ASM16007v2_rna_from_genomic.fna.gz"
-        test_16S_fasta_result = "Abiotrophia_defectiva_ATCC_49176_16S_rRNA.fasta"
+        rna_f_name = self.test_genome_id + "_rna_from_genomic.fna.gz"
+        test_16S_fasta_result = self.test_genome_id + "_16S_rRNA.fasta"
         exp_seq_id_list = ["lcl|NZ_KI535341.1_rrna_33 [locus_tag=GCWU000182_RS08290] [product=16S ribosomal RNA] "
                            "[location=complement(179989..181551)] [gbkey=rRNA]",
                            "lcl|NZ_KI535342.1_rrna_59 [locus_tag=GCWU000182_RS09510] [product=16S ribosomal RNA] "
                            "[location=169454..>169911] [gbkey=rRNA]"]
-        result = bactdb_creation.get_16S_fasta(rna_f_name, INPUT_DIR, strain=self.test_org_name,
+        result = bactdb_creation.get_16S_fasta(rna_f_name, INPUT_DIR, genome_id=self.test_genome_id,
                                                remove_rna_f=False)
         result_f_name = os.path.split(result[0])[1].encode()
         shutil.move(result[0], os.path.join(OUTPUT_DIR, result_f_name))
         self.assertEqual(result_f_name, test_16S_fasta_result)
         self.assertItemsEqual(result[1], exp_seq_id_list)
+
+    def test_get_btax_dict(self):
+        btc_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl").get_json()]
+        genomes_list = bactdb_creation.get_bacteria_from_ncbi(bactdb_dir=OUTPUT_DIR, last_bact=30)
+        btax_dict = bactdb_creation.get_btax_dict(genomes_list,
+                                                  btax_level=3,
+                                                  btc_profiles=btc_profiles,
+                                                  db_dir=OUTPUT_DIR)
+        with open(os.path.join(OUTPUT_DIR, "btax_dict.json"), "w") as btax_dict_f:
+            json.dump(btax_dict, btax_dict_f, indent=2)
+        self.assertIsInstance(btax_dict, dict)
 
 
 class TestFilesUtils(unittest.TestCase):

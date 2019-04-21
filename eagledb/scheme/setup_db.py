@@ -32,11 +32,12 @@ class JsonEntry(object):
                         sub_res_json[keys[i]] = self.__dict__[attr]
                     else:
                         sub_res_json = reduce(getitem, keys[:i], res_json)
-                        sub_res_json[keys[i]] = dict()
+                        if keys[i] not in sub_res_json:
+                            sub_res_json[keys[i]] = dict()
                 else:
                     if i == keys_l - 1:
                         res_json[keys[i]] = self.__dict__[attr]
-                    else:
+                    elif keys[i] not in res_json:
                         res_json[keys[i]] = dict()
             keys = None
         return res_json
@@ -57,6 +58,7 @@ class JsonEntry(object):
 class GenomeInfo(JsonEntry):
 
     # json keys
+    genome_id_key = "genome_id"
     org_name_key = "org_name"
     taxonomy_key = "taxonomy"
     ncbi_download_prefix_key = "ncbi_download_prefix"
@@ -68,6 +70,7 @@ class GenomeInfo(JsonEntry):
     is_repr_key = "is_repr"
 
     # default values
+    genome_id_0 = None
     org_name_0 = None
     taxonomy_0 = None
     ncbi_download_prefix_0 = None
@@ -78,6 +81,7 @@ class GenomeInfo(JsonEntry):
     is_repr_0 = False
 
     def __init__(self,
+                 genome_id=genome_id_0,
                  org_name=org_name_0,
                  taxonomy=taxonomy_0,
                  ncbi_download_prefix=ncbi_download_prefix_0,
@@ -88,6 +92,7 @@ class GenomeInfo(JsonEntry):
                  is_repr=is_repr_0):
 
         # attribute names must match keys form GenomeInfo.attr_scheme()
+        self.genome_id = genome_id
         self.org_name = org_name
         self.taxonomy = list()
         if taxonomy is not None:
@@ -107,6 +112,7 @@ class GenomeInfo(JsonEntry):
         # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
         # don't include it to the result dict
         return {
+            "genome_id": (GenomeInfo.genome_id_key,),
             "org_name": (GenomeInfo.org_name_key,),
             "taxonomy": (GenomeInfo.taxonomy_key,),
             "ncbi_download_prefix": (GenomeInfo.ncbi_download_prefix_key,),
