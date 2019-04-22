@@ -3,6 +3,7 @@
 
 ## Requirements
 MUSCLE  
+MAFFT  
 HMMER3  
 EMBOSS + PHYLIPNEW (EMBASSY package)  
 FastME 2.07  

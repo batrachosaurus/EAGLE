@@ -664,11 +664,13 @@ def construct_mult_aln(seq_dict=None,
                        method="MUSCLE",
                        aln_type=None,
                        muscle_exec_path=conf_constants.muscle_exec_path,
+                       mafft_exec_path=conf_constants.mafft_exec_path,
                        emboss_inst_dir=conf_constants.emboss_inst_dir,
                        hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                        aln_name="mult_aln",
                        tmp_dir="tmp",
                        remove_tmp=True,
+                       num_threads=None,
                        config_path=None,
                        logger=None):
 
@@ -698,6 +700,19 @@ def construct_mult_aln(seq_dict=None,
             logger.info("MUSCLE finished")
         else:
             print("MUSCLE finished")
+    if method.lower() == "mafft":
+        if num_threads is None:
+            num_threads = conf_constants.num_threads
+        if logger:
+            logger.info("MAFFT is starting")
+        else:
+            print("MAFFT is starting")
+        mafft_cmd = mafft_exec_path + " --thread " + str(num_threads) + " " + fasta_path + " > " + out_fasta_path
+        subprocess.call(mafft_cmd, shell=True)
+        if logger:
+            logger.info("MAFFT finished")
+        else:
+            print("MAFFT finished")
 
     mult_aln = MultAln.load_alignment(aln_fasta_path=out_fasta_path,
                                       aln_type=aln_type,

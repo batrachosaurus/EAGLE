@@ -27,6 +27,7 @@ class ConfConstants(ConfBase):
         self.redis_queue_db = 0
         # ALIGNMENT
         self.muscle_exec_path = "muscle"
+        self.mafft_exec_path = "mafft"
         self.emboss_inst_dir = ""
         self.hmmer_inst_dir = ""
         self.blast_inst_dir = ""

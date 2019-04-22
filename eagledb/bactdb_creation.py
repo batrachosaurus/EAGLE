@@ -342,7 +342,9 @@ def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=No
     for btc_profile_name in btc_fasta_dict:
         btc_mult_aln = construct_mult_aln(seq_dict=btc_fasta_dict[btc_profile_name],
                                           aln_type=btc_profile_types[btc_profile_name],
-                                          aln_name=btc_profile_name+"_aln")
+                                          aln_name=btc_profile_name+"_aln",
+                                          method="MAFFT",
+                                          num_threads=num_threads)
         btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
         btc_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, inplace=True)
         btc_mult_aln.improve_aln(inplace=True)
@@ -419,6 +421,26 @@ def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, con
     else:
         conf_constants.num_threads = num_threads
 
+    # Can be parallel
+    for btax_name in btax_dict:
+        btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
+        btax_info.btax_fna, btax_info.fna_id, downloaded_fna = get_btax_fna(btax_genomes=btax_info.genomes,
+                                                                            btax_name=btax_info.name,
+                                                                            db_dir=db_dir)
+        for i, btax_genome in enumerate(btax_info.genomes):
+            genome_info = GenomeInfo.load_from_dict(btax_genome)
+            if genome_info.genome_id in downloaded_fna:
+                genome_info.fna_path = downloaded_fna[genome_info.genome_id]
+                btax_info.genomes[i] = genome_info.get_json()
+        btax_info.blastdb = create_btax_blastdb(btax_fna_path=btax_info.btax_fna,
+                                                btax_name=btax_info.name,
+                                                db_dir=db_dir,
+                                                blast_inst_dir=conf_constants.blast_inst_dir,
+                                                logger=eagle_logger)
+        if btr_profiles is not None:
+            # create repr profile
+            pass
+        btax_dict[btax_name] = btax_info.get_json()
     return btax_dict
 
 
@@ -574,7 +596,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
                                       download_dir=db_dir,
                                       logger=eagle_logger)
     family_data["fam_fna"], family_data["chr_id"] = get_btax_fna(fna_key="fna_file",
-                                                                 btax_data=family_data,
+                                                                 btax_genomes=family_data,
                                                                  btax_name=family_name,
                                                                  db_dir=db_dir)
     family_data["blastdb"] = create_btax_blastdb(btax_fna_path=family_data["fam_fna"],
@@ -670,7 +692,6 @@ def create_bactdb(input_table_refseq=None,
                               num_threads=num_threads,
                               build_tree=not bool(btr_profiles))
 
-    # construct btr_profiles
     btax_dict = get_btax_blastdb(btax_dict,
                                  db_dir=db_dir,
                                  btr_profiles=btr_profiles,

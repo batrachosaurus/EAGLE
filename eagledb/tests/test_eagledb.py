@@ -27,12 +27,16 @@ class TestBactDBCreation(unittest.TestCase):
     test_genome_id = "GCF_000160075.2_ASM16007v2"
     conf_constants.fastme_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "fastme")
 
-    def test_get_bacteria_from_ncbi(self):
-        analyzed_bacteria_f_path = os.path.join(INPUT_DIR, "prepared_bacteria.json")
-        result = bactdb_creation.get_bacteria_from_ncbi(bactdb_dir=OUTPUT_DIR,
-                                                        last_bact=30,
-                                                        prepared_bacteria_f_path=analyzed_bacteria_f_path)
-        self.assertIs(type(result), list)
+    def test_get_bacteria_from_ncbi(self, last_bact=30, use_prapared=True):
+        if use_prapared:
+            prepared_bacteria_f_path = os.path.join(INPUT_DIR, "prepared_bacteria.json")
+        else:
+            prepared_bacteria_f_path = ""
+        genomes_list = bactdb_creation.get_bacteria_from_ncbi(bactdb_dir=OUTPUT_DIR,
+                                                              last_bact=last_bact,
+                                                              prepared_bacteria_f_path=prepared_bacteria_f_path)
+        self.assertIs(type(genomes_list), list)
+        return genomes_list
 
     def test_get_taxonomy(self):
         tax_f_name = self.test_genome_id + "_wgsmaster.gbff.gz"
@@ -56,14 +60,31 @@ class TestBactDBCreation(unittest.TestCase):
         self.assertEqual(result_f_name, test_16S_fasta_result)
         self.assertItemsEqual(result[1], exp_seq_id_list)
 
-    def test_get_btax_dict(self):
+    def test_get_btax_dict(self, use_test_results=False):
+        if use_test_results:
+            with open(os.path.join(OUTPUT_DIR, "bacteria.json")) as genomes_list_f:
+                genomes_list = json.load(genomes_list_f)
+        else:
+            genomes_list = self.test_get_bacteria_from_ncbi(last_bact=50, use_prapared=False)
         btc_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl").get_json()]
-        genomes_list = bactdb_creation.get_bacteria_from_ncbi(bactdb_dir=OUTPUT_DIR, last_bact=30)
         btax_dict = bactdb_creation.get_btax_dict(genomes_list,
                                                   btax_level=3,
                                                   btc_profiles=btc_profiles,
                                                   db_dir=OUTPUT_DIR,
-                                                  build_tree=True)
+                                                  build_tree=True,
+                                                  num_threads=4)
+        with open(os.path.join(OUTPUT_DIR, "btax_dict.json"), "w") as btax_dict_f:
+            json.dump(btax_dict, btax_dict_f, indent=2)
+        self.assertIsInstance(btax_dict, dict)
+        return btax_dict
+
+    def test_get_btax_blastdb(self, use_test_results=False):
+        if use_test_results:
+            with open(os.path.join(OUTPUT_DIR, "btax_dict.json")) as btax_dict_f:
+                btax_dict = json.load(btax_dict_f)
+        else:
+            btax_dict = self.test_get_btax_dict()
+        btax_dict = bactdb_creation.get_btax_blastdb(btax_dict=btax_dict, db_dir=OUTPUT_DIR)
         with open(os.path.join(OUTPUT_DIR, "btax_dict.json"), "w") as btax_dict_f:
             json.dump(btax_dict, btax_dict_f, indent=2)
         self.assertIsInstance(btax_dict, dict)

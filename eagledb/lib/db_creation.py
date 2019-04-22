@@ -17,7 +17,7 @@ from eagle.constants import conf_constants, eagle_logger
 from eagle.lib.general import join_files, gunzip
 from eagle.lib.alignment import BlastHandler, HmmerHandler
 from eagledb.constants import PROFILES_DB_NAME
-from eagledb.scheme import BtaxInfo
+from eagledb.scheme import BtaxInfo, GenomeInfo
 
 
 def get_links_from_html(html_link, n_tries=3, debug=False):
@@ -94,26 +94,21 @@ def clean_btax_data(btax_data, orgs_to_remain, stop_level=2, special_keys=tuple(
     return cleaned_btax_data
 
 
-def download_btax_files(key_prefix_pairs, btax_data, download_dir="./", logger=None):
-    download_pref_list = get_from_btax_data("download_prefix", btax_data)
-    if not download_pref_list:
-        return 1
-    for download_pref in download_pref_list:
-        for key in key_prefix_pairs.keys():
-            downloaded_f_path = None
-            downloaded_f_path = os.path.join(download_dir,
-                                             download_pref[0].split("/")[-1] + key_prefix_pairs[key])
-            download_organism_files(download_pref[0], key_prefix_pairs[key], download_dir, logger)
-            if os.path.exists(downloaded_f_path):
-                if downloaded_f_path[-3:] == ".gz":
-                    reduce(operator.getitem, download_pref[1], btax_data)[key] = downloaded_f_path[:-3]
-                    gunzip(in_path=downloaded_f_path,
-                           out_path=reduce(operator.getitem, download_pref[1], btax_data)[key])
-                else:
-                    reduce(operator.getitem, download_pref[1], btax_data)[key] = downloaded_f_path
+def download_btax_files(download_pref_dict, suffix, download_dir="./", logger=None):
+    downloaded_fna = dict()
+    for download_pref in download_pref_dict:
+        downloaded_f_path = None
+        downloaded_f_path = os.path.join(download_dir,
+                                         download_pref.split("/")[-1] + suffix)
+        download_organism_files(download_pref, suffix, download_dir, logger)
+        if os.path.exists(downloaded_f_path):
+            if downloaded_f_path[-3:] == ".gz":
+                gunzip(in_path=downloaded_f_path,
+                       out_path=downloaded_f_path[:-3])
+                downloaded_fna[downloaded_f_path[:-3]] = download_pref_dict[download_pref]
             else:
-                reduce(operator.getitem, download_pref[1], btax_data)[key] = None
-    return btax_data
+                downloaded_fna[downloaded_f_path] = download_pref_dict[download_pref]
+    return downloaded_fna
 
 
 def get_from_btax_data(key, btax_data, key_path=list()):
@@ -131,18 +126,32 @@ def get_from_btax_data(key, btax_data, key_path=list()):
         return list()
 
 
-def get_btax_fna(fna_key, btax_data, btax_name, db_dir):
+def get_btax_fna(btax_genomes, btax_name, db_dir):
     chr_id_dict = dict()
     btax_fna_path = os.path.join(db_dir, btax_name + ".fasta")
-    fna_list = get_from_btax_data(fna_key, btax_data)
-    join_files(in_files_list=filter(None, map(lambda fna: fna[0], fna_list)),
+    fna_to_orgs = dict()
+    fna_to_download = dict()
+    genome_id_to_org_name = dict()
+    for btax_genome in btax_genomes:
+        genome_info = GenomeInfo.load_from_dict(btax_genome)
+        if genome_info.fna_path is None and genome_info.ncbi_download_prefix is not None:
+            fna_to_download[genome_info.ncbi_download_prefix] = genome_info.genome_id
+            genome_id_to_org_name[genome_info.genome_id] = genome_info.org_name
+        else:
+            fna_to_orgs[genome_info.fna_path] = genome_info.org_name
+    if fna_to_download:
+        downloaded_fna = download_btax_files(fna_to_download, suffix="_genomic.fna.gz", download_dir=db_dir)
+        for fna_path, genome_id in downloaded_fna.items():
+            fna_to_orgs[fna_path] = genome_id_to_org_name[genome_id]
+
+    join_files(in_files_list=list(filter(None, fna_to_orgs.keys())),
                out_file_path=btax_fna_path,
-               files_transform=transform_chr_id,
-               **{"chr_id_dict": chr_id_dict, "tax_dict": dict(fna_list)})
-    return btax_fna_path, chr_id_dict
+               files_transform=transform_seq_id,
+               **{"seq_id_dict": chr_id_dict, "fna_to_orgs": fna_to_orgs})
+    return btax_fna_path, chr_id_dict, {v: k for k, v in fna_to_download.items()}
 
 
-def transform_chr_id(fna_f, chr_id_dict, tax_dict, **kwargs):
+def transform_seq_id(fna_f, seq_id_dict, fna_to_orgs, **kwargs):
     transf_fna_lines = list()
     for line_ in fna_f:
         line = None
@@ -150,10 +159,10 @@ def transform_chr_id(fna_f, chr_id_dict, tax_dict, **kwargs):
         if not line:
             continue
         if line[0] == b">":
-            chr_id = None
-            chr_id = line[1:].split()[0]
-            transf_fna_lines.append(b">"+chr_id)
-            chr_id_dict[chr_id] = tax_dict[fna_f.name]
+            seq_id = None
+            seq_id = line[1:].split()[0]
+            transf_fna_lines.append(b">"+seq_id)
+            seq_id_dict[seq_id] = fna_to_orgs[fna_f.name]
         else:
             transf_fna_lines.append(line)
     return io.BytesIO(b"\n".join(transf_fna_lines))

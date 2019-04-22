@@ -14,6 +14,7 @@ from eagle.lib.alignment import HmmerHandler, BlastHandler, MultAln, construct_m
 from eagle.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees, dump_tree_newick
 from eagle.lib.general import filter_list, worker, reverse_dict
 from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out
+from eagledb.scheme import BtaxInfo
 
 
 def explore_genes(in_fasta,
@@ -48,7 +49,7 @@ def explore_genes(in_fasta,
                               num_threads=conf_constants.num_threads,
                               method=btax_det_method,
                               hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                              config_path=config_path)
+                              config_path=config_path)###
     else:
         btax_names = {"btax_name": btax_name}
 
@@ -182,8 +183,9 @@ def analyze_tblastn_out(tblastn_out_path,
                         num_threads=conf_constants.num_threads,
                         work_dir=""):
 
+    btax_info = BtaxInfo.load_from_dict(btax_data)
     orfs_stats = mp.Manager().dict()
-    seq_ids_to_orgs = dict((seq_id, {"organism_name": org_tax[-1]}) for seq_id, org_tax in btax_data["chr_id"].items())
+    seq_ids_to_orgs = btax_info.fna_id
     tblatn_out_dict = read_blast_out(blast_out_path=tblastn_out_path)
     orfs_fasta_dict = load_fasta_to_dict(fasta_path=orfs_fasta_path)
     params_list = list()
@@ -231,8 +233,9 @@ def get_orf_stats(orf_id,
         orfs_stats[orf_id] = orf_stats
         eagle_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
-    seq_ids_to_orgs[orf_id] = {"organism_name": "Input_Organism_X"}
-    btax_fna = load_fasta_to_dict(fasta_path=btax_data["fam_fna"])
+    btax_info = BtaxInfo.load_from_dict(btax_data)
+    seq_ids_to_orgs[orf_id] = "Input_Organism_X"
+    btax_fna = load_fasta_to_dict(fasta_path=btax_info.btax_fna)
     for hom in homologs_list:
         try:
             if hom["subj_start"] <= hom["subj_end"]:
@@ -278,17 +281,16 @@ def get_orf_stats(orf_id,
     orf_homs_tree = build_tree_by_dist(
         dist_matrix=orf_mult_aln.get_distance_matrix(),
         method="FastME",
-        full_seq_names=dict((short_id, seq_ids_to_orgs[full_id]["organism_name"])
-                            for short_id, full_id in orf_mult_aln.short_to_full_seq_names.items()),
+        full_seq_names=dict((short_id, seq_ids_to_orgs[full_id])
+                            for short_id, full_id in orf_mult_aln.short_to_full_seq_names.items()),###
         tree_name=orf_id.replace("|:", "_")+"_tree",
         tmp_dir=phylo_tmp_dir,
         logger=eagle_logger
     )
     orf_homs_tree.set_full_names(inplace=True)
     btax_tree = PhyloTree.load_tree_from_str(
-        tree_str=btax_data["16S_rRNA_tree"]["newick"],
-        full_seq_names=dict((short_name, name_dict["organism_name"]) for short_name, name_dict in
-                            btax_data["16S_rRNA_tree"]["full_seq_names"].items()),
+        tree_str=btax_info.ref_tree_newick,
+        full_seq_names=btax_info.ref_tree_full_names,
         tree_name="btax_tree",
         tmp_dir=phylo_tmp_dir,
         logger=eagle_logger
