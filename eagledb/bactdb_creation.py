@@ -356,6 +356,7 @@ def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=No
     with open(short_to_full_seq_names_path, "w") as short_to_full_org_names_f:
         json.dump(short_to_full_seq_names, short_to_full_org_names_f, indent=2)
 
+    # Steps follows can be parallel
     # for btax_name in btax_dict:
     #     btax_dict[btax_name] = filter_btax(btax_dict[btax_name], ...)
 
@@ -407,6 +408,18 @@ def get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs):
         sumw += float(btc_profile_info.weight)
     global_dist_matrix.matr = global_dist_matrix.matr / sumw
     return global_dist_matrix
+
+
+def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, config_path=None):
+    if config_path:
+        conf_constants.update_by_config(config_path=config_path)
+        conf_constants_db.update_by_config(config_path=config_path)
+    if not num_threads:
+        num_threads = conf_constants.num_threads
+    else:
+        conf_constants.num_threads = num_threads
+
+    return btax_dict
 
 
 def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, config_path=None):
@@ -657,8 +670,13 @@ def create_bactdb(input_table_refseq=None,
                               num_threads=num_threads,
                               build_tree=not bool(btr_profiles))
 
+    # construct btr_profiles
+    btax_dict = get_btax_blastdb(btax_dict,
+                                 db_dir=db_dir,
+                                 btr_profiles=btr_profiles,
+                                 num_threads=num_threads)
+
     create_profiles_db(btax_dict,
-                       btr_profiles=btr_profiles,
                        db_dir=db_dir,
                        profiles_db_name=PROFILES_DB_NAME,
                        method="hmmer",

@@ -17,6 +17,7 @@ from eagle.constants import conf_constants, eagle_logger
 from eagle.lib.general import join_files, gunzip
 from eagle.lib.alignment import BlastHandler, HmmerHandler
 from eagledb.constants import PROFILES_DB_NAME
+from eagledb.scheme import BtaxInfo
 
 
 def get_links_from_html(html_link, n_tries=3, debug=False):
@@ -193,9 +194,10 @@ def create_profiles_db(btax_dict,
                        logger=None):
 
     profiles_list = list()
-    for btax_k in btax_dict.keys():
+    for btax_name in btax_dict:
+        btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
         try:
-            profiles_list.append(btax_dict[btax_k]["repr_profile"])
+            profiles_list.extend(btax_info.repr_profiles)
         except (KeyError, AttributeError, TypeError):
             continue
     profiles_db_path = os.path.join(db_dir, profiles_db_name)
