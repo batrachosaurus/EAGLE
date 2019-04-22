@@ -3,8 +3,8 @@ import json
 import shutil
 import unittest
 
-from eagle.constants import eagle_logger
-from eagledb.constants import TEST_DIR
+from eagle.constants import eagle_logger, conf_constants
+from eagledb.constants import TEST_DIR, CONSTANTS_PATH
 from eagledb.scheme import SeqProfileInfo
 from eagledb import bactdb_creation, files_utils
 
@@ -25,6 +25,7 @@ class TestBactDBCreation(unittest.TestCase):
                      "Aerococcaceae", "Abiotrophia", "Abiotrophia_defectiva"]
     test_org_name = "Abiotrophia_defectiva_ATCC_49176"
     test_genome_id = "GCF_000160075.2_ASM16007v2"
+    conf_constants.fastme_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "fastme")
 
     def test_get_bacteria_from_ncbi(self):
         analyzed_bacteria_f_path = os.path.join(INPUT_DIR, "prepared_bacteria.json")
@@ -61,7 +62,8 @@ class TestBactDBCreation(unittest.TestCase):
         btax_dict = bactdb_creation.get_btax_dict(genomes_list,
                                                   btax_level=3,
                                                   btc_profiles=btc_profiles,
-                                                  db_dir=OUTPUT_DIR)
+                                                  db_dir=OUTPUT_DIR,
+                                                  build_tree=True)
         with open(os.path.join(OUTPUT_DIR, "btax_dict.json"), "w") as btax_dict_f:
             json.dump(btax_dict, btax_dict_f, indent=2)
         self.assertIsInstance(btax_dict, dict)

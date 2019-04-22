@@ -96,17 +96,17 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
                       ":": " ",
                       "|": " ",
                       "/": " ",
-                      "\\": " "}
+                      "\\": " ",
+                      "(": " ",
+                      ")": " ",
+                      "[": " ",
+                      "]": " ",
+                      "{": " ",
+                      "}": " "}
     parts_size_list = _get_part_size_list(num_letters, num_words)
     reduced_fasta_dict = dict()
     seq_names_dict = dict()
     for seq_name in fasta_dict.keys():
-        if len(seq_name) <= num_letters:
-            prepared_seq_name = None
-            prepared_seq_name = seq_name+"".join("_" for i in range(num_letters-len(seq_name)))
-            seq_names_dict[prepared_seq_name] = seq_name
-            reduced_fasta_dict[prepared_seq_name] = fasta_dict[seq_name]
-            continue
         reduced_seq_name = None
         seq_name_list = filter_list("".join([splitters_repl.get(s, s) for s in seq_name]).split())
         parts = list()
@@ -119,12 +119,12 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
         res_len = num_letters - len(reduced_seq_name)
         un_num = 0
         un_fix = get_un_fix(un_num, res_len)
-        while seq_names_dict.get(reduced_seq_name+un_fix, None):
+        while seq_names_dict.get((reduced_seq_name+un_fix).upper(), None):
             un_fix = None
             un_num += 1
             un_fix = get_un_fix(un_num, res_len)
-        reduced_fasta_dict[reduced_seq_name+un_fix] = fasta_dict[seq_name]
-        seq_names_dict[reduced_seq_name+un_fix] = seq_name
+        reduced_fasta_dict[(reduced_seq_name+un_fix).upper()] = fasta_dict[seq_name]
+        seq_names_dict[(reduced_seq_name+un_fix).upper()] = seq_name
     return reduced_fasta_dict, seq_names_dict
 
 

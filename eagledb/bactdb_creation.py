@@ -307,7 +307,7 @@ def get_16S_fasta(f_name, f_dir, genome_id, remove_rna_f=True):
     return fasta_path, seq_id_list
 
 
-def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=None, config_path=None):
+def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=None, build_tree=False, config_path=None):
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
         conf_constants_db.update_by_config(config_path=config_path)
@@ -331,7 +331,6 @@ def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=No
         btc_seqs_fasta_dict = load_fasta_to_dict(genome_info.btc_seqs_fasta)
         for btc_seq_id in genome_info.btc_seqs_id:
             seq_ids_to_orgs[btc_seq_id] = genome_info.org_name
-            print(genome_info.org_name)###
             btc_fasta_dict[genome_info.btc_seqs_id[btc_seq_id]][btc_seq_id] = btc_seqs_fasta_dict[btc_seq_id]
 
     btc_profile_types = dict()
@@ -369,8 +368,13 @@ def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=No
     full_to_short_seq_names = {v: k for k, v in short_to_full_seq_names.items()}
     for btax_name in btax_dict:
         btax_orgs = set(GenomeInfo.load_from_dict(genome).org_name for genome in btax_dict[btax_name].genomes)
-        btax_dict[btax_name].mean_d = global_dist_matr[btax_orgs].mean_dist
-        btax_dict[btax_name].median_d = global_dist_matr[btax_orgs].median_dist
+        if build_tree:
+            btax_dict[btax_name].mean_d = global_dist_matr[btax_orgs].mean_dist
+            btax_dict[btax_name].median_d = global_dist_matr[btax_orgs].median_dist
+            if len(btax_orgs) > 2:
+                btax_dict[btax_name].ref_tree_newick = build_tree_by_dist(global_dist_matr[btax_orgs],
+                                                                          tree_name=btax_name+"_tree").newick
+            # btax_dict[btax_name].repr_profiles =
         btax_dict[btax_name].ref_tree_full_names = \
             {full_to_short_seq_names[btax_org]: btax_org for btax_org in btax_orgs}
         btax_dict[btax_name] = btax_dict[btax_name].get_json()
@@ -619,7 +623,7 @@ def create_bactdb(input_table_refseq=None,
         # TODO: implement loading btr_profiles from custom profiles
         eagle_logger.warning("custom btax representative profiles are not implemented currently - default will be used")
     # else:
-    btr_profiles = btc_profiles  # TODO: include it to 'else' bock
+    btr_profiles = None  # TODO: include it to 'else' bock
 
     # TODO: this code should not get the btax classification sequence (16S rRNA)
     if input_table_custom is None and input_table_refseq is None and input_table_genbank is None:
@@ -650,7 +654,8 @@ def create_bactdb(input_table_refseq=None,
                               btax_level=btax_level,
                               btc_profiles=btc_profiles,
                               db_dir=db_dir,
-                              num_threads=num_threads)
+                              num_threads=num_threads,
+                              build_tree=not bool(btr_profiles))
 
     create_profiles_db(btax_dict,
                        btr_profiles=btr_profiles,

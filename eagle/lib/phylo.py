@@ -9,6 +9,7 @@ import dendropy
 
 from eagle.constants import conf_constants, eagle_logger
 from eagle.lib.general import ConfBase, filter_list
+from eagle.lib.alignment import DistanceMatrix
 
 
 class PhyloTree(ConfBase):
@@ -28,7 +29,7 @@ class PhyloTree(ConfBase):
 
     @property
     def newick(self):
-        return self.tree.as_string(schema="newick").replace(" ", "_")
+        return self.tree.as_string(schema="newick").replace(" ", "_").strip()
 
     def dump_tree(self, tree_path, tree_format="newick"):
         tree_str = self.tree.as_string(schema=tree_format).replace(" ", "_")
@@ -118,29 +119,27 @@ def build_tree_by_dist(dist_matrix=None,
                        tree_name="phylo_tree",
                        tmp_dir="tmp",
                        method="FastME",
-                       fastme_exec_path=conf_constants.fastme_exec_path,
+                       fastme_exec_path=None,
                        config_path=None,
                        logger=None):
 
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
-    if type(dist_matrix) is not pandas.DataFrame and not dist_matrix_path:
+    if fastme_exec_path is None:
+        fastme_exec_path = conf_constants.fastme_exec_path
+    if not isinstance(dist_matrix, DistanceMatrix) and not dist_matrix_path:
         if logger:
-            logger.warning("No distance matrix input")
+            logger.warning("No distance matrix input or "
+                           "value for dist_matrix argument is not eagle.lib.alignment.DistanceMatrix object")
         else:
-            print("No distance matrix input")
-        return 1
-    elif dist_matrix.empty and dist_matrix_path:
-        if logger:
-            logger.warning("No distance matrix input")
-        else:
-            print("No distance matrix input")
+            print("No distance matrix input or"
+                  "value for dist_matrix argument is not eagle.lib.alignment.DistanceMatrix object")
         return 1
 
     if method.lower() == "fastme":
         if not dist_matrix_path:
             dist_matrix_path = os.path.join(tmp_dir, "dist_matr.ph")
-            dump_phylip_dist_matrix(dist_matrix=dist_matrix, matrix_path=dist_matrix_path)
+            dist_matrix.dump(matrix_path=dist_matrix_path, matr_format="phylip")
         tree_path = os.path.join(tmp_dir, "tree.nwk")
         fastme_cmd = fastme_exec_path + " -i " + dist_matrix_path + " -o " + tree_path
         subprocess.call(fastme_cmd, shell=True)
