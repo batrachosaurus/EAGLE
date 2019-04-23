@@ -28,6 +28,7 @@ class ConfConstants(ConfBase):
         # ALIGNMENT
         self.muscle_exec_path = "muscle"
         self.mafft_exec_path = "mafft"
+        self.msaprobs_exec_path = "msaprobs"
         self.emboss_inst_dir = ""
         self.hmmer_inst_dir = ""
         self.blast_inst_dir = ""

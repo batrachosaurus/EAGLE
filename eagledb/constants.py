@@ -29,6 +29,7 @@ class ConfConstants(ConfBase):
         # Bacteria db
         self.only_repr = False
         self.btax_level = 3
+        self.btc_profile_aln_method = "MSAProbs"
 
         super(ConfConstants, self).__init__(config_path=config_path)
 

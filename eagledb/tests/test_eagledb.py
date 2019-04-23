@@ -4,7 +4,7 @@ import shutil
 import unittest
 
 from eagle.constants import eagle_logger, conf_constants
-from eagledb.constants import TEST_DIR, CONSTANTS_PATH
+from eagledb.constants import TEST_DIR, CONSTANTS_PATH, conf_constants_db
 from eagledb.scheme import SeqProfileInfo
 from eagledb import bactdb_creation, files_utils
 
@@ -26,6 +26,8 @@ class TestBactDBCreation(unittest.TestCase):
     test_org_name = "Abiotrophia_defectiva_ATCC_49176"
     test_genome_id = "GCF_000160075.2_ASM16007v2"
     conf_constants.fastme_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "fastme")
+    conf_constants.msaprobs_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "msaprobs")
+    conf_constants_db.btc_profile_aln_method = "MAFFT"
 
     def test_get_bacteria_from_ncbi(self, last_bact=30, use_prapared=True):
         if use_prapared:
@@ -60,7 +62,7 @@ class TestBactDBCreation(unittest.TestCase):
         self.assertEqual(result_f_name, test_16S_fasta_result)
         self.assertItemsEqual(result[1], exp_seq_id_list)
 
-    def test_get_btax_dict(self, use_test_results=False):
+    def test_get_btax_dict(self, use_test_results=True):
         if use_test_results:
             with open(os.path.join(OUTPUT_DIR, "bacteria.json")) as genomes_list_f:
                 genomes_list = json.load(genomes_list_f)

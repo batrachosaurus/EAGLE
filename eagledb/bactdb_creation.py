@@ -343,7 +343,7 @@ def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=No
         btc_mult_aln = construct_mult_aln(seq_dict=btc_fasta_dict[btc_profile_name],
                                           aln_type=btc_profile_types[btc_profile_name],
                                           aln_name=btc_profile_name+"_aln",
-                                          method="MAFFT",
+                                          method=conf_constants_db.btc_profile_aln_method,
                                           num_threads=num_threads)
         btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
         btc_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, inplace=True)

@@ -663,16 +663,28 @@ def construct_mult_aln(seq_dict=None,
                        fasta_path=None,
                        method="MUSCLE",
                        aln_type=None,
-                       muscle_exec_path=conf_constants.muscle_exec_path,
-                       mafft_exec_path=conf_constants.mafft_exec_path,
-                       emboss_inst_dir=conf_constants.emboss_inst_dir,
-                       hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                       muscle_exec_path=None,
+                       mafft_exec_path=None,
+                       msaprobs_exec_path=None,
+                       emboss_inst_dir=None,
+                       hmmer_inst_dir=None,
                        aln_name="mult_aln",
                        tmp_dir="tmp",
                        remove_tmp=True,
                        num_threads=None,
                        config_path=None,
                        logger=None):
+
+    if muscle_exec_path is None:
+        muscle_exec_path = conf_constants.muscle_exec_path
+    if mafft_exec_path is None:
+        mafft_exec_path = conf_constants.mafft_exec_path
+    if msaprobs_exec_path is None:
+        msaprobs_exec_path = conf_constants.msaprobs_exec_path
+    if emboss_inst_dir is None:
+        emboss_inst_dir = conf_constants.emboss_inst_dir
+    if hmmer_inst_dir is None:
+        hmmer_inst_dir = conf_constants.hmmer_inst_dir
 
     if not fasta_path and seq_dict:
         if not os.path.exists(tmp_dir):
@@ -700,6 +712,7 @@ def construct_mult_aln(seq_dict=None,
             logger.info("MUSCLE finished")
         else:
             print("MUSCLE finished")
+
     if method.lower() == "mafft":
         if num_threads is None:
             num_threads = conf_constants.num_threads
@@ -713,6 +726,21 @@ def construct_mult_aln(seq_dict=None,
             logger.info("MAFFT finished")
         else:
             print("MAFFT finished")
+
+    if method.lower() == "msaprobs":
+        if num_threads is None:
+            num_threads = conf_constants.num_threads
+        if logger:
+            logger.info("MSAProbs is starting")
+        else:
+            print("MSAProbs is starting")
+        msaprobs_cmd = msaprobs_exec_path + " -num_threads " + str(num_threads) + " -v " + \
+                       fasta_path + " > " + out_fasta_path
+        subprocess.call(msaprobs_cmd, shell=True)
+        if logger:
+            logger.info("MSAProbs finished")
+        else:
+            print("MSAProbs finished")
 
     mult_aln = MultAln.load_alignment(aln_fasta_path=out_fasta_path,
                                       aln_type=aln_type,

@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     /src/embassy-phylip_3.69.660-3_amd64.deb
 
 ADD fastme /bin/
+ADD msaprobs /bin/
 ADD EAGLE-*.tar.gz /src/
 
 RUN pip install /src/EAGLE-*
