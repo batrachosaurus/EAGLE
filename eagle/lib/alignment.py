@@ -30,7 +30,6 @@ class MultAln(ConfBase):
         self.short_to_full_seq_names = dict()
         if mult_aln_dict:
             self.mult_aln_dict = mult_aln_dict
-            # self.mult_aln_dict_short_id  # to initialize self.short_to_full_seq_names
         else:
             self.mult_aln_dict = dict()
         self.states_seq = states_seq
@@ -599,7 +598,7 @@ class BlastHandler(ConfBase):
             makeblastdb_cmd = os.path.join(self.inst_dir, "makeblastdb") + " -in " + in_fasta + " -dbtype " + dbtype
         subprocess.call(makeblastdb_cmd, shell=True)
 
-    def run_blast_search(self, blast_type, query, db, out, num_threads=4, outfmt=7, max_hsps=100):
+    def run_blast_search(self, blast_type, query, db, out, num_threads=1, outfmt=7, max_hsps=100):
         subprocess.call(os.path.join(self.inst_dir, blast_type) +
                         " -query " + query +
                         " -db " + db +

@@ -88,6 +88,13 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
     if num_words < 2:
         print("Number of words must be at least 2")
         return 1
+    all_less = True
+    for seq_id in fasta_dict:
+        if len(seq_id) > num_letters:
+            all_less = False
+            break
+    if all_less:
+        return fasta_dict, dict((seq_id, seq_id) for seq_id in fasta_dict)
     splitters_repl = {"_": " ",
                       "\t": " ",
                       ",": " ",
@@ -179,7 +186,7 @@ def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_co
         orfs_fasta_dict[corr_orf_id] = orfs_fasta_dict.pop(orf_id)
         orfs_info[corr_orf_id] = {
             "seqid": corr_orf_id,
-            "source": "eagle",
+            "source": "EAGLE",
             "type": "ORF",
             "start": c_start,
             "end": c_end,

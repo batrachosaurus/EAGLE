@@ -31,15 +31,22 @@ def explore_genes(in_fasta,
         conf_constants.update_by_config(config_path)
     if num_threads:
         conf_constants.num_threads = int(num_threads)
-    if mode:
-        conf_constants.mode = None
-        conf_constants.mode = mode
+    else:
+        num_threads = conf_constants.num_threads
+    if mode is None:
+        mode = conf_constants.mode
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    with open(db_json) as db_json_f:
-        db_info = DBInfo.load_from_dict(json.load(db_json_f))
+    if type(db_json) is str:
+        with open(db_json) as db_json_f:
+            db_info = DBInfo.load_from_dict(json.load(db_json_f))
+    elif isinstance(db_json, dict):
+        db_info = DBInfo.load_from_dict(db_json)
+    else:
+        eagle_logger.error("Unsupported type of value for 'db_json' argument")
+        return
     with open(db_info.btax_json) as btax_dict_f:
         btax_dict = json.load(btax_dict_f)
     if btax_name is None or mode != "genome":  # maybe genome mode check is not correct in this case
@@ -47,7 +54,7 @@ def explore_genes(in_fasta,
                               db_info.repr_profiles,
                               btax_names=btax_dict.keys(),
                               work_dir=out_dir,
-                              mode=conf_constants.mode,
+                              mode=mode,
                               num_threads=conf_constants.num_threads,
                               method=btax_det_method,
                               hmmer_inst_dir=conf_constants.hmmer_inst_dir,
@@ -68,12 +75,13 @@ def explore_genes(in_fasta,
             eagle_logger.warning("The family was not detected - cannot run further analysis")
         else:
             btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
-            eagle_logger.info("Family %s will be used for sequence from %s" % (btax_name, in_fasta))
+            eagle_logger.info("Family '%s' will be used for the sequence from %s" % (btax_name, in_fasta))
             tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
             blast_handler.run_blast_search(blast_type="tblastn",
                                            query=orfs_fasta_path,
                                            db=btax_info.blastdb,
-                                           out=tblastn_out_path)
+                                           out=tblastn_out_path,
+                                           num_threads=1)###
             res_gtf_json = analyze_tblastn_out(tblastn_out_path=tblastn_out_path,
                                                orfs_fasta_path=orfs_fasta_path,
                                                btax_data=btax_dict[btax_name],
