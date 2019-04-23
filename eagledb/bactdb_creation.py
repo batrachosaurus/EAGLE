@@ -17,10 +17,10 @@ from eagle.lib.seqs import load_fasta_to_dict, reduce_seq_names
 from eagledb import join_genomes_lists
 from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME, \
-    BACTERIA_GLOBAL_DIST_MATRIX, BACTERIA_SHORT_TO_FULL_ORG_NAMES
+    BACTERIA_GLOBAL_DIST_MATRIX, BACTERIA_SHORT_TO_FULL_ORG_NAMES, BTAX_JSON_NAME, DB_INFO_NAME
 from eagledb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, \
     create_btax_blastdb, generate_btax_profile, create_profiles_db, get_btax_fna
-from eagledb.scheme import GenomeInfo, SeqProfileInfo, BtaxInfo
+from eagledb.scheme import GenomeInfo, SeqProfileInfo, BtaxInfo, DBInfo
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_table=None,
@@ -697,10 +697,20 @@ def create_bactdb(input_table_refseq=None,
                                  btr_profiles=btr_profiles,
                                  num_threads=num_threads)
 
-    create_profiles_db(btax_dict,
-                       db_dir=db_dir,
-                       profiles_db_name=PROFILES_DB_NAME,
-                       method="hmmer",
-                       hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                       config_path=config_path,
-                       logger=eagle_logger)
+    repr_profiles_path = create_profiles_db(btax_dict,
+                                            db_dir=db_dir,
+                                            profiles_db_name=PROFILES_DB_NAME,
+                                            method="hmmer",
+                                            hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                                            config_path=config_path,
+                                            logger=eagle_logger)
+    with open(os.path.join(db_dir, BTAX_JSON_NAME), "w") as btax_json_f:
+        json.dump(btax_dict, btax_json_f, indent=2)  # maybe btax_dict will be dumped in get_btax_dict
+    db_info = DBInfo(all_genomes=os.path.join(db_dir, BACTERIA_LIST_F_NAME),
+                     btax_json=os.path.join(db_dir, BTAX_JSON_NAME),
+                     repr_profiles=repr_profiles_path,
+                     global_dist_matrix=os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX),
+                     all_org_full_names=os.path.join(db_dir, BACTERIA_SHORT_TO_FULL_ORG_NAMES)).get_json()
+    with open(os.path.join(db_dir, DB_INFO_NAME), "w") as db_info_f:
+        json.dump(db_info, db_info_f, indent=2)
+    return db_info

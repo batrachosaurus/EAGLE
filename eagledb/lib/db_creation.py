@@ -213,3 +213,4 @@ def create_profiles_db(btax_dict,
     if method.lower() == "hmmer":
         hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir, config_path=config_path, logger=logger)
         hmmer_handler.make_profiles_db(profiles_list, profiles_db_path)
+    return profiles_db_path

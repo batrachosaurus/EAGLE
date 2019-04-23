@@ -12,6 +12,9 @@ BACTERIA_GLOBAL_DIST_MATRIX = "global_dist_matr.phylip"
 BACTERIA_SHORT_TO_FULL_ORG_NAMES = "short_to_full_org_names.json"
 BACT_FAM_F_NAME = "bact_fam.json"
 
+BTAX_JSON_NAME = "btax.json"
+DB_INFO_NAME = "db_info.json"
+
 ORG_TABLES_DIR = os.path.join(CONSTANTS_PATH, "org_tables")
 DEFAULT_REFSEQ_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "refseq_bacteria_table.txt")
 DEFAULT_GENBANK_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "genbank_bacteria_table.txt")

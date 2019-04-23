@@ -14,7 +14,7 @@ from eagle.lib.alignment import HmmerHandler, BlastHandler, MultAln, construct_m
 from eagle.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees, dump_tree_newick
 from eagle.lib.general import filter_list, worker, reverse_dict
 from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out
-from eagledb.scheme import BtaxInfo
+from eagledb.scheme import BtaxInfo, DBInfo
 
 
 def explore_genes(in_fasta,
@@ -39,17 +39,19 @@ def explore_genes(in_fasta,
         os.makedirs(out_dir)
 
     with open(db_json) as db_json_f:
-        db_info = json.load(db_json_f)
-    if btax_name is None or mode != "genome":
+        db_info = DBInfo.load_from_dict(json.load(db_json_f))
+    with open(db_info.btax_json) as btax_dict_f:
+        btax_dict = json.load(btax_dict_f)
+    if btax_name is None or mode != "genome":  # maybe genome mode check is not correct in this case
         btax_names = get_btax(in_fasta,
-                              db_info["db_repr_profiles"],
-                              btax_names=db_info.keys(),
+                              db_info.repr_profiles,
+                              btax_names=btax_dict.keys(),
                               work_dir=out_dir,
                               mode=conf_constants.mode,
                               num_threads=conf_constants.num_threads,
                               method=btax_det_method,
                               hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                              config_path=config_path)###
+                              config_path=config_path)
     else:
         btax_names = {"btax_name": btax_name}
 
@@ -65,15 +67,16 @@ def explore_genes(in_fasta,
         if btax_name == "Unclassified":
             eagle_logger.warning("The family was not detected - cannot run further analysis")
         else:
+            btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
             eagle_logger.info("Family %s will be used for sequence from %s" % (btax_name, in_fasta))
             tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
             blast_handler.run_blast_search(blast_type="tblastn",
                                            query=orfs_fasta_path,
-                                           db=db_info[btax_name]["blastdb"],
+                                           db=btax_info.blastdb,
                                            out=tblastn_out_path)
             res_gtf_json = analyze_tblastn_out(tblastn_out_path=tblastn_out_path,
                                                orfs_fasta_path=orfs_fasta_path,
-                                               btax_data=db_info[btax_name],
+                                               btax_data=btax_dict[btax_name],
                                                res_gtf_json=res_gtf_json,
                                                num_threads=conf_constants.num_threads,
                                                work_dir=out_dir)
@@ -156,8 +159,8 @@ def _aggregate_queries(in_fasta, queries_scores_dict):
         aggr_key = ".".join(in_fasta.split(".")[: -1])
     else:
         aggr_key = in_fasta
-    queries_scores_dict[aggr_key] = defaultdict(int)
-    for query in queries_scores_dict.keys():
+    queries_scores_dict[aggr_key] = defaultdict(float)
+    for query in list(queries_scores_dict.keys()):
         if query == aggr_key:
             continue
         for btax_name in queries_scores_dict[query]:
@@ -282,7 +285,7 @@ def get_orf_stats(orf_id,
         dist_matrix=orf_mult_aln.get_distance_matrix(),
         method="FastME",
         full_seq_names=dict((short_id, seq_ids_to_orgs[full_id])
-                            for short_id, full_id in orf_mult_aln.short_to_full_seq_names.items()),###
+                            for short_id, full_id in orf_mult_aln.short_to_full_seq_names.items()),
         tree_name=orf_id.replace("|:", "_")+"_tree",
         tmp_dir=phylo_tmp_dir,
         logger=eagle_logger

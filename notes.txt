@@ -1,6 +1,7 @@
 - Add repr profiles generation into get_btax_dict
 - Add btax filtration
-- Add tree constraction and repr profiles generation into create_profiles_db
+- Add tree construction and repr profiles generation into create_profiles_db
+- db_info is not final version
 - Take into account stop condons in homologs sequences
 - Try to update HMMER. Do not disable POSIX parameter while building
 - Add not only NCBI as available source

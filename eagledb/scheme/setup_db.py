@@ -240,3 +240,46 @@ class BtaxInfo(JsonEntry):
             "mean_d": (BtaxInfo.distance_key, BtaxInfo.mean_d_key,),
             "median_d": (BtaxInfo.distance_key, BtaxInfo.median_d_key,),
         }
+
+
+class DBInfo(JsonEntry):
+
+    #json keys
+    all_genomes_key = "all_genomes"
+    btax_json_key = "btax_json"
+    repr_profiles_key = "repr_profiles"
+    global_dist_matrix_key = "global_dist_matrix"
+    all_org_full_names_key = "all_org_full_names"
+
+    # default values
+    all_genomes_0 = None
+    btax_json_0 = None
+    repr_profiles_0 = None
+    global_dist_matrix_0 = None
+    all_org_full_names_0 = None
+
+    def __init__(self,
+                 all_genomes=all_genomes_0,
+                 btax_json=btax_json_0,
+                 repr_profiles=repr_profiles_0,
+                 global_dist_matrix=global_dist_matrix_0,
+                 all_org_full_names=all_org_full_names_0):
+
+        self.all_genomes = all_genomes
+        self.btax_json = btax_json
+        self.repr_profiles = repr_profiles
+        self.global_dist_matrix = global_dist_matrix
+        self.all_org_full_names = all_org_full_names
+
+    @staticmethod
+    def attr_scheme():
+        # json scheme (the keys must match attribute names defined in __init__)
+        # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
+        # don't include it to the result dict
+        return {
+            "all_genomes": (DBInfo.all_genomes_key,),
+            "btax_json": (DBInfo.btax_json_key,),
+            "repr_profiles": (DBInfo.repr_profiles_key,),
+            "global_dist_matrix": (DBInfo.global_dist_matrix_key,),
+            "all_org_full_names": (DBInfo.all_org_full_names_key,),
+        }

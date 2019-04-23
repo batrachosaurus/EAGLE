@@ -73,19 +73,19 @@ class TestBactDBCreation(unittest.TestCase):
                                                   db_dir=OUTPUT_DIR,
                                                   build_tree=True,
                                                   num_threads=4)
-        with open(os.path.join(OUTPUT_DIR, "btax_dict.json"), "w") as btax_dict_f:
+        with open(os.path.join(OUTPUT_DIR, "btax.json"), "w") as btax_dict_f:
             json.dump(btax_dict, btax_dict_f, indent=2)
         self.assertIsInstance(btax_dict, dict)
         return btax_dict
 
     def test_get_btax_blastdb(self, use_test_results=False):
         if use_test_results:
-            with open(os.path.join(OUTPUT_DIR, "btax_dict.json")) as btax_dict_f:
+            with open(os.path.join(OUTPUT_DIR, "btax.json")) as btax_dict_f:
                 btax_dict = json.load(btax_dict_f)
         else:
             btax_dict = self.test_get_btax_dict()
         btax_dict = bactdb_creation.get_btax_blastdb(btax_dict=btax_dict, db_dir=OUTPUT_DIR)
-        with open(os.path.join(OUTPUT_DIR, "btax_dict.json"), "w") as btax_dict_f:
+        with open(os.path.join(OUTPUT_DIR, "btax.json"), "w") as btax_dict_f:
             json.dump(btax_dict, btax_dict_f, indent=2)
         self.assertIsInstance(btax_dict, dict)
 
