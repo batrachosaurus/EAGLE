@@ -3,8 +3,6 @@ from operator import getitem
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 
-from eagle.constants import eagle_logger
-
 
 class JsonEntry(object):
     __metaclass__ = ABCMeta  # probably not compatible with Python 3
@@ -49,8 +47,8 @@ class JsonEntry(object):
             try:
                 json_entry.__dict__[attr] = reduce(getitem, cls.attr_scheme()[attr], in_dict)
             except KeyError:
-                eagle_logger.warning("the path '%s' is absent in the input dict - can not find a value for '%s'" %
-                                     (str(cls.attr_scheme()[attr]), attr))
+                print("WARNING: the path '%s' is absent in the input dict - can not find a value for '%s'" %
+                      (str(cls.attr_scheme()[attr]), attr))
                 continue
         return json_entry
 

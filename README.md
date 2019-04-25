@@ -20,6 +20,7 @@ Python 2.7
 &nbsp; - DendroPy >= 4.4.0  
 &nbsp; - biopython >= 1.72  
 &nbsp; - redis >= 2.10.6  
+&nbsp; - psutil >= 5.6.1  
 
 ## How to use
 

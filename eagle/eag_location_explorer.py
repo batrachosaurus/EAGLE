@@ -81,7 +81,7 @@ def explore_genes(in_fasta,
                                            query=orfs_fasta_path,
                                            db=btax_info.blastdb,
                                            out=tblastn_out_path,
-                                           num_threads=1)###
+                                           num_threads=num_threads)
             res_gtf_json = analyze_tblastn_out(tblastn_out_path=tblastn_out_path,
                                                orfs_fasta_path=orfs_fasta_path,
                                                btax_data=btax_dict[btax_name],
@@ -213,7 +213,8 @@ def analyze_tblastn_out(tblastn_out_path,
         })
 
     pool = mp.Pool(num_threads)
-    pool.map(worker, params_list)
+    #pool.map(worker, params_list)
+    list(map(worker, params_list))###
     pool.close()
     pool.join()
 

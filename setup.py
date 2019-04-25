@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.21.2',
+      version='0.21.3',
       author="Denis Moshensky",
       author_email="loven-doo@fbb.msu.ru", 
       description="Essential and Advantageous Genes Location Explorer",
@@ -24,6 +24,7 @@ setup(name='EAGLE',
             'biopython >= 1.72',
             'DendroPy >= 4.4.0',
             'redis >= 2.10.6',
+            'psutil >= 5.6.1',
       ],
       entry_points={
             'console_scripts': [

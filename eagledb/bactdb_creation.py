@@ -58,8 +58,8 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     bacteria_list_f = io.open(bacteria_list_f_path, 'w', newline="\n")
     bacteria_list_f.write(u"[\n")
     bacteria_list_f.close()
-    refseq_df = pandas.read_csv(refseq_bacteria_table, sep="\t", dtype=str)
-    genbank_df = pandas.read_csv(genbank_bacteria_table, sep="\t", dtype=str)
+    refseq_df = pandas.read_csv(refseq_bacteria_table, sep="\t", dtype=str).sort_values(by="ncbi_link")
+    genbank_df = pandas.read_csv(genbank_bacteria_table, sep="\t", dtype=str).sort_values(by="ncbi_link")
     n = 1
     i = 0
     j = 0
@@ -75,12 +75,12 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                     'function': get_bacterium,
                     'prepared_bacteria': prepared_bacteria,
                     'logger_name': eagle_logger.name,
-                    'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
-                    'bacterium_name': genbank_df.loc[j]["org_name"],
-                    'is_repr': bool_from_str(genbank_df.loc[j]["repr"]),
+                    'ncbi_db_link': genbank_df.iloc[j]["ncbi_link"],
+                    'bacterium_name': genbank_df.iloc[j]["org_name"],
+                    'is_repr': bool_from_str(genbank_df.iloc[j]["repr"]),
                     'db_dir': bactdb_dir,
                     'source_db': "genbank",
-                    'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"],
+                    'try_err_message': "%s is not prepared: " % genbank_df.iloc[j]["org_name"],
                 })
                 j += 1
             else:
@@ -88,26 +88,26 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                     'function': get_bacterium,
                     'prepared_bacteria': prepared_bacteria,
                     'logger_name': eagle_logger.name,
-                    'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
-                    'bacterium_name': refseq_df.loc[i]["org_name"],
-                    'is_repr': bool_from_str(refseq_df.loc[i]["repr"]),
+                    'ncbi_db_link': refseq_df.iloc[i]["ncbi_link"],
+                    'bacterium_name': refseq_df.iloc[i]["org_name"],
+                    'is_repr': bool_from_str(refseq_df.iloc[i]["repr"]),
                     'db_dir': bactdb_dir,
                     'source_db': "refseq",
-                    'try_err_message': "%s is not prepared: " % refseq_df.loc[i]["org_name"],
+                    'try_err_message': "%s is not prepared: " % refseq_df.iloc[i]["org_name"],
                 })
                 i += 1
         else:
-            if genbank_df.loc[j]["org_name"] < refseq_df.loc[i]["org_name"]:
+            if genbank_df.iloc[j]["ncbi_link"].replace("GCA", "GCF") < refseq_df.iloc[i]["ncbi_link"]:
                 params_list.append({
                     'function': get_bacterium,
                     'prepared_bacteria': prepared_bacteria,
                     'logger_name': eagle_logger.name,
-                    'ncbi_db_link': genbank_df.loc[j]["ncbi_link"],
-                    'bacterium_name': genbank_df.loc[j]["org_name"],
-                    'is_repr': bool_from_str(genbank_df.loc[j]["repr"]),
+                    'ncbi_db_link': genbank_df.iloc[j]["ncbi_link"],
+                    'bacterium_name': genbank_df.iloc[j]["org_name"],
+                    'is_repr': bool_from_str(genbank_df.iloc[j]["repr"]),
                     'db_dir': bactdb_dir,
                     'source_db': "genbank",
-                    'try_err_message': "%s is not prepared: " % genbank_df.loc[j]["org_name"],
+                    'try_err_message': "%s is not prepared: " % genbank_df.iloc[j]["org_name"],
                 })
                 j += 1
             else:
@@ -115,17 +115,18 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                     'function': get_bacterium,
                     'prepared_bacteria': prepared_bacteria,
                     'logger_name': eagle_logger.name,
-                    'ncbi_db_link': refseq_df.loc[i]["ncbi_link"],
-                    'bacterium_name': refseq_df.loc[i]["org_name"],
-                    'is_repr': bool_from_str(refseq_df.loc[i]["repr"]),
+                    'ncbi_db_link': refseq_df.iloc[i]["ncbi_link"],
+                    'bacterium_name': refseq_df.iloc[i]["org_name"],
+                    'is_repr': bool_from_str(refseq_df.iloc[i]["repr"]),
                     'db_dir': bactdb_dir,
                     'source_db': "refseq",
-                    'try_err_message': "%s is not prepared: " % refseq_df.loc[i]["org_name"],
+                    'try_err_message': "%s is not prepared: " % refseq_df.iloc[i]["org_name"],
                 })
                 i += 1
-            if genbank_df.loc[j]["org_name"] == refseq_df.loc[i-1]["org_name"]:
+            if genbank_df.iloc[j]["ncbi_link"].replace("GCA", "GCF") == refseq_df.iloc[i-1]["ncbi_link"]:
                 j += 1
         n += 1
+    eagle_logger.info("got download links for %s bacteria" % len(params_list))
     pool = mp.Pool(num_threads)
     pool.map(worker, params_list)
     pool.close()
@@ -275,11 +276,11 @@ def prepare_tax_line(tax_line):
             yield elm.replace(" ", "_")
 
 
-def get_16S_fasta(f_name, f_dir, genome_id, remove_rna_f=True):
+def get_16S_fasta(f_name, f_dir, genome_id, remove_rna_f=True, max_l=3000):
     fasta_path = os.path.join(f_dir, genome_id + "_16S_rRNA.fasta")
     fasta_f = open(fasta_path, 'w')
     f_path = os.path.join(f_dir, f_name)
-    rRNA = False
+    title = None
     seq_list = []
     seq_id_list = list()
     f = gzip.open(f_path, 'rb')
@@ -288,18 +289,27 @@ def get_16S_fasta(f_name, f_dir, genome_id, remove_rna_f=True):
         line = line_.decode("utf-8").strip()
         if not line: continue
         if line[0] == ">":
-            if rRNA:
-                fasta_f.write("".join(seq_list) + "\n")
-                rRNA = False
+            if title is not None:
+                seq = "".join(seq_list)
+                if len(seq) <= max_l:
+                    fasta_f.write(">" + title + "\n")
+                    fasta_f.write(seq + "\n")
+                else:
+                    del seq_id_list[-1]
+                seq = None
+                title = None
             if "[product=16S ribosomal RNA]" in line:
-                rRNA = True
-                fasta_f.write(line + "\n")
-                seq_id_list.append(line[1:])
-        elif rRNA:
+                title = line[1:]
+                seq_id_list.append(title)
+        elif title is not None:
             seq_list.append(line)
-    if rRNA:
-        fasta_f.write("".join(seq_list) + "\n")
-        rRNA = False
+    if title is not None:
+        seq = "".join(seq_list)
+        if len(seq) <= max_l:
+            fasta_f.write(">" + title + "\n")
+            fasta_f.write(seq + "\n")
+        else:
+            del seq_id_list[-1]
     fasta_f.close()
     f.close()
     if remove_rna_f:
@@ -307,7 +317,15 @@ def get_16S_fasta(f_name, f_dir, genome_id, remove_rna_f=True):
     return fasta_path, seq_id_list
 
 
-def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=None, build_tree=False, config_path=None):
+def get_btax_dict(genomes_list,
+                  btax_level,
+                  btc_profiles,
+                  db_dir,
+                  num_threads=None,
+                  build_tree=False,
+                  config_path=None,
+                  **kwargs):
+
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
         conf_constants_db.update_by_config(config_path=config_path)
@@ -323,6 +341,8 @@ def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=No
         if not genome_dict:
             continue
         genome_info = GenomeInfo.load_from_dict(genome_dict)
+        if not genome_info.btc_seqs_id:
+            continue
         btax_name = None
         btax_name = genome_info.taxonomy[-btax_level]
         btax_dict[btax_name].genomes.append(genome_info.get_json())
@@ -350,6 +370,8 @@ def get_btax_dict(genomes_list, btax_level, btc_profiles, db_dir, num_threads=No
         btc_mult_aln.improve_aln(inplace=True)
         btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()  # TODO: implement specific positions method
         short_to_full_seq_names.update(btc_mult_aln.short_to_full_seq_names)
+        if kwargs.get("save_alignments", False):
+            btc_mult_aln.dump_alignment(aln_fasta_path=os.path.join(db_dir, btc_mult_aln.aln_name+".fasta"))
 
     global_dist_matr = get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs)
     global_dist_matr_path = os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX)
@@ -390,6 +412,7 @@ def get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs):
     global_dist_matrix = DistanceMatrix(seqs_order=seqs_order,
                                         matr=np.zeros((nseqs, nseqs)),
                                         aln_type="btc_global")
+    print(global_dist_matrix.matr.shape)###
     sumw = 0.0
     for btc_profile in btc_profiles:
         btc_profile_info = SeqProfileInfo.load_from_dict(btc_profile)

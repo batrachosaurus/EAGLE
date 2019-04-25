@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 from copy import deepcopy
+import multiprocessing as mp
 from collections import defaultdict, OrderedDict, Counter
 
 import numpy as np
@@ -9,7 +10,7 @@ import pandas
 
 from eagle.constants import conf_constants
 from eagle.lib.general import ConfBase, join_files, filter_list
-from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs
+from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs, SeqsDict
 
 
 class MultAln(ConfBase):
@@ -21,7 +22,7 @@ class MultAln(ConfBase):
                  aln_type=None,
                  states_seq=None,
                  aln_name="mult_aln",
-                 tmp_dir="tmp",
+                 tmp_dir="mult_aln_tmp",
                  emboss_inst_dir=conf_constants.emboss_inst_dir,
                  hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                  config_path=None,
@@ -44,6 +45,9 @@ class MultAln(ConfBase):
         self.logger = logger
         super(MultAln, self).__init__(config_path=config_path)
 
+    def __len__(self):
+        return len(self.mult_aln_dict)
+
     def __getitem__(self, seq_id):
         return self.mult_aln_dict[seq_id]
 
@@ -62,6 +66,10 @@ class MultAln(ConfBase):
         if self._distance_matrix:
             self._distance_matrix = None
         return seq
+
+    def __iter__(self):
+        for seq in self.seqs:
+            yield seq
 
     @property
     def seqs(self):
@@ -103,7 +111,7 @@ class MultAln(ConfBase):
             return dict()
 
     def dump_alignment(self, aln_fasta_path):
-        pass
+        dump_fasta_dict(fasta_dict=self.mult_aln_dict, fasta_path=aln_fasta_path)
 
     @classmethod
     def load_alignment(cls, aln_fasta_path, aln_type=None, aln_name=None, config_path=None, logger=None):
@@ -232,6 +240,7 @@ class MultAln(ConfBase):
         for seq_short_name in self.short_to_full_seq_names:
             if self.short_to_full_seq_names[seq_short_name] in mult_aln_dict_filt:
                 short_to_full_seq_names_filt[seq_short_name] = self.short_to_full_seq_names[seq_short_name]
+        mult_aln_dict_filt = SeqsDict.load_from_dict(in_dict=mult_aln_dict_filt)
         if inplace:
             self.mult_aln_dict = mult_aln_dict_filt
             self.short_to_full_seq_names = short_to_full_seq_names_filt
@@ -390,7 +399,7 @@ class DistanceMatrix(object):
         self.calc_method = kwargs.get("calc_method", None)
 
         self.emboss_inst_dir = kwargs.get("emboss_inst_dir", self.default_emboss_inst_dir)
-        self.tmp_dir = kwargs.get("tmp_dir", "tmp")
+        self.tmp_dir = kwargs.get("tmp_dir", "dm_tmp")
         self.logger = kwargs.get("logger", None)
 
     @property
@@ -581,11 +590,15 @@ class DistanceMatrix(object):
 class BlastHandler(ConfBase):
 
     def __init__(self,
-                 inst_dir=conf_constants.blast_inst_dir,
+                 inst_dir=None,
+                 tmp_dir="blast_tmp",
                  config_path=None,
                  logger=None):
 
         self.inst_dir = inst_dir
+        if self.inst_dir is None:
+            self.inst_dir = conf_constants.blast_inst_dir
+        self.tmp_dir = tmp_dir
         self.logger = logger
 
         super(BlastHandler, self).__init__(config_path=config_path)
@@ -598,21 +611,58 @@ class BlastHandler(ConfBase):
             makeblastdb_cmd = os.path.join(self.inst_dir, "makeblastdb") + " -in " + in_fasta + " -dbtype " + dbtype
         subprocess.call(makeblastdb_cmd, shell=True)
 
-    def run_blast_search(self, blast_type, query, db, out, num_threads=1, outfmt=7, max_hsps=100):
-        subprocess.call(os.path.join(self.inst_dir, blast_type) +
-                        " -query " + query +
-                        " -db " + db +
-                        " -out " + out +
-                        " -word_size 2 -num_threads " + str(num_threads) +
-                        " -outfmt " + str(outfmt) +
-                        " -max_hsps " + str(max_hsps), shell=True)
+    def run_blast_search(self, blast_type, query, db, out, num_threads=1, outfmt=7, max_hsps=100, **kwargs):
+        if num_threads > 1 and kwargs.get("split_input", True):
+            if not os.path.exists(self.tmp_dir):
+                os.makedirs(self.tmp_dir)
+            query_dict = load_fasta_to_dict(fasta_path=query, dat_path=os.path.join(self.tmp_dir, ".%s.dat" % query))
+            query_chunk_size = len(query_dict) // num_threads + 1
+            p_list = list()
+            query_seqs = list(query_dict.keys())
+            i = 0
+            query_chunks_list = list()
+            for i in range(num_threads):
+                query_chunk_path = None
+                query_chunk_path = os.path.join(self.tmp_dir,
+                                                ("_%s" % i).join(os.path.splitext(os.path.basename(query))))
+                query_chunks_list.append([query_chunk_path, query_chunk_path + ".bl"])
+                if len(query_dict) == i*query_chunk_size:
+                    del query_chunks_list[-1]
+                    continue
+                elif (i+1) * query_chunk_size > len(query_dict):
+                    query_dict.get_sample(query_seqs[i * query_chunk_size:]).dump(seqs_path=query_chunks_list[-1][0])
+                else:
+                    query_dict.get_sample(query_seqs[i*query_chunk_size:
+                                                     (i+1)*query_chunk_size]).dump(seqs_path=query_chunks_list[-1][0])
+                p = mp.Process(target=self.run_blast_search,
+                               args=(blast_type, query_chunks_list[-1][0], db,
+                                     query_chunks_list[-1][1], 1, outfmt, max_hsps),
+                               kwargs=kwargs)
+                p.start()
+                p_list.append(p)
+                i += 1
+            for p in p_list:
+                p.join()
+            join_files(in_files_list=list(map(lambda p: p[1], query_chunks_list)), out_file_path=out)
+
+            if kwargs.get("remove_tmp", True):
+                shutil.rmtree(self.tmp_dir)
+        else:
+            subprocess.call(os.path.join(self.inst_dir, blast_type) +
+                            " -query " + query +
+                            " -db " + db +
+                            " -out " + out +
+                            " -word_size " + kwargs.get("word_size", str(3)) +
+                            " -num_threads " + str(num_threads) +
+                            " -outfmt " + str(outfmt) +
+                            " -max_hsps " + str(max_hsps), shell=True)
 
 
 class HmmerHandler(ConfBase):
 
     def __init__(self,
                  inst_dir=conf_constants.hmmer_inst_dir,
-                 tmp_dir="tmp",
+                 tmp_dir="hmm_tmp",
                  config_path=None,
                  logger=None):
 
@@ -668,11 +718,12 @@ def construct_mult_aln(seq_dict=None,
                        emboss_inst_dir=None,
                        hmmer_inst_dir=None,
                        aln_name="mult_aln",
-                       tmp_dir="tmp",
+                       tmp_dir="mult_aln_tmp",
                        remove_tmp=True,
                        num_threads=None,
                        config_path=None,
-                       logger=None):
+                       logger=None,
+                       **kwargs):
 
     if muscle_exec_path is None:
         muscle_exec_path = conf_constants.muscle_exec_path

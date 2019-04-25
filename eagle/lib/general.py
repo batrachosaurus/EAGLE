@@ -14,6 +14,8 @@ import numbers
 import subprocess
 import sys
 import time
+import string
+import random
 
 import yaml
 
@@ -289,3 +291,7 @@ def compare_files(f1_path, f2_path):
         if f1_lines[i].strip() != f2_lines[i].strip():
             return False
     return True
+
+
+def generate_random_string(l=10):
+    return "".join(random.choice(string.ascii_letters + string.digits) for i in range(l))

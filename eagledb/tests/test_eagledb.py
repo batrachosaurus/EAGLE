@@ -27,7 +27,7 @@ class TestBactDBCreation(unittest.TestCase):
     test_genome_id = "GCF_000160075.2_ASM16007v2"
     conf_constants.fastme_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "fastme")
     conf_constants.msaprobs_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "msaprobs")
-    conf_constants_db.btc_profile_aln_method = "MAFFT"
+    conf_constants_db.btc_profile_aln_method = "MSAProbs"
 
     def test_get_bacteria_from_ncbi(self, last_bact=30, use_prapared=True):
         if use_prapared:
@@ -70,17 +70,18 @@ class TestBactDBCreation(unittest.TestCase):
             genomes_list = self.test_get_bacteria_from_ncbi(last_bact=50, use_prapared=False)
         btc_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl").get_json()]
         btax_dict = bactdb_creation.get_btax_dict(genomes_list,
-                                                  btax_level=3,
+                                                  btax_level=4,
                                                   btc_profiles=btc_profiles,
                                                   db_dir=OUTPUT_DIR,
                                                   build_tree=True,
-                                                  num_threads=4)
+                                                  num_threads=4,
+                                                  save_alignments=True)
         with open(os.path.join(OUTPUT_DIR, "btax.json"), "w") as btax_dict_f:
             json.dump(btax_dict, btax_dict_f, indent=2)
         self.assertIsInstance(btax_dict, dict)
         return btax_dict
 
-    def test_get_btax_blastdb(self, use_test_results=False):
+    def test_get_btax_blastdb(self, use_test_results=True):
         if use_test_results:
             with open(os.path.join(OUTPUT_DIR, "btax.json")) as btax_dict_f:
                 btax_dict = json.load(btax_dict_f)
