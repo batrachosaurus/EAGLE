@@ -95,6 +95,10 @@ class SeqsDict(object):
     def items(self):
         return map(lambda seq_id: (seq_id, self[seq_id]), self.keys())
 
+    def rename_seqs(self, old_to_new_dict):
+        for old_seq in old_to_new_dict:
+            self.seqs_order[old_to_new_dict[old_seq]] = self.seqs_order.pop(old_seq)
+
     @classmethod
     def load_from_file(cls, seqs_path, seqs_format="fasta", low_memory='auto', **kwargs):
         read_chunk_size = kwargs.get("read_chink_size", 100)
@@ -127,7 +131,7 @@ class SeqsDict(object):
                         seqs_array[seq_i] = new_seq
                         title = None
                         seq_i += 1
-                    if float(seq_i) % float(exp_seq_len) == 0:
+                    if seq_i > 0 and float(seq_i) % float(read_chunk_size) == 0:
                         if low_memory:
                             seqs_array = np.memmap(seqs_array.filename,
                                                    dtype=seqs_array.dtype,
@@ -338,12 +342,13 @@ def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_co
     subprocess.call(os.path.join(emboss_inst_dir, "getorf") + " " + in_fasta_path + " " + out_fasta_path + " -minsize "
                     + str(minsize), shell=True)
     orfs_fasta_dict = load_fasta_to_dict(out_fasta_path)
+    corr_orfs_ids = dict()
     orfs_ids = orfs_fasta_dict.keys()
     for orf_id in orfs_ids:
         corr_orf_id = None
         ori = None
         corr_orf_id, c_start, c_end, ori = _get_orf_info(orf_id)
-        orfs_fasta_dict[corr_orf_id] = orfs_fasta_dict.pop(orf_id)
+        corr_orfs_ids[orf_id] = corr_orf_id
         orfs_info[corr_orf_id] = {
             "seqid": corr_orf_id,
             "source": "EAGLE",
@@ -355,6 +360,7 @@ def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_co
             "frame": ".",
             "attribute": dict(),
         }
+    orfs_fasta_dict.rename_seqs(corr_orfs_ids)
     dump_fasta_dict(orfs_fasta_dict, out_fasta_path)
     return orfs_info
 

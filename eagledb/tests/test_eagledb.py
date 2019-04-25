@@ -81,7 +81,7 @@ class TestBactDBCreation(unittest.TestCase):
         self.assertIsInstance(btax_dict, dict)
         return btax_dict
 
-    def test_get_btax_blastdb(self, use_test_results=True):
+    def test_get_btax_blastdb(self, use_test_results=False):
         if use_test_results:
             with open(os.path.join(OUTPUT_DIR, "btax.json")) as btax_dict_f:
                 btax_dict = json.load(btax_dict_f)

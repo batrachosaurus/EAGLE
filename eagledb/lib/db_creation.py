@@ -148,7 +148,7 @@ def get_btax_fna(btax_genomes, btax_name, db_dir):
                out_file_path=btax_fna_path,
                files_transform=transform_seq_id,
                **{"seq_id_dict": chr_id_dict, "fna_to_orgs": fna_to_orgs})
-    return btax_fna_path, chr_id_dict, {v: k for k, v in fna_to_download.items()}
+    return btax_fna_path, chr_id_dict, {v: k for k, v in downloaded_fna.items()}
 
 
 def transform_seq_id(fna_f, seq_id_dict, fna_to_orgs, **kwargs):
@@ -165,7 +165,7 @@ def transform_seq_id(fna_f, seq_id_dict, fna_to_orgs, **kwargs):
             seq_id_dict[seq_id] = fna_to_orgs[fna_f.name]
         else:
             transf_fna_lines.append(line)
-    return io.BytesIO(b"\n".join(transf_fna_lines))
+    return io.BytesIO(b"\n".join(transf_fna_lines)+b"\n")
 
 
 def create_btax_blastdb(btax_fna_path, btax_name, db_dir, blast_inst_dir=conf_constants.blast_inst_dir, logger=None):

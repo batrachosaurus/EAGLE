@@ -34,10 +34,10 @@ class TestEAGLocationExplorer(unittest.TestCase):
 
     def test_explore_genes(self):
         eag_location_explorer.explore_genes(
-            in_fasta=os.path.join(INPUT_DIR, "NC_013961.fasta"),  # Erwinia amylovora CFBP1430
+            in_fasta=os.path.join(INPUT_DIR, "NC_000913.fasta"),  # Escherichia coli K-12 MG1655
             db_json=self.db_info_dict,
             out_dir=OUTPUT_DIR,
-            btax_name="Erwiniaceae",
+            btax_name="Enterobacterales",
             num_threads=4,
         )
         self.assertTrue(True)

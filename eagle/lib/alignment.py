@@ -14,6 +14,7 @@ from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names
 
 
 class MultAln(ConfBase):
+    # Consider inherit it from SeqsDict and making ConfBase the mixin
 
     dist_matr_method = "phylip"
 
@@ -613,6 +614,10 @@ class BlastHandler(ConfBase):
 
     def run_blast_search(self, blast_type, query, db, out, num_threads=1, outfmt=7, max_hsps=100, **kwargs):
         if num_threads > 1 and kwargs.get("split_input", True):
+            if self.logger is not None:
+                self.logger.info("splitting '%s' into %s parts" % (query, num_threads))
+            else:
+                print("INFO: splitting '%s' into %s parts" % (query, num_threads))
             if not os.path.exists(self.tmp_dir):
                 os.makedirs(self.tmp_dir)
             query_dict = load_fasta_to_dict(fasta_path=query, dat_path=os.path.join(self.tmp_dir, ".%s.dat" % query))
@@ -640,7 +645,6 @@ class BlastHandler(ConfBase):
                                kwargs=kwargs)
                 p.start()
                 p_list.append(p)
-                i += 1
             for p in p_list:
                 p.join()
             join_files(in_files_list=list(map(lambda p: p[1], query_chunks_list)), out_file_path=out)
@@ -648,14 +652,19 @@ class BlastHandler(ConfBase):
             if kwargs.get("remove_tmp", True):
                 shutil.rmtree(self.tmp_dir)
         else:
-            subprocess.call(os.path.join(self.inst_dir, blast_type) +
-                            " -query " + query +
-                            " -db " + db +
-                            " -out " + out +
-                            " -word_size " + kwargs.get("word_size", str(3)) +
-                            " -num_threads " + str(num_threads) +
-                            " -outfmt " + str(outfmt) +
-                            " -max_hsps " + str(max_hsps), shell=True)
+            blast_search_cmd = os.path.join(self.inst_dir, blast_type) + \
+                               " -query " + query + \
+                               " -db " + db + \
+                               " -out " + out + \
+                               " -word_size " + kwargs.get("word_size", str(3)) + \
+                               " -num_threads " + str(num_threads) + \
+                               " -outfmt " + str(outfmt) + \
+                               " -max_hsps " + str(max_hsps)
+            if self.logger is not None:
+                self.logger.info("run '%s' command" % blast_search_cmd)
+            else:
+                print("INFO: run '%s' command" % blast_search_cmd)
+            subprocess.call(blast_search_cmd, shell=True)
 
 
 class HmmerHandler(ConfBase):
