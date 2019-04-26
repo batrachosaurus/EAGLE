@@ -241,9 +241,16 @@ def get_orf_stats(orf_id,
                   work_dir,
                   **kwargs):
 
-    orf_stats = dict()
+    orf_stats = {"uniformity_std": None,
+                 "phylo_diff": None,
+                 "representation": 0.0,
+                 "norm_mean_btax_dist": -1.0,
+                 "norm_median_btax_dist": -1.0,
+                 "norm_mean_ORF_dist": -1.0,
+                 "norm_median_ORF_dist": -1.0,
+                 "annotation": 0}### new
+
     if len(homologs_list) < 3:
-        orf_stats = {"uniformity_std": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
         eagle_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
@@ -270,14 +277,24 @@ def get_orf_stats(orf_id,
                                       tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_aln_tmp"),
                                       logger=eagle_logger)
     eagle_logger.info("got multiple alignment for ORF '%s' homologs" % orf_id)
-    # Uniformity
     orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
+    orf_stats["representation"] = float(len(orf_mult_aln)-1) / float(len(btax_info.genomes))### new
     if len(orf_mult_aln.seqs) < 4:
-        orf_stats = {"uniformity_std": None, "phylo_diff": None}
         orfs_stats[orf_id] = orf_stats
         eagle_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
-    orf_stats["uniformity_std"] = orf_mult_aln.improve_aln(inplace=False).estimate_uniformity(
+    ### new
+    orf_mult_aln.improve_aln(inplace=True)
+    dist_matrix = orf_mult_aln.get_distance_matrix().replace_negative(inplace=False)
+    btax_dist_matrix = dist_matrix[list(filter(lambda seq_name: seq_name != orf_id, dist_matrix.seq_names))]
+    orf_stats["norm_mean_btax_dist"] = btax_dist_matrix.mean_dist
+    orf_stats["norm_median_btax_dist"] = btax_dist_matrix.median_dist
+    orf_stats["norm_mean_ORF_dist"] = dist_matrix[orf_id].mean()
+    orf_stats["norm_median_ORF_dist"] = dist_matrix[orf_id].median()
+    ###
+
+    # Uniformity
+    orf_stats["uniformity_std"] = orf_mult_aln.estimate_uniformity(
         cons_thr=conf_constants.cons_thr,
         window_l=conf_constants.unif_window_l,
         windows_step=conf_constants.unif_windows_step
@@ -285,7 +302,9 @@ def get_orf_stats(orf_id,
     if np.isnan(orf_stats["uniformity_std"]):
         orf_stats["uniformity_std"] = None
     eagle_logger.info("got uniformity_std for ORF '%s'" % orf_id)
+
     # Ka/Ks
+
     # Phylo
     phylo_tmp_dir = os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp")
     try:

@@ -344,7 +344,10 @@ def get_btax_dict(genomes_list,
         if not genome_info.btc_seqs_id:
             continue
         btax_name = None
-        btax_name = genome_info.taxonomy[-btax_level]
+        try:
+            btax_name = genome_info.taxonomy[-btax_level]
+        except IndexError:
+            btax_name = genome_info.taxonomy[0]
         btax_dict[btax_name].genomes.append(genome_info.get_json())
         if btax_dict[btax_name].name is None:
             btax_dict[btax_name].name = btax_name
