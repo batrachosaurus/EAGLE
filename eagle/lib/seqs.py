@@ -82,9 +82,10 @@ class SeqsDict(object):
             i = 0
             for seq_id in self.keys():
                 if seq_id == key:
-                    continue
-                self.seqs_order[seq_id] = i
-                i += 1
+                    del self.seqs_order[seq_id]
+                else:
+                    self.seqs_order[seq_id] = i
+                    i += 1
 
     def keys(self):
         return map(lambda si: si[0], sorted(self.seqs_order.items(), key=lambda si: si[1]))

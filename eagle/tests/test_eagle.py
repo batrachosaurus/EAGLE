@@ -39,6 +39,7 @@ class TestEAGLocationExplorer(unittest.TestCase):
             out_dir=OUTPUT_DIR,
             btax_name="Enterobacterales",
             num_threads=4,
+            tblastn_result_path=os.path.join(OUTPUT_DIR, "NC_000913.fasta.bl"),
         )
         self.assertTrue(True)
 

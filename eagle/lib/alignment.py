@@ -390,6 +390,7 @@ class DistanceMatrix(object):
 
     def __init__(self, seqs_order, matr, short_to_full_seq_names=None, **kwargs):
         self.seqs_order = seqs_order
+        assert isinstance(matr, np.ndarray), "ERROR: value for 'matr' argument should be numpy.ndarray"
         self.matr = matr
         self.short_to_full_seq_names = short_to_full_seq_names
         if self.short_to_full_seq_names is None:
@@ -435,6 +436,7 @@ class DistanceMatrix(object):
             return pandas.Series(self.matr[self.seqs_order[item]], index=self.seq_names)
 
     def __setitem__(self, key, value):
+        # WARNING: new key cannot be set (key must be in self.seq_names)
         assert isinstance(value, pandas.Series), \
             "Error: value must be a pandas.Series object with org_names as indices"
         for seq_name in value.index:
@@ -449,11 +451,11 @@ class DistanceMatrix(object):
 
     @property
     def mean_dist(self):
-        return np.mean(self.matr)
+        return np.mean(self.matr[self.matr >= 0.0])
 
     @property
     def median_dist(self):
-        return np.median(self.matr)
+        return np.median(self.matr[self.matr >= 0.0])
 
     @property
     def nseqs(self):
@@ -586,6 +588,23 @@ class DistanceMatrix(object):
             self.seqs_order[old_to_new_seq_names[seq_old_name]] = self.seqs_order.pop(seq_old_name)
             if self.short_to_full_seq_names:
                 self.short_to_full_seq_names[full_to_short_seq_names[seq_old_name]] = old_to_new_seq_names[seq_old_name]
+
+    def replace_negative(self, value=None, inplace=False):
+        if value is None:
+            value = self.mean_dist
+        if inplace:
+            self.matr[self.matr < 0.0] = value
+        else:
+            matr = self.matr.copy()
+            matr[matr < 0.0] = value
+            return DistanceMatrix(seqs_order=self.seqs_order,
+                                  matr=matr,
+                                  short_to_full_seq_names=self.short_to_full_seq_names,
+                                  aln_name=self.aln_name,
+                                  aln_type=self.aln_type,
+                                  calc_method=self.calc_method,
+                                  emboss_inst_dir=self.emboss_inst_dir,
+                                  logger=self.logger)
 
 
 class BlastHandler(ConfBase):

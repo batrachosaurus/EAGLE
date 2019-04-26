@@ -76,12 +76,14 @@ def explore_genes(in_fasta,
         else:
             btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
             eagle_logger.info("Family '%s' will be used for the sequence from %s" % (btax_name, in_fasta))
-            tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
-            blast_handler.run_blast_search(blast_type="tblastn",
-                                           query=orfs_fasta_path,
-                                           db=btax_info.blastdb,
-                                           out=tblastn_out_path,
-                                           num_threads=num_threads)
+            tblastn_out_path = kwargs.get("tblastn_result_path", None)  # for debug and testing
+            if tblastn_out_path is None:
+                tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
+                blast_handler.run_blast_search(blast_type="tblastn",
+                                               query=orfs_fasta_path,
+                                               db=btax_info.blastdb,
+                                               out=tblastn_out_path,
+                                               num_threads=num_threads)
             res_gtf_json = analyze_tblastn_out(tblastn_out_path=tblastn_out_path,
                                                orfs_fasta_path=orfs_fasta_path,
                                                btax_data=btax_dict[btax_name],
@@ -213,8 +215,8 @@ def analyze_tblastn_out(tblastn_out_path,
         })
 
     pool = mp.Pool(num_threads)
-    #pool.map(worker, params_list)
-    list(map(worker, params_list))###
+    pool.map(worker, params_list)
+    # list(map(worker, params_list))  # for debug
     pool.close()
     pool.join()
 

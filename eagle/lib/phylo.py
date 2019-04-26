@@ -117,7 +117,7 @@ def build_tree_by_dist(dist_matrix=None,
                        dist_matrix_path=None,
                        full_seq_names=None,
                        tree_name="phylo_tree",
-                       tmp_dir="tmp",
+                       tmp_dir="phylo_tree_tmp",
                        method="FastME",
                        fastme_exec_path=None,
                        config_path=None,
@@ -139,13 +139,14 @@ def build_tree_by_dist(dist_matrix=None,
     if method.lower() == "fastme":
         if not dist_matrix_path:
             dist_matrix_path = os.path.join(tmp_dir, "dist_matr.ph")
-            dist_matrix.dump(matrix_path=dist_matrix_path, matr_format="phylip")
+            dist_matrix.replace_negative(inplace=False).dump(matrix_path=dist_matrix_path, matr_format="phylip")
         tree_path = os.path.join(tmp_dir, "tree.nwk")
         fastme_cmd = fastme_exec_path + " -i " + dist_matrix_path + " -o " + tree_path
         subprocess.call(fastme_cmd, shell=True)
         phylo_tree = PhyloTree.load_tree(tree_file=tree_path,
                                          tree_format="newick",
                                          full_seq_names=full_seq_names,
+                                         tree_name=tree_name,
                                          tmp_dir=tmp_dir,
                                          config_path=config_path,
                                          logger=logger)
