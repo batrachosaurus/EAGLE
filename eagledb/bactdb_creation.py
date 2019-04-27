@@ -366,6 +366,7 @@ def get_btax_dict(genomes_list,
         btc_mult_aln = construct_mult_aln(seq_dict=btc_fasta_dict[btc_profile_name],
                                           aln_type=btc_profile_types[btc_profile_name],
                                           aln_name=btc_profile_name+"_aln",
+                                          tmp_dir=kwargs.get("aln_tmp_dir", "mult_aln_tmp"),
                                           method=conf_constants_db.btc_profile_aln_method,
                                           num_threads=num_threads)
         btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
