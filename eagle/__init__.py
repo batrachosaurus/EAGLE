@@ -1,1 +1,2 @@
-from eag_location_explorer import explore_genes
+from orfs_explorer import explore_orfs
+from orfs_classifier import classify_orfs

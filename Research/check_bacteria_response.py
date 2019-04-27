@@ -6,7 +6,7 @@ import json
 import pandas
 
 
-from eagle import explore_genes
+from eagle import explore_orfs
 from eagle.constants import eagle_logger
 from eagle.lib.general import gunzip
 from eagledb.lib.db_creation import download_organism_files
@@ -91,7 +91,7 @@ for ncbi_db_link in ncbi_db_links:
             if os.path.exists(fna_f_path):
                 in_fasta = fna_f_path[:-3]
                 gunzip(in_path=fna_f_path, out_path=in_fasta)
-                explore_genes(in_fasta=in_fasta, db_json=DB_JSON, out_dir=WORKING_DIR, num_threads=NUM_THREADS)
+                explore_orfs(in_fasta=in_fasta, db_json=DB_JSON, out_dir=WORKING_DIR, num_threads=NUM_THREADS)
                 processed_bact_f.write(unicode("  "+json.dumps({in_fasta: bacterium_info["family"]})+",\n"))
                 os.remove(in_fasta)
 

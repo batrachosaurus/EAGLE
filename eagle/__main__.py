@@ -2,7 +2,7 @@ import sys
 import argparse
 
 from eagle.constants import conf_constants
-from eagle import explore_genes
+from eagle import explore_orfs, classify_orfs
 
 
 def _parse_cmd_args(*args):
@@ -61,7 +61,8 @@ def _parse_cmd_args(*args):
 
 def main():
     args_dict = _parse_cmd_args(*sys.argv[1:])
-    explore_genes(**args_dict)
+    explore_orfs(**args_dict)
+    classify_orfs()  # currently not written
 
 
 if __name__ == "__main__":

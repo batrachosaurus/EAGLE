@@ -62,12 +62,12 @@ class TestBactDBCreation(unittest.TestCase):
         self.assertEqual(result_f_name, test_16S_fasta_result)
         self.assertItemsEqual(result[1], exp_seq_id_list)
 
-    def test_get_btax_dict(self, use_test_results=True):
+    def test_get_btax_dict(self, use_test_results=False):
         if use_test_results:
             with open(os.path.join(OUTPUT_DIR, "bacteria.json")) as genomes_list_f:
                 genomes_list = json.load(genomes_list_f)
         else:
-            genomes_list = self.test_get_bacteria_from_ncbi(last_bact=50, use_prapared=False)
+            genomes_list = self.test_get_bacteria_from_ncbi(last_bact=100, use_prapared=False)
         btc_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl").get_json()]
         btax_dict = bactdb_creation.get_btax_dict(genomes_list,
                                                   btax_level=4,

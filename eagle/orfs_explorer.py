@@ -17,15 +17,20 @@ from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out
 from eagledb.scheme import BtaxInfo, DBInfo
 
 
-def explore_genes(in_fasta,
-                  db_json,
-                  out_dir="",
-                  mode=None,
-                  btax_name=None,
-                  num_threads=None,
-                  btax_det_method="hmmer",
-                  config_path=None,
-                  **kwargs):
+def explore_orfs_cmd():
+    # This function will parse cmd input with argparse and run explore_orfs
+    pass
+
+
+def explore_orfs(in_fasta,
+                 db_json,
+                 out_dir="",
+                 mode=None,
+                 btax_name=None,
+                 num_threads=None,
+                 btax_det_method="hmmer",
+                 config_path=None,
+                 **kwargs):
 
     if config_path:
         conf_constants.update_by_config(config_path)
@@ -241,14 +246,15 @@ def get_orf_stats(orf_id,
                   work_dir,
                   **kwargs):
 
-    orf_stats = {"uniformity_std": None,
-                 "phylo_diff": None,
-                 "representation": 0.0,
-                 "norm_mean_btax_dist": -1.0,
-                 "norm_median_btax_dist": -1.0,
-                 "norm_mean_ORF_dist": -1.0,
-                 "norm_median_ORF_dist": -1.0,
-                 "annotation": 0}### new
+    orf_stats = {
+        "uniformity_std": None,
+        "phylo_diff": None,
+        "representation": 0.0,
+        "relative_mean_btax_dist": -1.0,
+        "relative_median_btax_dist": -1.0,
+        "relative_mean_ORF_dist": -1.0,
+        "relative_median_ORF_dist": -1.0,
+    }
 
     if len(homologs_list) < 3:
         orfs_stats[orf_id] = orf_stats
@@ -278,20 +284,21 @@ def get_orf_stats(orf_id,
                                       logger=eagle_logger)
     eagle_logger.info("got multiple alignment for ORF '%s' homologs" % orf_id)
     orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
-    orf_stats["representation"] = float(len(orf_mult_aln)-1) / float(len(btax_info.genomes))### new
+    orf_stats["representation"] = float(len(orf_mult_aln)-1) / float(len(btax_info.genomes))
     if len(orf_mult_aln.seqs) < 4:
         orfs_stats[orf_id] = orf_stats
         eagle_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
-    ### new
+
     orf_mult_aln.improve_aln(inplace=True)
     dist_matrix = orf_mult_aln.get_distance_matrix().replace_negative(inplace=False)
     btax_dist_matrix = dist_matrix[list(filter(lambda seq_name: seq_name != orf_id, dist_matrix.seq_names))]
-    orf_stats["norm_mean_btax_dist"] = btax_dist_matrix.mean_dist
-    orf_stats["norm_median_btax_dist"] = btax_dist_matrix.median_dist
-    orf_stats["norm_mean_ORF_dist"] = dist_matrix[orf_id].mean()
-    orf_stats["norm_median_ORF_dist"] = dist_matrix[orf_id].median()
-    ###
+    if btax_info.median_d > 0.0:
+        orf_stats["relative_mean_btax_dist"] = btax_dist_matrix.mean_dist / btax_info.mean_d
+        orf_stats["relative_mean_ORF_dist"] = dist_matrix[orf_id].mean() / btax_info.mean_d
+    if btax_info.median_d > 0.0:
+        orf_stats["relative_median_btax_dist"] = btax_dist_matrix.median_dist / btax_info.median_d
+        orf_stats["relative_median_ORF_dist"] = dist_matrix[orf_id].median() / btax_info.median_d
 
     # Uniformity
     orf_stats["uniformity_std"] = orf_mult_aln.estimate_uniformity(
