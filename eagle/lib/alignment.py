@@ -530,7 +530,7 @@ class MultAln(ConfBase):
             for seqj_name in seq_names_list[i+1:]:
                 seqs_pairs[frozenset({seqi_name, seqj_name})] = [self[seqi_name], self[seqj_name]]
         if rarefy and int(raref_base) < len(seq_names_list):
-            for seqs_pair in np.random.shuffle(list(seqs_pairs.keys()))[(len(seq_names_list)-1)*int(raref_base/2.0):]:
+            for seqs_pair in np.random.permutation(list(seqs_pairs.keys()))[(len(seq_names_list)-1)*int(raref_base/2.0):]:
                 del seqs_pairs[seqs_pair]
         return seqs_pairs
 
