@@ -8,4 +8,4 @@ EAGLE.egg-info/
 *.log.*
 *.ipynb_checkpoints/
 *Untitled.ipynb
-Research/DEG/bacteria/
+Research/DEG/bacteria/*

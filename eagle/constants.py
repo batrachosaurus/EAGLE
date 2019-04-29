@@ -40,7 +40,7 @@ class ConfConstants(ConfBase):
         self.unif_windows_step = 5
         # Ka/Ks
         self.kaks_calculator_exec_path = "KaKs_Calculator"
-        self.kaks_window_l = 75
+        self.kaks_window_l = 150  # 50 codons
         self.kaks_top_fract = 0.5
         # PHYLO
         self.fastme_exec_path = "fastme"

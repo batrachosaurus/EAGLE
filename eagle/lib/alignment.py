@@ -488,8 +488,9 @@ class MultAln(ConfBase):
         for w in windows_list:
             w.tmp_dir = self.tmp_dir
             w_kaks = w.calculate_KaKs(method=method, remove_tmp=False, **kwargs)
-            if type(w_kaks) is float:
-                kaks_list.append(w_kaks)
+            if type(w_kaks) is float or isinstance(w_kaks, np.floating):
+                if w_kaks >= 0.0:
+                    kaks_list.append(w_kaks)
 
         shutil.rmtree(self.tmp_dir)
         return np.mean(sorted(kaks_list)[: int(float(len(kaks_list)) * top_fract)])

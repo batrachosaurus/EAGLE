@@ -342,8 +342,10 @@ def get_orf_stats(orf_id,
     eagle_logger.info("got uniformity_std for ORF '%s'" % orf_id)
 
     # Ka/Ks
-    orf_stats["Ka/Ks"] = orf_mult_aln.calculate_KaKs_windows(nucl_seqs_dict=orf_homologs_nucl)
-    eagle_logger.info("got Ka/Ks for ORF '%s'" % orf_id)
+    orf_kaks = orf_mult_aln.calculate_KaKs_windows(nucl_seqs_dict=orf_homologs_nucl)
+    if not pd.isna(orf_kaks):
+        orf_stats["Ka/Ks"] = orf_kaks
+        eagle_logger.info("got Ka/Ks for ORF '%s'" % orf_id)
 
     # Phylo
     phylo_tmp_dir = os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp")
