@@ -524,6 +524,8 @@ class MultAln(ConfBase):
         for i, seqi_name in enumerate(list(self.seq_names)[:-1]):
             for seqj_name in list(self.seq_names)[i+1:]:
                 seqs_pairs[frozenset({seqi_name, seqj_name})] = [self[seqi_name], self[seqj_name]]
+        if len(seqs_pairs) <= int(np.emath.power(raref_base, 2.0)):
+            rarefy = False
         if rarefy:
             raref_c = raref_base / float(len(seqs_pairs))
             for seqs_pair in list(seqs_pairs.keys()):
