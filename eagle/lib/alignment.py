@@ -525,13 +525,14 @@ class MultAln(ConfBase):
 
     def generate_seqs_pairs(self, rarefy=True, raref_base=10.0):
         seqs_pairs = dict()
-        for i, seqi_name in enumerate(list(self.seq_names)[:-1]):
-            for seqj_name in list(self.seq_names)[i+1:]:
+        seq_names_list = list(self.seq_names)
+        for i, seqi_name in enumerate(seq_names_list[:-1]):
+            for seqj_name in seq_names_list[i+1:]:
                 seqs_pairs[frozenset({seqi_name, seqj_name})] = [self[seqi_name], self[seqj_name]]
-        if len(seqs_pairs) <= int(np.emath.power(raref_base, 2.0)):
+        if len(seq_names_list) <= int(np.emath.power(raref_base, 2.0)):
             rarefy = False
         if rarefy:
-            raref_c = raref_base / float(len(seqs_pairs))
+            raref_c = raref_base / float(len(seq_names_list))
             for seqs_pair in list(seqs_pairs.keys()):
                 if not np.random.choice((True, False), p=(raref_c, 1.0-raref_c)):
                     del seqs_pairs[seqs_pair]
