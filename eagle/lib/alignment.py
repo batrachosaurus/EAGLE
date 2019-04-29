@@ -529,13 +529,12 @@ class MultAln(ConfBase):
         for i, seqi_name in enumerate(seq_names_list[:-1]):
             for seqj_name in seq_names_list[i+1:]:
                 seqs_pairs[frozenset({seqi_name, seqj_name})] = [self[seqi_name], self[seqj_name]]
-        if len(seq_names_list) <= int(np.emath.power(raref_base, 2.0)):
-            rarefy = False
         if rarefy:
             raref_c = raref_base / float(len(seq_names_list))
-            for seqs_pair in list(seqs_pairs.keys()):
-                if not np.random.choice((True, False), p=(raref_c, 1.0-raref_c)):
-                    del seqs_pairs[seqs_pair]
+            if raref_c < 1.0:
+                for seqs_pair in list(seqs_pairs.keys()):
+                    if not np.random.choice((True, False), p=(raref_c, 1.0-raref_c)):
+                        del seqs_pairs[seqs_pair]
         return seqs_pairs
 
     def stop_codons_stats(self, improve_aln=False, **kwargs):
