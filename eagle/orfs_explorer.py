@@ -36,8 +36,8 @@ def explore_orfs(in_fasta,
         conf_constants.update_by_config(config_path)
     if num_threads:
         conf_constants.num_threads = int(num_threads)
-    else:
-        num_threads = conf_constants.num_threads
+        num_threads = None
+    num_threads = conf_constants.num_threads
     if mode is None:
         mode = conf_constants.mode
 
