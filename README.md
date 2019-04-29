@@ -9,6 +9,7 @@ HMMER3
 EMBOSS + PHYLIPNEW (EMBASSY package)  
 FastME 2.07  
 Blast+  
+KaKs_Calculator 2.0  
 Python 2.7  
 ### Python packages:  
 &nbsp; - wget >= 3.2  
