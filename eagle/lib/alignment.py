@@ -514,10 +514,14 @@ class MultAln(ConfBase):
             else:
                 print("INFO: running command: '%s'" % kaks_calculator_cmd)
             subprocess.call(kaks_calculator_cmd, shell=True)
-            kaks_df = pandas.read_csv(out_path, sep="\t")
+            try:
+                kaks_df = pandas.read_csv(out_path, sep="\t")
+                kaks = kaks_df["Ka/Ks"].mean()
+            except:
+                kaks = -1.0
         if kwargs.get("remove_tmp", True):
             shutil.rmtree(self.tmp_dir)
-        return kaks_df["Ka/Ks"].mean()
+        return kaks
 
     def generate_seqs_pairs(self, rarefy=True, raref_base=10.0):
         seqs_pairs = dict()
