@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.21.8',
+      version='0.21.9',
       author="Denis Moshensky",
       author_email="loven-doo@fbb.msu.ru", 
       description="Essential and Advantageous Genes Location Explorer",

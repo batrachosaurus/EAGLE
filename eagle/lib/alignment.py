@@ -519,11 +519,16 @@ class MultAln(ConfBase):
             shutil.rmtree(self.tmp_dir)
         return kaks_df["Ka/Ks"].mean()
 
-    def generate_seqs_pairs(self):
+    def generate_seqs_pairs(self, rarefy=True, raref_base=10.0):
         seqs_pairs = dict()
         for i, seqi_name in enumerate(list(self.seq_names)[:-1]):
             for seqj_name in list(self.seq_names)[i+1:]:
                 seqs_pairs[frozenset({seqi_name, seqj_name})] = [self[seqi_name], self[seqj_name]]
+        if rarefy:
+            raref_c = raref_base / float(len(seqs_pairs))
+            for seqs_pair in list(seqs_pairs.keys()):
+                if not np.random.choice((True, False), p=(raref_c, 1.0-raref_c)):
+                    del seqs_pairs[seqs_pair]
         return seqs_pairs
 
     def stop_codons_stats(self, improve_aln=False, **kwargs):
