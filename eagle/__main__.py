@@ -55,6 +55,11 @@ def _parse_cmd_args(*args):
                         help="Path to a config file",
                         required=False,
                         default=None)
+    parser.add_argument("-tbnr",
+                        "--tblastn-result-path",
+                        help="Path to tblastn result (outfmt 7) if it exists",
+                        required=False,
+                        default=None)
     parser.add_argument("-sa",
                         "--save-alignments",
                         help="Set it '1' if ORFs multiple alignments are needed to be saved",
