@@ -616,7 +616,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
     rRNA_aln.get_blocks_tsv(tsv_path=family_data["16S_rRNA_tsv"],
                             fasta_path=family_data["16S_rRNA_fasta"],
                             meta_dict=ids_to_org_dict)
-    remained_orgs = list(map(lambda seq_id: ids_to_org_dict[seq_id]["organism_name"], rRNA_aln.seqs()))
+    remained_orgs = list(map(lambda seq_id: ids_to_org_dict[seq_id]["organism_name"], rRNA_aln.seq_names()))
     family_data = clean_btax_data(family_data, remained_orgs, stop_level=3, special_keys=special_keys)
     family_data = download_btax_files(key_prefix_pairs={"fna_file": "_genomic.fna.gz"},
                                       btax_data=family_data,

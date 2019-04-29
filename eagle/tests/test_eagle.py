@@ -25,6 +25,8 @@ class TestORFsExplorer(unittest.TestCase):
 
     conf_constants.fastme_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "fastme")
     conf_constants.msaprobs_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "msaprobs")
+    conf_constants.kaks_calculator_exec_path = \
+        os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "KaKs_Calculator")
 
     db_info_dict = DBInfo().get_json()
     with open(os.path.join(EAGLEDB_TEST_DATA, "eagledb", "db_info.json")) as db_info_f:
@@ -32,14 +34,16 @@ class TestORFsExplorer(unittest.TestCase):
             if type(v) in (str, unicode):
                 db_info_dict[k] = os.path.join(EAGLEDB_TEST_DIR, v)
 
-    def test_explore_genes(self):
+    def test_explore_orfs(self):
         orfs_explorer.explore_orfs(
             in_fasta=os.path.join(INPUT_DIR, "NC_000913.fasta"),  # Escherichia coli K-12 MG1655
             db_json=self.db_info_dict,
             out_dir=OUTPUT_DIR,
             btax_name="Enterobacterales",
             num_threads=4,
-            # tblastn_result_path=os.path.join(OUTPUT_DIR, "NC_000913.fasta.bl"),
+            tblastn_result_path=os.path.join(OUTPUT_DIR, "NC_000913.fasta.bl"),
+            save_alignments=True,
+            save_trees=True,
         )
         self.assertTrue(True)
 

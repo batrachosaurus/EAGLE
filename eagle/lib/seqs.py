@@ -1,5 +1,5 @@
 import os
-from collections import defaultdict
+from collections import defaultdict, Counter
 import subprocess
 
 import psutil
@@ -13,9 +13,10 @@ from eagle.lib.general import filter_list, get_un_fix
 
 class SeqsDict(object):
 
-    def __init__(self, seqs_order, seqs_array, low_memory=False):
+    def __init__(self, seqs_order, seqs_array, seqs_type=None, low_memory=False):
         self.seqs_order = seqs_order
         self.seqs_array = seqs_array
+        self.seqs_type = seqs_type
         self.low_memory = low_memory
 
         self._empty_rows = list()
@@ -126,7 +127,10 @@ class SeqsDict(object):
                     if title:
                         seqs_order[title] = seq_i
                         new_seq = None
-                        new_seq = "".join(seq_list)
+                        if kwargs.get("restore_stops", False):
+                            new_seq = "".join(seq_list).replace("X", "*")
+                        else:
+                            new_seq = "".join(seq_list)
                         if len(new_seq) > seqs_array.itemsize:
                             seqs_array = seqs_array.astype(np.dtype("S%s" % len(new_seq)))
                         seqs_array[seq_i] = new_seq
@@ -148,7 +152,11 @@ class SeqsDict(object):
             if title:
                 seqs_order[title] = seq_i
                 new_seq = None
-                new_seq = "".join(seq_list)
+                new_seq = None
+                if kwargs.get("restore_stops", False):
+                    new_seq = "".join(seq_list).replace("X", "*")
+                else:
+                    new_seq = "".join(seq_list)
                 if len(new_seq) > seqs_array.itemsize:
                     seqs_array = seqs_array.astype(np.dtype("S%s" % len(new_seq)))
                 seqs_array[seq_i] = new_seq
@@ -187,16 +195,34 @@ class SeqsDict(object):
             low_memory = False
         return low_memory
 
-    def dump(self, seqs_path, seqs_format="fasta", overwrite=True):
+    def dump(self, seqs_path, seqs_format="fasta", overwrite=True, **kwargs):
         if seqs_format.lower() == "fasta":
             if overwrite:
                 fasta_f = open(seqs_path, 'w')
             else:
                 fasta_f = open(seqs_path, 'a')
-            for seq_id in self.seqs_order:
-                fasta_f.write(">" + seq_id + "\n")
-                fasta_f.write(self[seq_id] + "\n")
+            if kwargs.get("replace_stops", False):
+                for seq_id in self.seqs_order:
+                    fasta_f.write(">" + seq_id + "\n")
+                    fasta_f.write(self[seq_id].replace("*", "X") + "\n")
+            else:
+                for seq_id in self.seqs_order:
+                    fasta_f.write(">" + seq_id + "\n")
+                    fasta_f.write(self[seq_id] + "\n")
             fasta_f.close()
+
+    def detect_seqs_type(self, nuc_freq_thr=0.75):
+        seqs_list = list()
+        summ_l = 0
+        for seq in self.seqs_array:
+            seqs_list.append(seq.lower().replace("-", ""))
+            summ_l += len(seqs_list[-1])
+        let_counts = Counter("".join(seqs_list))
+        if float(let_counts.get("a", 0) + let_counts.get("c", 0) + let_counts.get("g", 0) +
+                 let_counts.get("t", 0)) / float(summ_l) >= nuc_freq_thr:
+            return "nucl"
+        else:
+            return "prot"
 
 
 def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
@@ -240,10 +266,10 @@ def load_fasta_to_dict(fasta_path, low_memory="auto", **kwargs):
     return SeqsDict.load_from_file(seqs_path=fasta_path, seqs_format="fasta", low_memory=low_memory, **kwargs)
 
 
-def dump_fasta_dict(fasta_dict, fasta_path, overwrite=True):
+def dump_fasta_dict(fasta_dict, fasta_path, overwrite=True, **kwargs):
     if isinstance(fasta_dict, dict):
         fasta_dict = SeqsDict.load_from_dict(in_dict=fasta_dict)
-    fasta_dict.dump(seqs_path=fasta_path, seqs_format="fasta", overwrite=overwrite)
+    fasta_dict.dump(seqs_path=fasta_path, seqs_format="fasta", overwrite=overwrite, **kwargs)
 
 
 def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
@@ -381,6 +407,22 @@ def _get_orf_info(orf_title):
         c_end = c1
         orf_id = "_".join(orf_title_list[0].split("_")[:-1]) + "|:c" + str(c1) + "-" + str(c2)
     return orf_id, c_start, c_end, ori
+
+
+def parse_orf_id(orf_id):
+    orf_id_list = orf_id.split("|:")
+    orf_chr = orf_id_list[0]
+    if orf_id_list[1][0] == "c":
+        ori = "-"
+        c_list = orf_id_list[1][1:].split("-")
+        c2 = c_list[0]
+        c1 = c_list[1]
+    else:
+        ori = "+"
+        c_list = orf_id_list[1].split("-")
+        c1 = c_list[0]
+        c2 = c_list[1]
+    return orf_chr, int(c1), int(c2), ori
 
 
 def read_blast_out(blast_out_path, ev_thr=1.0e-06, aln_l_thr=180, ident_thr=0.35):

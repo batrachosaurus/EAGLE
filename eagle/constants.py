@@ -11,7 +11,10 @@ DEFAULT_CONFIG = os.path.join(CONF_DIR_PATH, "default_config.ini")
 LOG_CONFIG_NAME = 'log_conf.yaml'
 LOGGER_NAME = 'EAGLE_logger'
 
-PROFILES_SCAN_OUT = "profiles_scan.out"  # it is inner name (not configurable)
+# inner names (not configurable)
+PROFILES_SCAN_OUT = "profiles_scan.out"
+ORF_ALNS_DIR = "orf_alignments"
+ORF_TREES_DIR = "orf_homolog_trees"
 
 setup_logging(os.path.join(CONF_DIR_PATH, LOG_CONFIG_NAME))
 eagle_logger = logging.getLogger(LOGGER_NAME)
@@ -35,6 +38,10 @@ class ConfConstants(ConfBase):
         self.cons_thr = 0.98
         self.unif_window_l= 10
         self.unif_windows_step = 5
+        # Ka/Ks
+        self.kaks_calculator_exec_path = "KaKs_Calculator"
+        self.kaks_window_l = 75
+        self.kaks_top_fract = 0.5
         # PHYLO
         self.fastme_exec_path = "fastme"
         # eagle

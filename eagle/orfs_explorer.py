@@ -9,11 +9,11 @@ import pandas as pd
 from Bio.Seq import Seq
 from Bio.Data.CodonTable import TranslationError
 
-from eagle.constants import conf_constants, eagle_logger, PROFILES_SCAN_OUT
+from eagle.constants import conf_constants, eagle_logger, PROFILES_SCAN_OUT, ORF_ALNS_DIR, ORF_TREES_DIR
 from eagle.lib.alignment import HmmerHandler, BlastHandler, MultAln, construct_mult_aln
 from eagle.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees, dump_tree_newick
 from eagle.lib.general import filter_list, worker, reverse_dict
-from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out
+from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out, parse_orf_id
 from eagledb.scheme import BtaxInfo, DBInfo
 
 
@@ -43,6 +43,10 @@ def explore_orfs(in_fasta,
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
+    if kwargs.get("save_alignments", False) and not os.path.exists(os.path.join(out_dir, ORF_ALNS_DIR)):
+        os.makedirs(os.path.join(out_dir, ORF_ALNS_DIR))
+    if kwargs.get("save_trees", False) and not os.path.exists(os.path.join(out_dir, ORF_TREES_DIR)):
+        os.makedirs(os.path.join(out_dir, ORF_TREES_DIR))
 
     if type(db_json) is str:
         with open(db_json) as db_json_f:
@@ -91,10 +95,13 @@ def explore_orfs(in_fasta,
                                                num_threads=num_threads)
             res_gtf_json = analyze_tblastn_out(tblastn_out_path=tblastn_out_path,
                                                orfs_fasta_path=orfs_fasta_path,
+                                               in_fasta=in_fasta,
                                                btax_data=btax_dict[btax_name],
                                                res_gtf_json=res_gtf_json,
                                                num_threads=conf_constants.num_threads,
-                                               work_dir=out_dir)
+                                               work_dir=out_dir,
+                                               save_alignments=kwargs.get("save_alignments", False),
+                                               save_trees=kwargs.get("save_trees", False))
     else:
         # TODO: write blast for contigs mode
         pass
@@ -196,11 +203,15 @@ def _get_queries_btax(queries_scores_dict):
 
 def analyze_tblastn_out(tblastn_out_path,
                         orfs_fasta_path,
+                        in_fasta,
                         btax_data,
                         res_gtf_json,
                         num_threads=conf_constants.num_threads,
-                        work_dir=""):
+                        work_dir="",
+                        save_alignments=False,
+                        save_trees=False):
 
+    in_fasta_dict = load_fasta_to_dict(fasta_path=in_fasta)
     btax_info = BtaxInfo.load_from_dict(btax_data)
     orfs_stats = mp.Manager().dict()
     seq_ids_to_orgs = btax_info.fna_id
@@ -208,15 +219,23 @@ def analyze_tblastn_out(tblastn_out_path,
     orfs_fasta_dict = load_fasta_to_dict(fasta_path=orfs_fasta_path)
     params_list = list()
     for seq_id in orfs_fasta_dict:
+        chr_id, c1, c2, ori = parse_orf_id(seq_id)
+        if ori == "+":
+            orf_nucl_seq = in_fasta_dict[chr_id][c1-1: c2]
+        else:
+            orf_nucl_seq = str(Seq(in_fasta_dict[chr_id][c1-1: c2]).reverse_complement())
         params_list.append({
             "function": get_orf_stats,
             "orf_id": seq_id,
-            "orf_homologs_seqs": {seq_id: orfs_fasta_dict[seq_id]},
+            "orf_homologs_prot": {seq_id: orfs_fasta_dict[seq_id]},
+            "orf_homologs_nucl": {seq_id: orf_nucl_seq},
             "homologs_list": tblatn_out_dict[seq_id],
             "btax_data": btax_data,
             "seq_ids_to_orgs": seq_ids_to_orgs,
             "orfs_stats": orfs_stats,
             "work_dir": work_dir,
+            "save_alignment": save_alignments,
+            "save_tree": save_trees
         })
 
     pool = mp.Pool(num_threads)
@@ -238,7 +257,8 @@ def analyze_tblastn_out(tblastn_out_path,
 
 
 def get_orf_stats(orf_id,
-                  orf_homologs_seqs,
+                  orf_homologs_prot,
+                  orf_homologs_nucl,
                   homologs_list,
                   btax_data,
                   seq_ids_to_orgs,
@@ -247,13 +267,16 @@ def get_orf_stats(orf_id,
                   **kwargs):
 
     orf_stats = {
-        "uniformity_std": None,
-        "phylo_diff": None,
+        "uniformity_std": -1.0,
+        "phylo_diff": -1.0,
+        "Ka/Ks": -1.0,
         "representation": 0.0,
         "relative_mean_btax_dist": -1.0,
         "relative_median_btax_dist": -1.0,
         "relative_mean_ORF_dist": -1.0,
         "relative_median_ORF_dist": -1.0,
+        "stops_per_seq_median": -1.0,
+        "n_seqs_with_stops": -1,
     }
 
     if len(homologs_list) < 3:
@@ -264,19 +287,18 @@ def get_orf_stats(orf_id,
     seq_ids_to_orgs[orf_id] = "Input_Organism_X"
     btax_fna = load_fasta_to_dict(fasta_path=btax_info.btax_fna)
     for hom in homologs_list:
+        if hom["subj_start"] <= hom["subj_end"]:
+            nucl_seq = Seq(btax_fna[hom["subj_id"]][hom["subj_start"] - 1:hom["subj_end"]])
+        else:
+            nucl_seq = Seq(btax_fna[hom["subj_id"]][hom["subj_end"] - 1: hom["subj_start"]]).reverse_complement()
         try:
-            if hom["subj_start"] <= hom["subj_end"]:
-                orf_homologs_seqs[hom["subj_id"]] = \
-                    str(Seq(btax_fna[hom["subj_id"]][hom["subj_start"]-1:hom["subj_end"]]).translate())
-            else:
-                orf_homologs_seqs[hom["subj_id"]] = \
-                    str(Seq(btax_fna[hom["subj_id"]][hom["subj_end"]-1:
-                                                     hom["subj_start"]]).reverse_complement().translate())
+            orf_homologs_prot[hom["subj_id"]] = str(nucl_seq.translate())
         except TranslationError:
             continue
+        orf_homologs_nucl[hom["subj_id"]] = str(nucl_seq)
     btax_fna = None
     eagle_logger.info("got homologs sequences for ORF '%s'" % orf_id)
-    orf_mult_aln = construct_mult_aln(seq_dict=orf_homologs_seqs,
+    orf_mult_aln = construct_mult_aln(seq_dict=orf_homologs_prot,
                                       aln_name=orf_id.replace("|:", "_")+"_aln",
                                       aln_type="prot",
                                       method="MUSCLE",
@@ -285,7 +307,7 @@ def get_orf_stats(orf_id,
     eagle_logger.info("got multiple alignment for ORF '%s' homologs" % orf_id)
     orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
     orf_stats["representation"] = float(len(orf_mult_aln)-1) / float(len(btax_info.genomes))
-    if len(orf_mult_aln.seqs) < 4:
+    if len(orf_mult_aln.seq_names) < 4:
         orfs_stats[orf_id] = orf_stats
         eagle_logger.warning("A few homologs number for ORF '%s'" % orf_id)
         return
@@ -299,6 +321,9 @@ def get_orf_stats(orf_id,
     if btax_info.median_d > 0.0:
         orf_stats["relative_median_btax_dist"] = btax_dist_matrix.median_dist / btax_info.median_d
         orf_stats["relative_median_ORF_dist"] = dist_matrix[orf_id].median() / btax_info.median_d
+    stops_stats = orf_mult_aln.stop_codons_stats()
+    orf_stats["stops_per_seq_median"] = stops_stats["stops_per_seq_median"]
+    orf_stats["n_seqs_with_stops"] = stops_stats["n_seqs_with_stops"]
 
     # Uniformity
     orf_stats["uniformity_std"] = orf_mult_aln.estimate_uniformity(
@@ -307,10 +332,12 @@ def get_orf_stats(orf_id,
         windows_step=conf_constants.unif_windows_step
     )
     if np.isnan(orf_stats["uniformity_std"]):
-        orf_stats["uniformity_std"] = None
+        orf_stats["uniformity_std"] = -1.0
     eagle_logger.info("got uniformity_std for ORF '%s'" % orf_id)
 
     # Ka/Ks
+    orf_stats["Ka/Ks"] = orf_mult_aln.calculate_KaKs_windows(nucl_seqs_dict=orf_homologs_nucl)
+    eagle_logger.info("got Ka/Ks for ORF '%s'" % orf_id)
 
     # Phylo
     phylo_tmp_dir = os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp")
@@ -343,3 +370,7 @@ def get_orf_stats(orf_id,
 
     orfs_stats[orf_id] = orf_stats
     eagle_logger.info("got ORF '%s' stats" % orf_id)
+    if kwargs.get("save_alignment", False):
+        orf_mult_aln.dump_alignment(os.path.join(work_dir, ORF_ALNS_DIR, orf_mult_aln.aln_name+".fasta"))
+    if kwargs.get("save_tree", False):
+        orf_homs_tree.dump_tree(tree_path=os.path.join(work_dir, ORF_TREES_DIR, orf_homs_tree.tree_name+".nwk"))

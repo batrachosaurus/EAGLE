@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 ADD fastme /bin/
 ADD msaprobs /bin/
+ADD KaKs_Calculator /bin/
 ADD EAGLE-*.tar.gz /src/
 
 RUN pip install /src/EAGLE-*
