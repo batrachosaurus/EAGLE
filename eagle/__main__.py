@@ -55,6 +55,16 @@ def _parse_cmd_args(*args):
                         help="Path to a config file",
                         required=False,
                         default=None)
+    parser.add_argument("-sa",
+                        "--save-alignments",
+                        help="Set it '1' if ORFs multiple alignments are needed to be saved",
+                        required=False,
+                        default=False)
+    parser.add_argument("-st",
+                        "--save-trees",
+                        help="Set it '1' if ORFs phylogenetic trees are needed to be saved",
+                        required=False,
+                        default=False)
 
     cmd_args = parser.parse_args(args)
     if cmd_args.config_path:
