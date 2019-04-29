@@ -25,6 +25,7 @@ def explore_orfs_cmd():
 def explore_orfs(in_fasta,
                  db_json,
                  out_dir="",
+                 min_orf_l=None,
                  mode=None,
                  btax_name=None,
                  num_threads=None,
@@ -40,6 +41,10 @@ def explore_orfs(in_fasta,
     num_threads = conf_constants.num_threads
     if mode is None:
         mode = conf_constants.mode
+    if min_orf_l:
+        conf_constants.min_orf_l = min_orf_l
+        min_orf_l = None
+    min_orf_l = conf_constants.min_orf_l
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -73,7 +78,8 @@ def explore_orfs(in_fasta,
 
     orfs_fasta_path = os.path.join(out_dir, os.path.basename(in_fasta)+".orfs")
     res_gtf_json = get_orfs(in_fasta_path=in_fasta,
-                            out_fasta_path=orfs_fasta_path)
+                            out_fasta_path=orfs_fasta_path,
+                            minsize=min_orf_l)
     blast_handler = BlastHandler(inst_dir=conf_constants.blast_inst_dir,
                                  config_path=config_path,
                                  logger=eagle_logger)

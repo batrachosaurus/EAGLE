@@ -21,6 +21,10 @@ def _parse_cmd_args(*args):
                         help="Path to the directory for output",
                         required=False,
                         default="")
+    parser.add_argument("-l",
+                        "--min-orf-l",
+                        help="Minimal length for ORF to analyze",
+                        required=False)
     parser.add_argument("-m",
                         "--mode",
                         help="Mode to run eagle: 'genome' - parses input fasta file as single genome "
