@@ -390,7 +390,7 @@ def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_co
         corr_orf_id, c_start, c_end, ori = _get_orf_info(orf_id)
         corr_orfs_ids[orf_id] = corr_orf_id
         orfs_info[corr_orf_id] = {
-            "seqid": corr_orf_id,
+            "seqid": corr_orf_id.split("|:")[0],
             "source": "EAGLE",
             "type": "ORF",
             "start": c_start,
