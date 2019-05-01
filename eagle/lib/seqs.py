@@ -1,4 +1,5 @@
 import os
+import shutil
 from collections import defaultdict, Counter
 import subprocess
 
@@ -7,7 +8,7 @@ import numpy as np
 from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
-from eagle.lib.general import generate_random_string
+from eagle.lib.general import generate_random_string, np_memmap_astype
 from eagle.lib.general import filter_list, get_un_fix
 
 
@@ -43,7 +44,13 @@ class SeqsDict(object):
 
     def __setitem__(self, key, value):
         if len(value) > self.seqs_array.itemsize:
-            self.seqs_array = self.seqs_array.astype(np.dtype("S%s" % len(value)))
+            if self.low_memory:
+                self.seqs_array = np_memmap_astype(dat_path=self.seqs_array.filename,
+                                                   old_dtype=self.seqs_array.dtype,
+                                                   new_dtype=np.dtype("S%s" % len(value)),
+                                                   shape=self.seqs_array.shape)
+            else:
+                self.seqs_array = self.seqs_array.astype(np.dtype("S%s" % len(value)))
         if self._empty_rows:
             self.seqs_order[key] = self._empty_rows.pop(0)
             self.seqs_array[self.seqs_order[key]] = value
@@ -132,7 +139,13 @@ class SeqsDict(object):
                         else:
                             new_seq = "".join(seq_list)
                         if len(new_seq) > seqs_array.itemsize:
-                            seqs_array = seqs_array.astype(np.dtype("S%s" % len(new_seq)))
+                            if low_memory:
+                                seqs_array = np_memmap_astype(dat_path=seqs_array.filename,
+                                                              old_dtype=seqs_array.dtype,
+                                                              new_dtype=np.dtype("S%s" % len(new_seq)),
+                                                              shape=seqs_array.shape)
+                            else:
+                                seqs_array = seqs_array.astype(np.dtype("S%s" % len(new_seq)))
                         seqs_array[seq_i] = new_seq
                         title = None
                         seq_i += 1

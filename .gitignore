@@ -9,3 +9,4 @@ EAGLE.egg-info/
 *.ipynb_checkpoints/
 *Untitled.ipynb
 Research/DEG/bacteria/*
+*.dat
