@@ -10,3 +10,4 @@ EAGLE.egg-info/
 *Untitled.ipynb
 Research/DEG/bacteria/*
 *.dat
+*.fuse_hidden*
