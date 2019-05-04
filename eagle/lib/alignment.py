@@ -495,7 +495,7 @@ class MultAln(ConfBase):
         shutil.rmtree(self.tmp_dir)
         return np.mean(sorted(kaks_list)[: int(float(len(kaks_list)) * top_fract)])
 
-    def calculate_KaKs(self, method="KaKs_Calculator", **kwargs):
+    def calculate_KaKs(self, method="KaKs_Calculator", max_kaks=10.0, **kwargs):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
 
@@ -517,7 +517,7 @@ class MultAln(ConfBase):
             subprocess.call(kaks_calculator_cmd, shell=True)
             try:
                 kaks_df = pandas.read_csv(out_path, sep="\t")
-                kaks = kaks_df["Ka/Ks"].mean()
+                kaks = kaks_df["Ka/Ks"][kaks_df["Ka/Ks"] <= max_kaks].mean()
             except:
                 kaks = -1.0
         if kwargs.get("remove_tmp", True):
@@ -549,7 +549,7 @@ class MultAln(ConfBase):
                 stops_per_seq.append(re.sub("(tag|taa|tga)", "*", improved_aln[seq_name].lower()).count("*"))
         stops_per_seq.sort()
         return {"stops_per_seq_median": np.median(stops_per_seq),
-                "n_seqs_with_stops": len(list(filter(lambda x: x > 0, stops_per_seq)))}
+                "seqs_with_stops_fract": float(len(list(filter(lambda x: x > 0, stops_per_seq)))) / float(len(self))}
 
 
 class DistanceMatrix(object):

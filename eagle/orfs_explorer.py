@@ -282,7 +282,7 @@ def get_orf_stats(orf_id,
         "relative_mean_ORF_dist": -1.0,
         "relative_median_ORF_dist": -1.0,
         "stops_per_seq_median": -1.0,
-        "n_seqs_with_stops": -1,
+        "seqs_with_stops_fract": -1.0,
     }
 
     if len(homologs_list) < 3:
@@ -329,7 +329,7 @@ def get_orf_stats(orf_id,
         orf_stats["relative_median_ORF_dist"] = dist_matrix[orf_id].median() / btax_info.median_d
     stops_stats = orf_mult_aln.stop_codons_stats()
     orf_stats["stops_per_seq_median"] = stops_stats["stops_per_seq_median"]
-    orf_stats["n_seqs_with_stops"] = stops_stats["n_seqs_with_stops"]
+    orf_stats["seqs_with_stops_fract"] = stops_stats["seqs_with_stops_fract"]
 
     # Uniformity
     orf_stats["uniformity_std"] = orf_mult_aln.estimate_uniformity(
@@ -371,9 +371,11 @@ def get_orf_stats(orf_id,
         logger=eagle_logger
     )
     btax_tree.set_full_names(inplace=True)
-    orf_stats["phylo_diff"] = compare_trees(phylo_tree1=orf_homs_tree,
-                                            phylo_tree2=btax_tree,
-                                            method="Robinson-Foulds")
+    phylo_diff = compare_trees(phylo_tree1=orf_homs_tree,
+                               phylo_tree2=btax_tree,
+                               method="Robinson-Foulds")
+    if not pd.isna(phylo_diff):
+        orf_stats["phylo_diff"] = phylo_diff
     eagle_logger.info("got phylo_diff for ORF '%s'" % orf_id)
 
     orfs_stats[orf_id] = orf_stats
