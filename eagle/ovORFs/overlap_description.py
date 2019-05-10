@@ -29,7 +29,7 @@ def detect_frame_antiparallel(orf_c, ovorf_c, orf_ori):
 
 
 def get_overlap_coords(orf_c, ovorf_c):
-    return min(orf_c[1], ovorf_c[1]), max(orf_c[0], ovorf_c[0])
+    return max(orf_c[0], ovorf_c[0]), min(orf_c[1], ovorf_c[1])
 
 
 def get_overlap_length(orf_c, ovorf_c):
