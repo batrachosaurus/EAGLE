@@ -2,6 +2,7 @@ import gzip
 import io
 import json
 import os
+import re
 from copy import deepcopy
 import multiprocessing as mp
 from collections import defaultdict
@@ -369,7 +370,15 @@ def get_btax_dict(genomes_list,
                                           tmp_dir=kwargs.get("aln_tmp_dir", "mult_aln_tmp"),
                                           method=conf_constants_db.btc_profile_aln_method,
                                           num_threads=num_threads)
-        btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
+
+        # TODO: only the code from else block should be remained after moving 16S rRNA obtaining out from get_bacteria_from_ncbi
+        if btc_profile_name == "16S_rRNA":
+            btc_mult_aln.short_to_full_seq_names = \
+                reduce_seq_names({re.sub("lcl\|N(C|Z)_", "", seq_name): None for seq_name in btc_mult_aln},
+                                 num_letters=10, num_words=1)[1]
+        else:
+            btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
+
         btc_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, inplace=True)
         btc_mult_aln.improve_aln(inplace=True)
         btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()  # TODO: implement specific positions method

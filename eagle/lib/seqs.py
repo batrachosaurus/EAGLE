@@ -288,10 +288,10 @@ def dump_fasta_dict(fasta_dict, fasta_path, overwrite=True, **kwargs):
 def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
     if num_letters < 6:
         print("Number of letters must be at least 6")
-        return 1
-    if num_words < 2:
-        print("Number of words must be at least 2")
-        return 1
+        return
+    if num_words < 1:
+        print("Number of words must be at least 1")
+        return
     all_less = True
     for seq_id in fasta_dict:
         if len(seq_id) > num_letters:
@@ -334,6 +334,8 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
             un_fix = None
             un_num += 1
             un_fix = get_un_fix(un_num, res_len)
+            if un_fix[-1] == "N":
+                break
         reduced_fasta_dict[(reduced_seq_name+un_fix).upper()] = fasta_dict[seq_name]
         seq_names_dict[(reduced_seq_name+un_fix).upper()] = seq_name
     return reduced_fasta_dict, seq_names_dict
@@ -345,36 +347,46 @@ def _get_part_size_list(num_letters, num_words):
     if num_letters == 7:
         if num_words >= 3:
             return [2, 3, 1]
-        else:
+        if num_words == 2:
             return [2, 3]
+        if num_words == 1:
+            return [5]
     if num_letters == 8:
         if num_words >= 4:
             return [2, 3, 1, 1]
-        elif num_words == 3:
+        if num_words == 3:
             return [3, 3, 1]
-        else:
+        if num_words == 2:
             return [3, 3]
+        if num_words == 1:
+            return [6]
     if num_letters == 9:
         if num_words >= 4:
             return [3, 3, 1, 1]
-        elif num_words == 3:
+        if num_words == 3:
             return [3, 3, 1]
-        else:
+        if num_words == 2:
             return [3, 4]
+        if num_words == 1:
+            return [7]
     if num_letters == 10:
         if num_words >= 4:
             return [3, 4, 1, 1]
-        elif num_words == 3:
+        if num_words == 3:
             return [3, 4, 1]
-        else:
+        if num_words == 2:
             return [4, 4]
+        if num_words == 1:
+            return [8]
     if num_letters >= 11:
         if num_words >= 4:
             return [3, 4, 1, 1]
-        elif num_words == 3:
+        if num_words == 3:
             return [4, 4, 1]
-        else:
+        if num_words == 2:
             return [4, 5]
+        if num_words == 1:
+            return [9]
 
 
 def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_constants.emboss_inst_dir):
