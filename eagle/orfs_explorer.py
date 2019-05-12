@@ -155,7 +155,7 @@ def get_btax(in_fasta,
             elif query and lines_from_query < 5:
                 lines_from_query += 1
             elif line.startswith("Domain annotation for each model (and alignments):"):
-                queries_scores_dict[query] = query_scores_dict
+                queries_scores_dict[query] = query_scores_dict.copy()
                 query_scores_dict = defaultdict(float)
                 query = None
                 lines_from_query = 0

@@ -374,8 +374,8 @@ def get_btax_dict(genomes_list,
         # TODO: only the code from else block should be remained after moving 16S rRNA obtaining out from get_bacteria_from_ncbi
         if btc_profile_name == "16S_rRNA":
             btc_mult_aln.short_to_full_seq_names = \
-                reduce_seq_names({re.sub("lcl\|N(C|Z)_", "", seq_name): None for seq_name in btc_mult_aln},
-                                 num_letters=10, num_words=1)[1]
+                reduce_seq_names({re.sub("lcl\|(N(C|Z)_)?", "", seq_name): seq_name for seq_name in btc_mult_aln},
+                                 num_letters=10, num_words=1)[0]
         else:
             btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
 
@@ -412,7 +412,7 @@ def get_btax_dict(genomes_list,
             if len(btax_orgs) > 2:
                 btax_dict[btax_name].ref_tree_newick = build_tree_by_dist(global_dist_matr[btax_orgs],
                                                                           tree_name=btax_name+"_tree").newick
-            # btax_dict[btax_name].repr_profiles =
+                # btax_dict[btax_name].repr_profiles =
         btax_dict[btax_name].ref_tree_full_names = \
             {full_to_short_seq_names[btax_org]: btax_org for btax_org in btax_orgs}
         btax_dict[btax_name] = btax_dict[btax_name].get_json()

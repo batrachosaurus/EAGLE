@@ -201,6 +201,7 @@ def create_profiles_db(btax_dict,
                        hmmer_inst_dir="",
                        config_path=None,
                        logger=None):
+    # Maybe it will be two databases: prot and nucl
 
     profiles_list = list()
     for btax_name in btax_dict:

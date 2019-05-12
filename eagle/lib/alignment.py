@@ -166,7 +166,8 @@ class MultAln(ConfBase):
     def mult_aln_dict_short_id(self):
         if self.mult_aln_dict:
             if self.short_to_full_seq_names:
-                return dict((self.full_to_short_seq_names[seq_id], seq) for seq_id, seq in self.mult_aln_dict.items())
+                full_to_short_seq_names = self.full_to_short_seq_names
+                return dict((full_to_short_seq_names[seq_id], seq) for seq_id, seq in self.mult_aln_dict.items())
             else:
                 mult_aln_dict_short_ids, short_to_full_seq_names = reduce_seq_names(fasta_dict=self.mult_aln_dict,
                                                                                     num_letters=10)
@@ -178,7 +179,8 @@ class MultAln(ConfBase):
     @property
     def full_to_short_seq_names(self):
         if self.short_to_full_seq_names:
-            return dict(filter(None, map(lambda x: (x[1], x[0]) if x[1] in self.seq_names else None,
+            seq_names = self.seq_names
+            return dict(filter(None, map(lambda x: (x[1], x[0]) if x[1] in seq_names else None,
                                          self.short_to_full_seq_names.items())))
         else:
             return dict()
