@@ -38,7 +38,7 @@ class PhyloTree(ConfBase):
 
     @classmethod
     def load_tree(cls,
-                  tree_file,
+                  tree_path,
                   tree_name="phylo_tree",
                   tmp_dir="tmp",
                   tree_format="newick",
@@ -47,7 +47,7 @@ class PhyloTree(ConfBase):
                   logger=None):
 
         if tree_format == "newick":
-            tree = load_newick(tree_file)
+            tree = load_newick(tree_path)
         else:
             print("loading trees from %s not implemented yet - use load_tree_from_str method" % tree_format)
             return
@@ -143,7 +143,7 @@ def build_tree_by_dist(dist_matrix=None,
         tree_path = os.path.join(tmp_dir, "tree.nwk")
         fastme_cmd = fastme_exec_path + " -i " + dist_matrix_path + " -o " + tree_path
         subprocess.call(fastme_cmd, shell=True)
-        phylo_tree = PhyloTree.load_tree(tree_file=tree_path,
+        phylo_tree = PhyloTree.load_tree(tree_path=tree_path,
                                          tree_format="newick",
                                          full_seq_names=full_seq_names,
                                          tree_name=tree_name,

@@ -657,10 +657,6 @@ class DistanceMatrix(object):
                     print("protdist is starting")
                 phylip_cmd = os.path.join(emboss_inst_dir, "fprotdist") + " -sequence " + aln_fasta_path + \
                              " -method d -outfile " + phylip_matrix_path
-                if mult_aln.logger:
-                    mult_aln.logger.info("protdist finished")
-                else:
-                    print("protdist finished")
             else:
                 if mult_aln.logger:
                     mult_aln.logger.info("dnadist is starting")
@@ -668,11 +664,11 @@ class DistanceMatrix(object):
                     print("dnadist is starting")
                 phylip_cmd = os.path.join(emboss_inst_dir, "fdnadist") + " -sequence " + aln_fasta_path + \
                              " -method f -outfile " + phylip_matrix_path
-                if mult_aln.logger:
-                    mult_aln.logger.info("dnadist finished")
-                else:
-                    print("dnadist finished")
             subprocess.call(phylip_cmd, shell=True)
+            if mult_aln.logger:
+                mult_aln.logger.info("distance calculations finished")
+            else:
+                print("distance calculations finished")
             distance_matrix = cls.load(matrix_path=phylip_matrix_path,
                                        matr_format="phylip",
                                        short_to_full_seq_names=mult_aln.short_to_full_seq_names,

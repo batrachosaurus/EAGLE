@@ -20,7 +20,7 @@ from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BA
     DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME, \
     BACTERIA_GLOBAL_DIST_MATRIX, BACTERIA_SHORT_TO_FULL_ORG_NAMES, BTAX_JSON_NAME, DB_INFO_NAME
 from eagledb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, \
-    create_btax_blastdb, generate_btax_profile, create_profiles_db, get_btax_fna
+    create_btax_blastdb, generate_btax_profiles, create_profiles_db, get_btax_fna
 from eagledb.scheme import GenomeInfo, SeqProfileInfo, BtaxInfo, DBInfo
 
 
@@ -412,7 +412,10 @@ def get_btax_dict(genomes_list,
             if len(btax_orgs) > 2:
                 btax_dict[btax_name].ref_tree_newick = build_tree_by_dist(global_dist_matr[btax_orgs],
                                                                           tree_name=btax_name+"_tree").newick
-                # btax_dict[btax_name].repr_profiles =
+                btax_dict[btax_name].repr_profiles = generate_btax_profiles({},###
+                                                                            db_dir=db_dir,
+                                                                            btax_name=btax_name,
+                                                                            method="hmmer")
         btax_dict[btax_name].ref_tree_full_names = \
             {full_to_short_seq_names[btax_org]: btax_org for btax_org in btax_orgs}
         btax_dict[btax_name] = btax_dict[btax_name].get_json()
@@ -641,10 +644,10 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
                                                  blast_inst_dir=conf_constants.blast_inst_dir,
                                                  logger=eagle_logger)
     # repr_alns = <function that builds alignments for set of representative genes (returns dict = {aln_name: MultAln object})>
-    family_data["repr_profile"] = generate_btax_profile(source={"16S_rRNA": rRNA_aln},
-                                                        db_dir=db_dir,
-                                                        btax_name=family_name,
-                                                        method="hmmer")  # TODO: the source should be repr_alns
+    family_data["repr_profile"] = generate_btax_profiles(source={"16S_rRNA": rRNA_aln},
+                                                         db_dir=db_dir,
+                                                         btax_name=family_name,
+                                                         method="hmmer")  # TODO: the source should be repr_alns
     # family_data["codon_usage"] = get_btax_cu(family_data)
     bact_fam_json_f = open(bact_fam_f_path, 'a')
     bact_fam_json_f.write('  "'+family_name+'": '+json.dumps(family_data)+",\n")

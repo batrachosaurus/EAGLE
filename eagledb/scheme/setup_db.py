@@ -213,7 +213,7 @@ class BtaxInfo(JsonEntry):
         self.blastdb = blastdb
         self.repr_profiles = repr_profiles
         if self.repr_profiles is None:
-            self.repr_profiles = list()
+            self.repr_profiles = dict()
         self.ref_tree_newick = ref_tree_newick
         self.ref_tree_full_names = ref_tree_full_names
         if self.ref_tree_full_names is None:

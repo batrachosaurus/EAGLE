@@ -178,20 +178,17 @@ def create_btax_blastdb(btax_fna_path, btax_name, db_dir, blast_inst_dir=conf_co
     return blast_db_path
 
 
-def generate_btax_profile(source, db_dir, btax_name, method="hmmer"):
-    btax_profiles_tmp_dir = os.path.join(db_dir, btax_name+"_profiles_tmp")
-    if not os.path.exists(btax_profiles_tmp_dir):
-        os.makedirs(btax_profiles_tmp_dir)
-    aln_profiles_list = list()
-    for aln_key in source.keys():
-        aln_profile_path = None
-        aln_profile_path = os.path.join(btax_profiles_tmp_dir, aln_key+".hmm")
-        source[aln_key].get_hmm_profile(profile_path=aln_profile_path, method=method)
-        aln_profiles_list.append(aln_profile_path)
-    btax_profile_path = os.path.join(db_dir, btax_name+".hmm")
-    join_files(aln_profiles_list, btax_profile_path)
-    shutil.rmtree(btax_profiles_tmp_dir)
-    return btax_profile_path
+def generate_btax_profiles(source, db_dir, btax_name, method="hmmer"):
+    btax_profiles_dir = os.path.join(db_dir, btax_name+"_profiles")
+    if not os.path.exists(btax_profiles_dir):
+        os.makedirs(btax_profiles_dir)
+    btax_profiles_dict = dict()
+    for profile_name in source.keys():
+        profile_path = None
+        profile_path = os.path.join(btax_profiles_dir, profile_name+".hmm")
+        source[profile_name].get_hmm_profile(profile_path=profile_path, method=method)
+        btax_profiles_dict[profile_name] = profile_path
+    return btax_profiles_dict
 
 
 def create_profiles_db(btax_dict,
