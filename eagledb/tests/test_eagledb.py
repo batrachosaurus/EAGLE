@@ -4,7 +4,7 @@ import shutil
 import unittest
 
 from eagle.constants import eagle_logger, conf_constants
-from eagledb.constants import TEST_DIR, CONSTANTS_PATH, conf_constants_db
+from eagledb.constants import TEST_DIR, CONSTANTS_PATH, conf_constants_db, BTAX_JSON_NAME, BACTERIA_LIST_F_NAME
 from eagledb.scheme import SeqProfileInfo
 from eagledb import bactdb_creation, files_utils
 
@@ -66,7 +66,7 @@ class TestBactDBCreation(unittest.TestCase):
 
     def test_get_btax_dict(self, use_test_results=True):
         if use_test_results:
-            with open(os.path.join(OUTPUT_DIR, "bacteria.json")) as genomes_list_f:
+            with open(os.path.join(OUTPUT_DIR, BACTERIA_LIST_F_NAME)) as genomes_list_f:
                 genomes_list = json.load(genomes_list_f)
         else:
             genomes_list = self.test_get_bacteria_from_ncbi(last_bact=100, use_prapared=False)
@@ -78,19 +78,19 @@ class TestBactDBCreation(unittest.TestCase):
                                                   build_tree=True,
                                                   num_threads=4,
                                                   save_alignments=True)
-        with open(os.path.join(OUTPUT_DIR, "btax.json"), "w") as btax_dict_f:
+        with open(os.path.join(OUTPUT_DIR, BTAX_JSON_NAME), "w") as btax_dict_f:
             json.dump(btax_dict, btax_dict_f, indent=2)
         self.assertIsInstance(btax_dict, dict)
         return btax_dict
 
     def test_get_btax_blastdb(self, use_test_results=False):
         if use_test_results:
-            with open(os.path.join(OUTPUT_DIR, "btax.json")) as btax_dict_f:
+            with open(os.path.join(OUTPUT_DIR, BTAX_JSON_NAME)) as btax_dict_f:
                 btax_dict = json.load(btax_dict_f)
         else:
             btax_dict = self.test_get_btax_dict()
         btax_dict = bactdb_creation.get_btax_blastdb(btax_dict=btax_dict, db_dir=OUTPUT_DIR)
-        with open(os.path.join(OUTPUT_DIR, "btax.json"), "w") as btax_dict_f:
+        with open(os.path.join(OUTPUT_DIR, BTAX_JSON_NAME), "w") as btax_dict_f:
             json.dump(btax_dict, btax_dict_f, indent=2)
         self.assertIsInstance(btax_dict, dict)
 

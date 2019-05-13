@@ -1,7 +1,5 @@
-import io
 import json
 import os
-from collections import defaultdict
 import multiprocessing as mp
 
 import numpy as np
@@ -9,10 +7,11 @@ import pandas as pd
 from Bio.Seq import Seq
 from Bio.Data.CodonTable import TranslationError
 
-from eagle.constants import conf_constants, eagle_logger, PROFILES_SCAN_OUT, ORF_ALNS_DIR, ORF_TREES_DIR
-from eagle.lib.alignment import HmmerHandler, BlastHandler, MultAln, construct_mult_aln
-from eagle.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees, dump_tree_newick
-from eagle.lib.general import filter_list, worker, reverse_dict
+from eagle.btax_scanner import get_btax_name
+from eagle.constants import conf_constants, eagle_logger, ORF_ALNS_DIR, ORF_TREES_DIR
+from eagle.lib.alignment import BlastHandler, construct_mult_aln
+from eagle.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees
+from eagle.lib.general import worker
 from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out, parse_orf_id
 from eagledb.scheme import BtaxInfo, DBInfo
 
@@ -26,7 +25,6 @@ def explore_orfs(in_fasta,
                  db_json,
                  out_dir="",
                  min_orf_l=None,
-                 mode=None,
                  btax_name=None,
                  num_threads=None,
                  btax_det_method="hmmer",
@@ -39,8 +37,6 @@ def explore_orfs(in_fasta,
         conf_constants.num_threads = int(num_threads)
         num_threads = None
     num_threads = conf_constants.num_threads
-    if mode is None:
-        mode = conf_constants.mode
     if min_orf_l:
         conf_constants.min_orf_l = min_orf_l
         min_orf_l = None
@@ -63,18 +59,15 @@ def explore_orfs(in_fasta,
         return
     with open(db_info.btax_json) as btax_dict_f:
         btax_dict = json.load(btax_dict_f)
-    if btax_name is None or mode != "genome":  # maybe genome mode check is not correct in this case
-        btax_names = get_btax(in_fasta,
-                              db_info.repr_profiles,
-                              btax_names=btax_dict.keys(),
-                              work_dir=out_dir,
-                              mode=mode,
-                              num_threads=conf_constants.num_threads,
-                              method=btax_det_method,
-                              hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                              config_path=config_path)
-    else:
-        btax_names = {"btax_name": btax_name}
+    if btax_name is None:
+        btax_name = get_btax_name(in_fasta,
+                                   db_info.repr_profiles,
+                                   btax_names=btax_dict.keys(),
+                                   work_dir=out_dir,
+                                   num_threads=conf_constants.num_threads,
+                                   method=btax_det_method,
+                                   hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                                   config_path=config_path)
 
     orfs_fasta_path = os.path.join(out_dir, os.path.basename(in_fasta)+".orfs")
     res_gtf_json = get_orfs(in_fasta_path=in_fasta,
@@ -83,118 +76,33 @@ def explore_orfs(in_fasta,
     blast_handler = BlastHandler(inst_dir=conf_constants.blast_inst_dir,
                                  config_path=config_path,
                                  logger=eagle_logger)
-    if mode == "genome":
-        if btax_name is None:
-            btax_name = btax_names.items()[0][1]
-        if btax_name == "Unclassified":
-            eagle_logger.warning("The family was not detected - cannot run further analysis")
-        else:
-            btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
-            eagle_logger.info("Family '%s' will be used for the sequence from %s" % (btax_name, in_fasta))
-            tblastn_out_path = kwargs.get("tblastn_result_path", None)  # for debug and testing
-            if tblastn_out_path is None:
-                tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
-                blast_handler.run_blast_search(blast_type="tblastn",
-                                               query=orfs_fasta_path,
-                                               db=btax_info.blastdb,
-                                               out=tblastn_out_path,
-                                               num_threads=num_threads)
-            res_gtf_json = analyze_tblastn_out(tblastn_out_path=tblastn_out_path,
-                                               orfs_fasta_path=orfs_fasta_path,
-                                               in_fasta=in_fasta,
-                                               btax_data=btax_dict[btax_name],
-                                               res_gtf_json=res_gtf_json,
-                                               num_threads=conf_constants.num_threads,
-                                               work_dir=out_dir,
-                                               save_alignments=kwargs.get("save_alignments", False),
-                                               save_trees=kwargs.get("save_trees", False))
+
+    if btax_name == "Unclassified":
+        eagle_logger.warning("The family was not detected - cannot run further analysis")
     else:
-        # TODO: write blast for contigs mode
-        pass
+        btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
+        eagle_logger.info("Family '%s' will be used for the sequence from %s" % (btax_name, in_fasta))
+        tblastn_out_path = kwargs.get("tblastn_result_path", None)  # for debug and testing
+        if tblastn_out_path is None:
+            tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
+            blast_handler.run_blast_search(blast_type="tblastn",
+                                           query=orfs_fasta_path,
+                                           db=btax_info.blastdb,
+                                           out=tblastn_out_path,
+                                           num_threads=num_threads)
+        res_gtf_json = analyze_tblastn_out(tblastn_out_path=tblastn_out_path,
+                                           orfs_fasta_path=orfs_fasta_path,
+                                           in_fasta=in_fasta,
+                                           btax_data=btax_dict[btax_name],
+                                           res_gtf_json=res_gtf_json,
+                                           num_threads=conf_constants.num_threads,
+                                           work_dir=out_dir,
+                                           save_alignments=kwargs.get("save_alignments", False),
+                                           save_trees=kwargs.get("save_trees", False))
     res_gtf_df = pd.DataFrame(res_gtf_json.values())
     res_gtf_df.sort_values("start", inplace=True)
     res_gtf_df = res_gtf_df[["seqid", "source", "type", "start", "end", "score", "strand", "frame", "attribute"]]
     res_gtf_df.to_csv(os.path.join(out_dir, os.path.basename(in_fasta)+".gtf"), sep="\t", index=False, quotechar="'")
-
-
-def get_btax(in_fasta,
-             profiles_db,
-             btax_names,
-             work_dir="",
-             mode=conf_constants.mode,
-             num_threads=conf_constants.num_threads,
-             method="hmmer",
-             hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-             config_path=None,
-             remove_scan_out=True):
-
-    if method.lower() == "hmmer":
-        hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir,
-                                     tmp_dir=os.path.join(work_dir, "hmmer_tmp"),
-                                     config_path=config_path,
-                                     logger=eagle_logger)
-        eagle_logger.info("hmmscan started")
-        hmmer_handler.run_hmmscan(profiles_db,
-                                  in_fasta,
-                                  num_threads=num_threads,
-                                  out_path=os.path.join(work_dir, PROFILES_SCAN_OUT))
-        eagle_logger.info("hmmscan finished")
-        queries_scores_dict = defaultdict(dict)
-        query_scores_dict = defaultdict(float)
-        lines_from_query = 0
-        query = None
-        profiles_scan_f = open(os.path.join(work_dir, PROFILES_SCAN_OUT))
-        for line_ in profiles_scan_f:
-            line = None
-            line = line_.strip()
-            if not line:
-                continue
-            if line[0: 6] == "Query:":
-                line_list = filter_list(line.split())
-                query = line_list[1]
-            elif query and lines_from_query < 5:
-                lines_from_query += 1
-            elif line.startswith("Domain annotation for each model (and alignments):"):
-                queries_scores_dict[query] = query_scores_dict.copy()
-                query_scores_dict = defaultdict(float)
-                query = None
-                lines_from_query = 0
-            elif query:
-                try:
-                    line_list = filter_list(line.split())
-                    btax_name = _get_btax_name(line_list[8], btax_names)
-                    if btax_name:
-                        query_scores_dict[btax_name] += float(line_list[4])
-                except:
-                    pass
-        if remove_scan_out:
-            os.remove(os.path.join(work_dir, PROFILES_SCAN_OUT))
-
-    if mode == "genome":
-        queries_scores_dict = _aggregate_queries(in_fasta, queries_scores_dict)
-    return _get_queries_btax(queries_scores_dict)
-
-
-def _get_btax_name(profile_name, btax_names):
-    for btax_name in btax_names:
-        btax_name_list = btax_name.lower().split("_")
-        if btax_name_list == profile_name.lower().split("_")[:len(btax_name_list)]:
-            return btax_name
-
-
-def _aggregate_queries(in_fasta, queries_scores_dict):
-    if "." in in_fasta:
-        aggr_key = ".".join(in_fasta.split(".")[: -1])
-    else:
-        aggr_key = in_fasta
-    queries_scores_dict[aggr_key] = defaultdict(float)
-    for query in list(queries_scores_dict.keys()):
-        if query == aggr_key:
-            continue
-        for btax_name in queries_scores_dict[query]:
-            queries_scores_dict[aggr_key][btax_name] += queries_scores_dict[query][btax_name]
-        queries_scores_dict.pop(query)
-    return queries_scores_dict
 
 
 def _get_queries_btax(queries_scores_dict):

@@ -413,6 +413,7 @@ def get_btax_dict(genomes_list,
                 btax_btc_aln_dict = dict()
                 for btc_profile_name, btc_aln in btc_aln_dict.items():
                     btax_btc_aln = btc_aln[btax_orgs].improve_aln(inplace=False)
+                    btax_btc_aln.aln_name = btax_name + "_" + btc_profile_name
                     btax_btc_aln_dict[btc_profile_name] = deepcopy(btax_btc_aln)
                 btax_dict[btax_name].repr_profiles = generate_btax_profiles(btax_btc_aln_dict,
                                                                             db_dir=db_dir,
@@ -563,7 +564,7 @@ def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, con
     for btax_name in btax_dict:
         btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
         btax_info.btax_fna, btax_info.fna_id, downloaded_fna = get_btax_fna(btax_genomes=btax_info.genomes,
-                                                                            btax_name=btax_info.name,
+                                                                            btax_name=btax_name,
                                                                             db_dir=db_dir)
         for i, btax_genome in enumerate(btax_info.genomes):
             genome_info = GenomeInfo.load_from_dict(btax_genome)
@@ -571,7 +572,7 @@ def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, con
                 genome_info.fna_path = downloaded_fna[genome_info.genome_id]
                 btax_info.genomes[i] = genome_info.get_json()
         btax_info.blastdb = create_btax_blastdb(btax_fna_path=btax_info.btax_fna,
-                                                btax_name=btax_info.name,
+                                                btax_name=btax_name,
                                                 db_dir=db_dir,
                                                 blast_inst_dir=conf_constants.blast_inst_dir,
                                                 logger=eagle_logger)

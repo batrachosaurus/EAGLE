@@ -1,7 +1,7 @@
 {
   "all_genomes": "test_results/eagledb/bacteria.json",
   "btax_json": "test_results/eagledb/btax.json",
-  "repr_profiles": null,
+  "repr_profiles": "test_results/eagledb/db_repr_profiles",
   "global_dist_matrix": "test_results/eagledb/global_dist_matr.phylip",
   "all_org_full_names": "test_results/eagledb/short_to_full_org_names.json"
 }

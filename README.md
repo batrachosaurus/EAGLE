@@ -78,7 +78,7 @@ NOTE: sequences names in input fasta file cannot be longer than 10 symbols.
   
 Type the command below to start the analysis:
 ```
-eagle -i <fasta/path> -db <EAGLEdb/scheme/json/path> -m <run_mode> -nt <threads_number> -o <out/dir/path>
+eagle -i <fasta/path> -db <EAGLEdb/scheme/json/path> -nt <threads_number> -o <out/dir/path>
 ```
 for detailed parameters description type:
 ```

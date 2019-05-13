@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.21.13',
+      version='0.22.0',
       author="Denis Moshensky",
       author_email="loven-doo@fbb.msu.ru", 
       description="Essential and Advantageous Genes Location Explorer",
@@ -35,5 +35,6 @@ setup(name='EAGLE',
               "eagle = eagle.__main__:main",
               "eagle.explore_orfs = eagle.orfs_explorer:explore_orfs_cmd",
               "eagle.classify_orfs = eagle.orfs_classifier:classify_orfs_cmd",
+              "eagle.btax_name = eagle.btax_scanner:get_btax_name_cmd",
           ]
       })

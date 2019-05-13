@@ -1,5 +1,5 @@
-- Add repr profiles generation into get_btax_dict
-- Add btax filtration
+- input genome as contigs set is not tested
+- Add MSAProbs + hmmer alignment method for alignments with large sequences amount
 - Add tree construction and repr profiles generation into get_btax_blastdb
 - Remain only genome mode and remobe this parameter
 - tblastn in multithread mode is not stable

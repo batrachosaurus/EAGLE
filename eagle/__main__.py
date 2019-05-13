@@ -25,15 +25,6 @@ def _parse_cmd_args(*args):
                         "--min-orf-l",
                         help="Minimal length for ORF to analyze",
                         required=False)
-    parser.add_argument("-m",
-                        "--mode",
-                        help="Mode to run eagle: 'genome' - parses input fasta file as single genome "
-                             "even if there not only one aequence; 'contigs' - parses input fasta files as "
-                             "independent contigs (default: 'genome'). NOTE: sequences in one file can not be " 
-                             "analyzed with different modes. If you need this split your input fasta into " 
-                             "several files each of them could be analyzed using proper mode",
-                        required=False,
-                        default='genome')
     parser.add_argument("-btn",
                         "--btax-name",
                         help="The name of base taxon. If specified eagle will not scan the eagledb and "

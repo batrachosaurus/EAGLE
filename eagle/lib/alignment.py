@@ -152,9 +152,6 @@ class MultAln(ConfBase):
     def __copy__(self):
         return self.copy()
 
-    def __deepcopy__(self, memodict={}):
-        return self._sub_mult_aln(mult_aln_dict=deepcopy(self.mult_aln_dict))
-
     def __contains__(self, item):
         return item in self.mult_aln_dict
 

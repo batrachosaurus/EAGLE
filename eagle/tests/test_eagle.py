@@ -5,7 +5,7 @@ import unittest
 
 from eagle.constants import TEST_DIR, eagle_logger, CONSTANTS_PATH, conf_constants
 from eagledb.scheme import DBInfo
-from eagle import orfs_explorer
+from eagle import orfs_explorer, btax_scanner
 
 
 PACKAGE_DIR = 'eagle'
@@ -39,13 +39,32 @@ class TestORFsExplorer(unittest.TestCase):
             in_fasta=os.path.join(INPUT_DIR, "NC_000913.fasta"),  # Escherichia coli K-12 MG1655
             db_json=self.db_info_dict,
             out_dir=OUTPUT_DIR,
-            btax_name="Enterobacterales",
+            btax_name="Enterobacterales_related",
             num_threads=4,
             tblastn_result_path=os.path.join(OUTPUT_DIR, "NC_000913.fasta.bl"),
             save_alignments=True,
             save_trees=True,
         )
         self.assertTrue(True)
+
+
+class TestBTaxScanner(unittest.TestCase):
+
+    db_info_dict = TestORFsExplorer.db_info_dict
+    with open(db_info_dict["btax_json"]) as btax_dict_f:
+        btax_dict = json.load(btax_dict_f)
+
+    def test_get_btax_name(self):
+        exp_btax_name = "Enterobacterales_related"
+        btax_name = btax_scanner.get_btax_name(
+            in_fasta=os.path.join(INPUT_DIR, "NC_000913.fasta"),  # Escherichia coli K-12 MG1655
+            profiles_db=self.db_info_dict["repr_profiles"],
+            btax_names=self.btax_dict.keys(),
+            work_dir=OUTPUT_DIR,
+            num_threads=4
+            )
+        eagle_logger.info("got base taxon name '%s'", btax_name)
+        self.assertEqual(exp_btax_name, btax_name)
 
 
 if __name__ == "__main__":

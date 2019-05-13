@@ -204,7 +204,7 @@ def create_profiles_db(btax_dict,
     for btax_name in btax_dict:
         btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
         try:
-            profiles_list.extend(btax_info.repr_profiles)
+            profiles_list.extend(btax_info.repr_profiles.values())
         except (KeyError, AttributeError, TypeError):
             continue
     profiles_db_path = os.path.join(db_dir, profiles_db_name)
