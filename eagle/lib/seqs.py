@@ -1,5 +1,6 @@
 import os
 import shutil
+from copy import deepcopy
 from collections import defaultdict, Counter
 import subprocess
 
@@ -95,6 +96,15 @@ class SeqsDict(object):
                     self.seqs_order[seq_id] = i
                     i += 1
 
+    def __del__(self):
+        if self.low_memory:
+            dat_path = self.seqs_array.filename
+            del self.seqs_array
+            os.remove(dat_path)
+
+    def __contains__(self, item):
+        return item is self.seqs_order
+
     def keys(self):
         return map(lambda si: si[0], sorted(self.seqs_order.items(), key=lambda si: si[1]))
 
@@ -106,7 +116,12 @@ class SeqsDict(object):
 
     def rename_seqs(self, old_to_new_dict):
         for old_seq in old_to_new_dict:
-            self.seqs_order[old_to_new_dict[old_seq]] = self.seqs_order.pop(old_seq)
+            if old_seq in self.seqs_order:
+                self.seqs_order[old_to_new_dict[old_seq]] = self.seqs_order.pop(old_seq)
+
+    def copy(self):
+        # TODO: implement _sub_seqs_dict method
+        return deepcopy(self)
 
     @classmethod
     def load_from_file(cls, seqs_path, seqs_format="fasta", low_memory='auto', **kwargs):

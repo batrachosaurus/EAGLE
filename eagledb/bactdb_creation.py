@@ -361,7 +361,8 @@ def get_btax_dict(genomes_list,
     for btc_profile_dict in btc_profiles:
         btc_profile_info = SeqProfileInfo.load_from_dict(btc_profile_dict)
         btc_profile_types[btc_profile_info.name] = btc_profile_info.seq_type
-    btc_dist_dict = defaultdict(pandas.DataFrame)
+    btc_dist_dict = dict()
+    btc_aln_dict = dict()
     short_to_full_seq_names = dict()
     for btc_profile_name in btc_fasta_dict:
         btc_mult_aln = construct_mult_aln(seq_dict=btc_fasta_dict[btc_profile_name],
@@ -369,7 +370,8 @@ def get_btax_dict(genomes_list,
                                           aln_name=btc_profile_name+"_aln",
                                           tmp_dir=kwargs.get("aln_tmp_dir", "mult_aln_tmp"),
                                           method=conf_constants_db.btc_profile_aln_method,
-                                          num_threads=num_threads)
+                                          num_threads=num_threads,
+                                          **kwargs)  # low_memory can be set through kwargs
 
         # TODO: only the code from else block should be remained after moving 16S rRNA obtaining out from get_bacteria_from_ncbi
         if btc_profile_name == "16S_rRNA":
@@ -385,6 +387,8 @@ def get_btax_dict(genomes_list,
         short_to_full_seq_names.update(btc_mult_aln.short_to_full_seq_names)
         if kwargs.get("save_alignments", False):
             btc_mult_aln.dump_alignment(aln_fasta_path=os.path.join(db_dir, btc_mult_aln.aln_name+".fasta"))
+        btc_mult_aln.rename_seqs(seq_ids_to_orgs)
+        btc_aln_dict[btc_profile_name] = deepcopy(btc_mult_aln)
 
     global_dist_matr = get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs)
     global_dist_matr_path = os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX)
@@ -397,13 +401,13 @@ def get_btax_dict(genomes_list,
     # for btax_name in btax_dict:
     #     btax_dict[btax_name] = filter_btax(btax_dict[btax_name], ...)
 
-    # while btax_to_merge and n_it < conf_constants_db.:
+    # while btax_to_merge:
     #    for btax_name in btax_to_merge:
     #
     #        btax_dict[]
-    #    n_it += 1
 
     full_to_short_seq_names = {v: k for k, v in short_to_full_seq_names.items()}
+    # TODO: the code below can be parallelized
     for btax_name in btax_dict:
         btax_orgs = set(GenomeInfo.load_from_dict(genome).org_name for genome in btax_dict[btax_name].genomes)
         if build_tree:
@@ -412,7 +416,11 @@ def get_btax_dict(genomes_list,
             if len(btax_orgs) > 2:
                 btax_dict[btax_name].ref_tree_newick = build_tree_by_dist(global_dist_matr[btax_orgs],
                                                                           tree_name=btax_name+"_tree").newick
-                btax_dict[btax_name].repr_profiles = generate_btax_profiles({},###
+                btax_btc_aln_dict = dict()
+                for btc_profile_name, btc_aln in btc_aln_dict.items():
+                    btax_btc_aln = btc_aln[btax_orgs].improve_aln(inplace=False)
+                    btax_btc_aln_dict[btc_profile_name] = deepcopy(btax_btc_aln)
+                btax_dict[btax_name].repr_profiles = generate_btax_profiles(btax_btc_aln_dict,
                                                                             db_dir=db_dir,
                                                                             btax_name=btax_name,
                                                                             method="hmmer")
@@ -449,6 +457,58 @@ def get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs):
         sumw += float(btc_profile_info.weight)
     global_dist_matrix.matr = global_dist_matrix.matr / sumw
     return global_dist_matrix
+
+
+def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
+    if k_max is None:
+        k_max = conf_constants_db.k_max
+    if k_min is None:
+        k_min = conf_constants_db.k_min
+
+    assert isinstance(btax_dict, defaultdict) and btax_dict.default_factory is BtaxInfo, \
+        "ERROR: the value for btax_dict should be defaultdict(BtaxInfo)"
+
+    btax_to_merge = set()
+    round1 = True
+    while btax_to_merge or round1:
+        for btax_name in btax_to_merge:
+            closest_btax_name = None
+            #closest_btax_name = get_closest_btax_name()
+            #btax_dict.pop(btax_name), btax_dict.pop(closest_btax_name)
+            #btax_dict[closest_btax_name+","+btax_name] =
+            btax_to_merge.remove(btax_name)
+            try:
+                btax_to_merge.remove(closest_btax_name)
+            except KeyError:
+                continue
+        for btax_name in btax_dict:
+            btax_orgs = set(btax_dict[btax_name].genomes)###
+            btax_dict[btax_name] = filter_btax(btax_info=btax_dict[btax_name],
+                                               btax_dist_matr=global_dist_matr[btax_orgs],
+                                               k_max=k_max)
+            if len(btax_dict[btax_name].genomes) < k_min:
+                btax_to_merge.add(btax_name)
+        round1 = False
+    return btax_dict
+
+
+def filter_btax(btax_info, btax_dist_matr, k_max=None):
+    if k_max is None:
+        k_max = conf_constants_db.k_max
+    assert isinstance(btax_info, BtaxInfo), \
+        "ERROR: the value for btax_info parameter should be eagledb.scheme.setup_db.BtaxInfo object"
+
+    btax_info_genomes = [GenomeInfo.load_from_dict(genome_info_dict) for genome_info_dict in btax_info.genomes]
+    while len(btax_info.genomes) > k_max:
+        min_dist = None
+        min_dist_i = None
+        for i, genome_info in enumerate(btax_info_genomes):
+            dist = btax_dist_matr[genome_info].sum()
+            if min_dist is None or dist < min_dist:
+                min_dist = dist
+                min_dist_i = i
+        del btax_info.genomes[min_dist_i], btax_info_genomes[min_dist_i]
+    return btax_info
 
 
 def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, config_path=None):

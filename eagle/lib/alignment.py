@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import multiprocessing as mp
+from copy import deepcopy
 from collections import defaultdict, OrderedDict, Counter
 
 import numpy as np
@@ -19,6 +20,7 @@ class MultAln(ConfBase):
     # Consider inherit it from SeqsDict and making ConfBase the mixin
 
     dist_matr_method = "phylip"
+    low_memory = False
 
     def __init__(self,
                  mult_aln_dict=None,
@@ -70,8 +72,12 @@ class MultAln(ConfBase):
             if states_seq:
                 states_seq = states_seq[item]
             return self._sub_mult_aln(mult_aln_dict=SeqsDict.load_from_dict({seq: self[seq][item] for seq in self}),
+                                      aln_type=self.aln_type,
                                       aln_name=self.aln_name+"[%s:%s]" % (item.start, item.stop),
                                       states_seq=states_seq)
+        elif type(item) in (list, set) and isinstance(self.mult_aln_dict, SeqsDict):
+            return self._sub_mult_aln(self.mult_aln_dict.get_sample(seqs=item, low_memory=self.low_memory),
+                                      aln_type=self.aln_type)
         else:
             return self.mult_aln_dict[item]
 
@@ -99,7 +105,7 @@ class MultAln(ConfBase):
                       mult_aln_dict,
                       aln_type=None,
                       states_seq=None,
-                      aln_name=None,
+                      aln_name="mult_aln",
                       tmp_dir=None,
                       short_to_full_seq_names=None,
                       emboss_inst_dir=None,
@@ -115,7 +121,7 @@ class MultAln(ConfBase):
         if tmp_dir is None:
             tmp_dir = generate_random_string(10) + "_mult_aln_tmp"
         if short_to_full_seq_names is None:
-            short_to_full_seq_names = self.short_to_full_seq_names
+            short_to_full_seq_names = self.short_to_full_seq_names.copy()
         if emboss_inst_dir is None:
             emboss_inst_dir = self.emboss_inst_dir
         if hmmer_inst_dir is None:
@@ -140,12 +146,36 @@ class MultAln(ConfBase):
         mult_aln.short_to_full_seq_names = short_to_full_seq_names
         return mult_aln
 
+    def copy(self):
+        return self._sub_mult_aln(mult_aln_dict=self.mult_aln_dict)
+
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memodict={}):
+        return self._sub_mult_aln(mult_aln_dict=deepcopy(self.mult_aln_dict))
+
+    def __contains__(self, item):
+        return item in self.mult_aln_dict
+
     @property
     def seq_names(self):
         if self.mult_aln_dict:
             return list(self.mult_aln_dict.keys())
         else:
             return list()
+
+    def rename_seqs(self, old_to_new_dict):
+        if isinstance(self.mult_aln_dict, SeqsDict):
+            self.mult_aln_dict.rename_seqs(old_to_new_dict)
+        else:
+            for old_seq in old_to_new_dict:
+                if old_seq in self.mult_aln_dict:
+                    self.mult_aln_dict[old_to_new_dict[old_seq]] = self.mult_aln_dict.pop(old_seq)
+        for short_name in list(self.short_to_full_seq_names.keys()):
+            self.short_to_full_seq_names[short_name] = old_to_new_dict.get(self.short_to_full_seq_names[short_name],
+                                                                           self.short_to_full_seq_names[short_name])
+        self._distance_matrix = None
 
     @property
     def length(self):
@@ -250,6 +280,7 @@ class MultAln(ConfBase):
                 impr_mult_aln_dict = {seq_id: "".join(self[seq_id][c1:c2] for c1, c2 in coords)
                                       for seq_id in self.seq_names}
                 impr_mult_aln = self._sub_mult_aln(mult_aln_dict=SeqsDict.load_from_dict(impr_mult_aln_dict),
+                                                   aln_type=self.aln_type,
                                                    aln_name="impr_"+self.aln_name)
                 return impr_mult_aln
 
@@ -321,6 +352,7 @@ class MultAln(ConfBase):
                 print("paralogs removed")
         else:
             filtered_aln = self._sub_mult_aln(mult_aln_dict=mult_aln_dict_filt,
+                                              aln_type=self.aln_type,
                                               aln_name="no_par_"+self.aln_name,
                                               short_to_full_seq_names=short_to_full_seq_names_filt)
             if self.logger:
@@ -406,6 +438,7 @@ class MultAln(ConfBase):
             nucl_aln_dict[seq_name] = nucl_accord_prot(self[seq_name],
                                                        nucl_fasta_dict[seq_name][match.start()*3: match.end()*3])
         nucl_aln = self._sub_mult_aln(SeqsDict.load_from_dict(nucl_aln_dict),
+                                      aln_type="nucl",
                                       aln_name="nucl_"+self.aln_name)
         return nucl_aln
 
@@ -589,7 +622,7 @@ class DistanceMatrix(object):
         return {full_name: short_name for short_name, full_name in self.short_to_full_seq_names.items()}
 
     def __getitem__(self, item):
-        if type(item) in (list, tuple, set, frozenset):
+        if type(item) in (list, set):
             seq_names = sorted(item, key=lambda i: self.seqs_order[i])
             matr = list()
             short_to_full_seq_names = dict()
@@ -1002,7 +1035,8 @@ def construct_mult_aln(seq_dict=None,
                                       aln_name=aln_name,
                                       config_path=config_path,
                                       logger=logger,
-                                      restore_stops=True)
+                                      restore_stops=True,
+                                      **kwargs)
     mult_aln.emboss_inst_dir = emboss_inst_dir
     mult_aln.hmmer_inst_dir = hmmer_inst_dir
     mult_aln.tmp_dir = tmp_dir
