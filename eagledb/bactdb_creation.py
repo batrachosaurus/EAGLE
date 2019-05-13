@@ -513,7 +513,7 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
             btax_dict[btax_name] = filter_btax(btax_info=btax_dict[btax_name],
                                                btax_dist_matr=global_dist_matr[btax_orgs],
                                                k_max=k_max)
-            if len(btax_dict[btax_name].genomes) < k_min:
+            if len(btax_dict[btax_name].ref_tree_full_names) < k_min:
                 btax_to_merge.add(btax_name)
         round1 = False
     return btax_dict
@@ -536,7 +536,7 @@ def filter_btax(btax_info, btax_dist_matr, k_max=None):
         "ERROR: the value for btax_info parameter should be eagledb.scheme.setup_db.BtaxInfo object"
 
     btax_info_genomes = [GenomeInfo.load_from_dict(genome_info_dict) for genome_info_dict in btax_info.genomes]
-    while len(btax_info.genomes) > k_max:
+    while len(btax_info.ref_tree_full_names) > k_max:
         min_dist_sum = None
         min_dist = None
         min_dist_i = None
