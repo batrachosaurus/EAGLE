@@ -121,6 +121,10 @@ class GenomeInfo(JsonEntry):
             "is_repr": (GenomeInfo.is_repr_key,),
         }
 
+    @classmethod
+    def org_name_from_dict(cls, in_dict):
+        return in_dict["org_name"]
+
 
 class SeqProfileInfo(JsonEntry):
 

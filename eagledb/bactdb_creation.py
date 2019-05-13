@@ -397,17 +397,11 @@ def get_btax_dict(genomes_list,
     with open(short_to_full_seq_names_path, "w") as short_to_full_org_names_f:
         json.dump(short_to_full_seq_names, short_to_full_org_names_f, indent=2)
 
-    # Steps follows can be parallel
-    # for btax_name in btax_dict:
-    #     btax_dict[btax_name] = filter_btax(btax_dict[btax_name], ...)
-
-    # while btax_to_merge:
-    #    for btax_name in btax_to_merge:
-    #
-    #        btax_dict[]
+    eagle_logger.info("base taxons standardisation started")
+    btax_dict = standardize_btax(btax_dict=btax_dict, global_dist_matr=global_dist_matr)
+    eagle_logger.info("base taxons standardisation finished")
 
     full_to_short_seq_names = {v: k for k, v in short_to_full_seq_names.items()}
-    # TODO: the code below can be parallelized
     for btax_name in btax_dict:
         btax_orgs = set(GenomeInfo.load_from_dict(genome).org_name for genome in btax_dict[btax_name].genomes)
         if build_tree:
@@ -436,7 +430,6 @@ def get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs):
     global_dist_matrix = DistanceMatrix(seqs_order=seqs_order,
                                         matr=np.zeros((nseqs, nseqs)),
                                         aln_type="btc_global")
-    print(global_dist_matrix.matr.shape)###
     sumw = 0.0
     for btc_profile in btc_profiles:
         btc_profile_info = SeqProfileInfo.load_from_dict(btc_profile)
@@ -471,18 +464,51 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
     btax_to_merge = set()
     round1 = True
     while btax_to_merge or round1:
-        for btax_name in btax_to_merge:
-            closest_btax_name = None
-            #closest_btax_name = get_closest_btax_name()
-            #btax_dict.pop(btax_name), btax_dict.pop(closest_btax_name)
-            #btax_dict[closest_btax_name+","+btax_name] =
-            btax_to_merge.remove(btax_name)
-            try:
-                btax_to_merge.remove(closest_btax_name)
-            except KeyError:
-                continue
+        btax_dist_matr0 = None
+        while btax_to_merge:
+            closest_btax_pair = None
+            min_btax_dist = None
+            btax_dist_matr = DistanceMatrix(seqs_order={btax_name_: i for i, btax_name_ in enumerate(btax_dict.keys())},
+                                            matr=np.zeros((len(btax_dict), len(btax_dict))))
+            for btax_name in btax_to_merge:
+                for btax_name_ in btax_dict:
+                    if btax_name != btax_name_ and btax_dist_matr[btax_name][btax_name_] == 0.0:
+                        btax_dists = btax_dist_matr[btax_name]
+                        if btax_dist_matr0 is not None and btax_name in btax_dist_matr0 and btax_name_ in btax_dist_matr0:
+                            btax_dists[btax_name_] = btax_dist_matr0[btax_name][btax_name_]
+                        else:
+                            btax_dists[btax_name_] = get_btax_dist(
+                                btax1_orgs=set(GenomeInfo.org_name_from_dict(genome)
+                                               for genome in btax_dict[btax_name].genomes),
+                                btax2_orgs=set(GenomeInfo.org_name_from_dict(genome)
+                                               for genome in btax_dict[btax_name_].genomes),
+                                global_dist_matr=global_dist_matr
+                            )
+
+                        btax_dist_matr[btax_name] = btax_dists
+                closest_btax_name = None
+                btax_dists = btax_dist_matr[btax_name]
+                closest_btax_name = btax_dists[btax_dists > 0.0].idxmin()
+                if min_btax_dist is None or btax_dists[closest_btax_name] < min_btax_dist:
+                    min_btax_dist = btax_dists[closest_btax_name]
+                    closest_btax_pair = None
+                    closest_btax_pair = (closest_btax_name, btax_name)
+            if closest_btax_pair is not None:
+                btax_dict[closest_btax_pair[0].replace("_related", "")+"_related"] = BtaxInfo(
+                    name=",".join((btax_dict[closest_btax_pair[0]].name, btax_dict[closest_btax_pair[1]].name)),
+                    genomes=btax_dict.pop(closest_btax_pair[0]).genomes + btax_dict.pop(closest_btax_pair[1]).genomes
+                )
+
+                btax_to_merge.remove(closest_btax_pair[1])
+                try:
+                    btax_to_merge.remove(closest_btax_pair[0])
+                except KeyError:
+                    pass
+            btax_dist_matr0 = deepcopy(btax_dist_matr)
+
+        # TODO: the code below can be parallelized
         for btax_name in btax_dict:
-            btax_orgs = set(btax_dict[btax_name].genomes)###
+            btax_orgs = set(GenomeInfo.org_name_from_dict(genome) for genome in btax_dict[btax_name].genomes)
             btax_dict[btax_name] = filter_btax(btax_info=btax_dict[btax_name],
                                                btax_dist_matr=global_dist_matr[btax_orgs],
                                                k_max=k_max)
@@ -490,6 +516,16 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
                 btax_to_merge.add(btax_name)
         round1 = False
     return btax_dict
+
+
+def get_btax_dist(btax1_orgs, btax2_orgs, global_dist_matr):
+    n = 0
+    sum_dist = 0.0
+    for org in btax1_orgs:
+        for org_ in btax2_orgs:
+            sum_dist += global_dist_matr[org][org_]
+            n += 1
+    return sum_dist / float(n)
 
 
 def filter_btax(btax_info, btax_dist_matr, k_max=None):
@@ -500,12 +536,15 @@ def filter_btax(btax_info, btax_dist_matr, k_max=None):
 
     btax_info_genomes = [GenomeInfo.load_from_dict(genome_info_dict) for genome_info_dict in btax_info.genomes]
     while len(btax_info.genomes) > k_max:
+        min_dist_sum = None
         min_dist = None
         min_dist_i = None
         for i, genome_info in enumerate(btax_info_genomes):
-            dist = btax_dist_matr[genome_info].sum()
-            if min_dist is None or dist < min_dist:
+            dist_sum = btax_dist_matr[genome_info.org_name].sum()
+            dist = btax_dist_matr[genome_info.org_name].min()
+            if min_dist is None or dist < min_dist or (dist == min_dist and dist_sum < min_dist_sum):
                 min_dist = dist
+                min_dist_sum = dist_sum
                 min_dist_i = i
         del btax_info.genomes[min_dist_i], btax_info_genomes[min_dist_i]
     return btax_info

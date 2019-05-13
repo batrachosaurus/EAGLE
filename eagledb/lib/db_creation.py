@@ -185,7 +185,7 @@ def generate_btax_profiles(source, db_dir, btax_name, method="hmmer"):
     btax_profiles_dict = dict()
     for profile_name in source.keys():
         profile_path = None
-        profile_path = os.path.join(btax_profiles_dir, profile_name+".hmm")
+        profile_path = os.path.join(btax_profiles_dir, btax_name+"_"+profile_name+".hmm")
         source[profile_name].get_hmm_profile(profile_path=profile_path, method=method)
         btax_profiles_dict[profile_name] = profile_path
     return btax_profiles_dict

@@ -28,6 +28,8 @@ class TestBactDBCreation(unittest.TestCase):
     conf_constants.fastme_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "fastme")
     conf_constants.msaprobs_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "msaprobs")
     conf_constants_db.btc_profile_aln_method = "MAFFT"
+    conf_constants_db.k_max = 15
+    conf_constants_db.k_min = 10
 
     def test_get_bacteria_from_ncbi(self, last_bact=30, use_prapared=True):
         if use_prapared:
