@@ -512,11 +512,10 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
 
         # TODO: the code below can be parallelized
         for btax_name in btax_dict:
-            btax_orgs = set(GenomeInfo.org_name_from_dict(genome) for genome in btax_dict[btax_name].genomes)
-            btax_dict[btax_name] = filter_btax(btax_info=btax_dict[btax_name],
-                                               btax_dist_matr=global_dist_matr[btax_orgs],
-                                               k_max=k_max)
-            if len(btax_dict[btax_name].ref_tree_full_names) < k_min:
+            btax_dict[btax_name], k = filter_btax(btax_info=btax_dict[btax_name],
+                                                  global_dist_matr=global_dist_matr,
+                                                  k_max=k_max)
+            if k < k_min:
                 btax_to_merge.add(btax_name)
         round1 = False
     return btax_dict
@@ -532,27 +531,32 @@ def get_btax_dist(btax1_orgs, btax2_orgs, global_dist_matr):
     return sum_dist / float(n)
 
 
-def filter_btax(btax_info, btax_dist_matr, k_max=None):
+def filter_btax(btax_info, global_dist_matr, k_max=None):
     if k_max is None:
         k_max = conf_constants_db.k_max
     assert isinstance(btax_info, BtaxInfo), \
         "ERROR: the value for btax_info parameter should be eagledb.scheme.setup_db.BtaxInfo object"
 
-    btax_info_genomes = [GenomeInfo.load_from_dict(genome_info_dict) for genome_info_dict in btax_info.genomes]
-    while len(btax_info.ref_tree_full_names) > k_max:
+    btax_orgs = set(GenomeInfo.load_from_dict(genome_info_dict).org_name for genome_info_dict in btax_info.genomes)
+    btax_dist_matr = global_dist_matr[btax_orgs]
+    while len(btax_orgs) > k_max:
         min_dist_sum = None
         min_dist = None
         min_dist_i = None
-        for i, genome_info in enumerate(btax_info_genomes):
-            genome_dist = btax_dist_matr[genome_info.org_name]
+        org_name_remove = None
+        for i, org_name in enumerate(btax_orgs):
+            genome_dist = btax_dist_matr[org_name]
             dist_sum = genome_dist.sum()
-            dist = genome_dist[~genome_dist.index.isin([genome_info.org_name])].min()
+            dist = genome_dist[~genome_dist.index.isin([org_name])].min()
             if min_dist is None or dist < min_dist or (dist == min_dist and dist_sum < min_dist_sum):
                 min_dist = dist
                 min_dist_sum = dist_sum
                 min_dist_i = i
-        del btax_info.genomes[min_dist_i], btax_info_genomes[min_dist_i]
-    return btax_info
+                org_name_remove = None
+                org_name_remove = org_name
+        btax_orgs.remove(org_name_remove)
+        del btax_info.genomes[min_dist_i]
+    return btax_info, len(btax_orgs)
 
 
 def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, config_path=None):
