@@ -541,8 +541,9 @@ def filter_btax(btax_info, btax_dist_matr, k_max=None):
         min_dist = None
         min_dist_i = None
         for i, genome_info in enumerate(btax_info_genomes):
-            dist_sum = btax_dist_matr[genome_info.org_name].sum()
-            dist = btax_dist_matr[genome_info.org_name].min()
+            genome_dist = btax_dist_matr[genome_info.org_name]
+            dist_sum = genome_dist.sum()
+            dist = genome_dist[~genome_dist.index.isin([genome_info.org_name])].min()
             if min_dist is None or dist < min_dist or (dist == min_dist and dist_sum < min_dist_sum):
                 min_dist = dist
                 min_dist_sum = dist_sum
