@@ -232,7 +232,11 @@ class MultAln(ConfBase):
                     inplace=False,
                     **kwargs):
         # TODO: write methods for removing gaps between blocks
-
+        if self.logger:
+            self.logger.info("'%s' multiple alignment improvement started" % self.aln_name)
+        else:
+            print("'%s' multiple alignment improvement started" % self.aln_name)
+        
         if dist_filt:
             # Constructs a list of rarefied by different distance thresholds alignments and runs improve_aln on it with dist_filt=False
             pass
@@ -273,12 +277,20 @@ class MultAln(ConfBase):
                 for seq_id in seqs_ids:
                     self.mult_aln_dict[seq_id] = "".join(self.mult_aln_dict[seq_id][c1: c2] for c1, c2 in coords)
                 self._distance_matrix = None
+                if self.logger:
+                    self.logger.info("'%s' multiple alignment improved" % self.aln_name)
+                else:
+                    print("'%s' multiple alignment improved" % self.aln_name)
             else:
                 impr_mult_aln_dict = {seq_id: "".join(self[seq_id][c1:c2] for c1, c2 in coords)
                                       for seq_id in self.seq_names}
                 impr_mult_aln = self._sub_mult_aln(mult_aln_dict=SeqsDict.load_from_dict(impr_mult_aln_dict),
                                                    aln_type=self.aln_type,
                                                    aln_name="impr_"+self.aln_name)
+                if self.logger:
+                    self.logger.info("'%s' multiple alignment improved" % self.aln_name)
+                else:
+                    print("'%s' multiple alignment improved" % self.aln_name)
                 return impr_mult_aln
 
     @staticmethod
@@ -320,6 +332,11 @@ class MultAln(ConfBase):
         :param inplace:
         :return:
         """
+        if self.logger:
+            self.logger.info("paralogs removing started")
+        else:
+            print("paralogs removing started")
+        
         org_dist_dict = defaultdict(dict)
         for seq_name in self.distance_matrix.seq_names:
             org_dist_dict[seq_ids_to_orgs[seq_name]][seq_name] = sum(map(float, self.distance_matrix[seq_name]))
