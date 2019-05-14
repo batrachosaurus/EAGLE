@@ -1005,7 +1005,9 @@ def construct_mult_aln(seq_dict=None,
             logger.info("MAFFT is starting")
         else:
             print("MAFFT is starting")
-        mafft_cmd = mafft_exec_path + " --auto --thread " + str(num_threads) + " " + fasta_path + " > " + out_fasta_path
+        mafft_cmd = mafft_exec_path + " --auto --op " + kwargs.get("op", kwargs.get("gap_open_penalty", 1.53)) + \
+                    " --ep " + kwargs.get("ep", kwargs.get("gap_ext_penalty", 0.123)) + " --thread " + str(num_threads) + \
+                    " " + fasta_path + " > " + out_fasta_path
         subprocess.call(mafft_cmd, shell=True)
         if logger:
             logger.info("MAFFT finished")
