@@ -371,6 +371,7 @@ def get_btax_dict(genomes_list,
                                           tmp_dir=kwargs.get("aln_tmp_dir", "mult_aln_tmp"),
                                           method=conf_constants_db.btc_profile_aln_method,
                                           num_threads=num_threads,
+                                          logger=eagle_logger,
                                           op=5.0,
                                           ep=0.5,
                                           **kwargs)  # low_memory can be set through kwargs
