@@ -371,7 +371,8 @@ def get_btax_dict(genomes_list,
                                           tmp_dir=kwargs.get("aln_tmp_dir", "mult_aln_tmp"),
                                           method=conf_constants_db.btc_profile_aln_method,
                                           num_threads=num_threads,
-                                          op=2.4,
+                                          op=5.0,
+                                          ep=0.5,
                                           **kwargs)  # low_memory can be set through kwargs
 
         # TODO: only the code from else block should be remained after moving 16S rRNA obtaining out from get_bacteria_from_ncbi
