@@ -373,14 +373,14 @@ def _get_part_size_list(num_letters, num_words):
         if num_words >= 4:
             return [2, 3, 1, 1]
         if num_words == 3:
-            return [3, 3, 1]
+            return [2, 3, 1]
         if num_words == 2:
             return [3, 3]
         if num_words == 1:
             return [6]
     if num_letters == 9:
         if num_words >= 4:
-            return [3, 3, 1, 1]
+            return [2, 3, 1, 1]
         if num_words == 3:
             return [3, 3, 1]
         if num_words == 2:
@@ -389,7 +389,7 @@ def _get_part_size_list(num_letters, num_words):
             return [7]
     if num_letters == 10:
         if num_words >= 4:
-            return [3, 4, 1, 1]
+            return [2, 4, 1, 1]
         if num_words == 3:
             return [3, 4, 1]
         if num_words == 2:
