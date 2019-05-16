@@ -3,12 +3,13 @@
 
 ## Requirements
 MUSCLE  
+MAFFT  
+MSAProbs  
 HMMER3  
 EMBOSS + PHYLIPNEW (EMBASSY package)  
 FastME 2.07  
-KaKs Calculator 2.0  
 Blast+  
-Redis  
+KaKs_Calculator 2.0  
 Python 2.7  
 ### Python packages:  
 &nbsp; - wget >= 3.2  
@@ -20,10 +21,26 @@ Python 2.7
 &nbsp; - DendroPy >= 4.4.0  
 &nbsp; - biopython >= 1.72  
 &nbsp; - redis >= 2.10.6  
+&nbsp; - psutil >= 5.6.1  
 
 ## How to use
 
-### Install it:
+### Pull the docker image
+```
+docker pull loven7doo/eagle
+```
+The workdir in this image is '/EAGLE' so to run all commands from the image use this way:
+```
+docker run -v </host/system/workdr/location/>:/EAGLE <any command>
+```
+Do not forget to replace the path to the host system workdir with '/EAGLE' in commands
+
+If docker is not the appropriate way follow steps below (requirements installation and the package installation)
+
+### Instal the requirements
+It can be very difficult to install some requirements on Windows. Linux is recommended to use.
+
+### Install the package:
 ```
 pip install git+https://github.com/loven-doo/EAGLE.git --upgrade  
 ```
@@ -36,7 +53,7 @@ pip install git+https://github.com/loven-doo/EAGLE.git@dev --upgrade
 You can (recommended way) download the default database from [here](http://ma.fbb.msu.ru/loven-doo/EAGLE/EAGLEdb.tar.gz)  
 Other option is to build it from prepared lists of NCBI genomes:
 ```
-EAGLEdb -dbt bacteria
+eagle_db -dbt bacteria
 ```
   
 Also below is the instruction for building a database from NCBI if you do not like to use the default database or prepared lists (another option):  
@@ -45,38 +62,39 @@ Also below is the instruction for building a database from NCBI if you do not li
    
 2. Prepare genomes lists:
 ```
-EAGLEdb.prepare_ncbi_summary <downloaded/summary/path> <prepared/genomes/list/path>
+eagle_db.prepare_ncbi_summary <downloaded/summary/path> <prepared/genomes/list/path>
 ```
    
 3. Build the database
 ```
-EAGLEdb -dbt bacteria -igenbank <prepared/genomes/list/path>
+eagle_db -dbt bacteria -igenbank <prepared/genomes/list/path>
 ```
   
 
 All this commands can be run as Python functions: see below EAGLEdb package reference  
   
 ### Run the analysis
-NOTE: sequences names in input fasta file cannot be longer than 10 symbols.  
+WARNING: sequences names in input fasta file longer than 10 symbols may produce errors.  
   
 Type the command below to start the analysis:
 ```
-EAGLE -i <fasta/path> -db <EAGLEdb/scheme/json/path> -m <run_mode> -nt <threads_number> -o <out/dir/path>
+eagle -i <fasta/path> -db <EAGLEdb/scheme/json/path> -nt <threads_number> -o <out/dir/path>
 ```
 for detailed parameters description type:
 ```
-EAGLE -h
+eagle -h
 ```
-or from Python
+Also the analysis can be run from Python:
 ```
-from EAGLE import explore_genes
+from eagle import explore_orfs
 
-explore_genes(...)
+explore_orfs(...)
 ```
   
 ## Packages reference
 
-### EAGLE
 
-### EAGLEdb
+### eagle
+
+### eagledb
 
