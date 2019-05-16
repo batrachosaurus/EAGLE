@@ -2,6 +2,7 @@
 *.pyc
 *__pycache__/
 *test_results/
+docker_build/EAGLE-*.tar.gz
 dist/
 EAGLE.egg-info/
 *.log
