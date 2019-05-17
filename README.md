@@ -71,7 +71,7 @@ eagle_db -dbt bacteria -igenbank <prepared/genomes/list/path>
 ```
   
 
-All this commands can be run as Python functions: see below EAGLEdb package reference  
+All this commands can be run as Python functions: see below eagledb package reference  
   
 ### Run the analysis
 WARNING: sequences names in input fasta file longer than 10 symbols may produce errors.  
