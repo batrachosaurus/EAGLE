@@ -55,6 +55,7 @@ Other option is to build it from prepared lists of NCBI genomes:
 ```
 eagle_db -dbt bacteria
 ```
+The created database scheme (db_info.json) will be located in the databese directory (EAGLEdb/bacteria)
   
 Also below is the instruction for building a database from NCBI if you do not like to use the default database or prepared lists (another option):  
 1. Download assembly summary ([here](https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria/assembly_summary.txt) is RefSeq assembly summary table for bacteria and 
