@@ -66,6 +66,10 @@ def _parse_cmd_args(*args):
     if cmd_args.config_path:
         conf_constants.update_by_config(config_path=cmd_args.config_path)
         cmd_args.num_threads = conf_constants.num_threads
+    if cmd_args.save_alignments:
+        cmd_args.save_alignments = bool(int(cmd_args.save_alignments))
+    if cmd_args.save_trees:
+        cmd_args.save_trees = bool(int(cmd_args.save_trees))
     return cmd_args.__dict__
 
 
