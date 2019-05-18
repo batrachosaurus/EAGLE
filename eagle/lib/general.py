@@ -235,7 +235,7 @@ def get_un_fix(un_num, fix_len):
     elif un_num < len(un_codes):
         return un_codes[0] + get_un_fix(un_num, fix_len - 1)
     else:
-        filled_rank = len(un_codes)**(fix_len-1) + 1
+        filled_rank = len(un_codes)**(fix_len-1)
         return un_codes[un_num//filled_rank] + get_un_fix(un_num % filled_rank, fix_len - 1)
 
 
