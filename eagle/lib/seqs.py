@@ -362,52 +362,52 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
 def _get_part_size_list(num_letters, num_words):
     if num_letters == 6:
         if num_words >= 2:
-            return [2, 3]
+            return [1, 3]
         if num_words == 1:
             return [4]
     if num_letters == 7:
         if num_words >= 3:
-            return [2, 3, 1]
+            return [1, 3, 1]
         if num_words == 2:
-            return [2, 3]
+            return [1, 3]
         if num_words == 1:
             return [4]
     if num_letters == 8:
         if num_words >= 4:
-            return [2, 3, 1, 1]
+            return [1, 3, 1, 1]
         if num_words == 3:
-            return [2, 3, 1]
+            return [1, 3, 1]
         if num_words == 2:
-            return [2, 3]
+            return [1, 4]
         if num_words == 1:
             return [5]
     if num_letters == 9:
         if num_words >= 4:
-            return [2, 3, 1, 1]
+            return [1, 3, 1, 1]
         if num_words == 3:
-            return [2, 3, 1]
+            return [1, 4, 1]
         if num_words == 2:
             return [2, 4]
         if num_words == 1:
             return [6]
     if num_letters == 10:
         if num_words >= 4:
-            return [2, 4, 1, 1]
+            return [1, 4, 1, 1]
         if num_words == 3:
             return [2, 4, 1]
         if num_words == 2:
-            return [3, 4]
+            return [2, 5]
         if num_words == 1:
             return [7]
     if num_letters >= 11:
         if num_words >= 4:
-            return [3, 4, 1, 1]
+            return [2, 4, 1, 1]
         if num_words == 3:
-            return [4, 4, 1]
+            return [2, 5, 1]
         if num_words == 2:
-            return [4, 5]
+            return [3, 5]
         if num_words == 1:
-            return [9]
+            return [8]
 
 
 def get_orfs(in_fasta_path, out_fasta_path, minsize=180, emboss_inst_dir=conf_constants.emboss_inst_dir):
