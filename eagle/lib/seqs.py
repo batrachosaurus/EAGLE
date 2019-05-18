@@ -361,41 +361,44 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
 
 def _get_part_size_list(num_letters, num_words):
     if num_letters == 6:
-        return [2, 3]
+        if num_words >= 2:
+            return [2, 3]
+        if num_words == 1:
+            return [4]
     if num_letters == 7:
         if num_words >= 3:
             return [2, 3, 1]
         if num_words == 2:
             return [2, 3]
         if num_words == 1:
-            return [5]
+            return [4]
     if num_letters == 8:
         if num_words >= 4:
             return [2, 3, 1, 1]
         if num_words == 3:
             return [2, 3, 1]
         if num_words == 2:
-            return [3, 3]
+            return [2, 3]
         if num_words == 1:
-            return [6]
+            return [5]
     if num_letters == 9:
         if num_words >= 4:
             return [2, 3, 1, 1]
         if num_words == 3:
-            return [3, 3, 1]
+            return [2, 3, 1]
         if num_words == 2:
-            return [3, 4]
+            return [2, 4]
         if num_words == 1:
-            return [7]
+            return [6]
     if num_letters == 10:
         if num_words >= 4:
             return [2, 4, 1, 1]
         if num_words == 3:
-            return [3, 4, 1]
+            return [2, 4, 1]
         if num_words == 2:
-            return [4, 4]
+            return [3, 4]
         if num_words == 1:
-            return [8]
+            return [7]
     if num_letters >= 11:
         if num_words >= 4:
             return [3, 4, 1, 1]
