@@ -1,7 +1,8 @@
 - input genome as contigs set is not tested
 - Add MSAProbs + hmmer alignment method for alignments with large sequences amount
 - Add tree construction and repr profiles generation into get_btax_blastdb
-- Remain only genome mode and remobe this parameter
+- MultAln.improve_aln slow
+- final step of get_btax_dict should be parallel
 - tblastn in multithread mode is not stable
 - db_info is not final version
 - HMMER mutithread does not works?
