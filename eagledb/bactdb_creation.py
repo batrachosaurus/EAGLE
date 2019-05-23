@@ -537,12 +537,13 @@ def filter_btax(btax_info, global_dist_matr, k_max=None):
     assert isinstance(btax_info, BtaxInfo), \
         "ERROR: the value for btax_info parameter should be eagledb.scheme.setup_db.BtaxInfo object"
 
-    btax_orgs = set(GenomeInfo.load_from_dict(genome_info_dict).org_name for genome_info_dict in btax_info.genomes)
-    btax_dist_matr = global_dist_matr[btax_orgs]
+    btax_orgs = defaultdict(list)
+    for i, genome_info_dict in enumerate(btax_info.genomes):
+        btax_orgs[GenomeInfo.load_from_dict(genome_info_dict).org_name].append(i)
+    btax_dist_matr = global_dist_matr[list(btax_orgs.keys())]
     while len(btax_orgs) > k_max:
         min_dist_sum = None
         min_dist = None
-        min_dist_i = None
         org_name_remove = None
         for i, org_name in enumerate(btax_orgs):
             genome_dist = btax_dist_matr[org_name]
@@ -551,11 +552,11 @@ def filter_btax(btax_info, global_dist_matr, k_max=None):
             if min_dist is None or dist < min_dist or (dist == min_dist and dist_sum < min_dist_sum):
                 min_dist = dist
                 min_dist_sum = dist_sum
-                min_dist_i = i
                 org_name_remove = None
                 org_name_remove = org_name
-        btax_orgs.remove(org_name_remove)
-        del btax_info.genomes[min_dist_i]
+        for min_dist_i in btax_orgs[org_name_remove]:
+            del btax_info.genomes[min_dist_i]
+        del btax_orgs[org_name_remove]
     return btax_info, len(btax_orgs)
 
 
