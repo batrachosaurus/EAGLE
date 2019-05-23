@@ -541,12 +541,13 @@ def filter_btax(btax_info, global_dist_matr, k_max=None):
     for i, genome_info_dict in enumerate(btax_info.genomes):
         btax_orgs[GenomeInfo.load_from_dict(genome_info_dict).org_name].append(i)
     btax_dist_matr = global_dist_matr[list(btax_orgs.keys())]
+    orgs_to_remove = list()
     while len(btax_orgs) > k_max:
         min_dist_sum = None
         min_dist = None
         org_name_remove = None
         for i, org_name in enumerate(btax_orgs):
-            genome_dist = btax_dist_matr[org_name]
+            genome_dist = btax_dist_matr[org_name][list(btax_orgs.keys())]
             dist_sum = genome_dist.sum()
             dist = genome_dist[~genome_dist.index.isin([org_name])].min()
             if min_dist is None or dist < min_dist or (dist == min_dist and dist_sum < min_dist_sum):
@@ -554,9 +555,9 @@ def filter_btax(btax_info, global_dist_matr, k_max=None):
                 min_dist_sum = dist_sum
                 org_name_remove = None
                 org_name_remove = org_name
-        for min_dist_i in btax_orgs[org_name_remove]:
-            del btax_info.genomes[min_dist_i]
-        del btax_orgs[org_name_remove]
+        orgs_to_remove.extend(btax_orgs.pop(org_name_remove))
+    for min_dist_i in sorted(orgs_to_remove, reverse=True):
+        del btax_info.genomes[min_dist_i]
     return btax_info, len(btax_orgs)
 
 
