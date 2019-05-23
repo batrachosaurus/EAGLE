@@ -5,6 +5,7 @@
 - final step of get_btax_dict should be parallel
 - think about RNA explorer (some predictor with high recall, precision not needed, -> get_rna_stats)
 - mono btax EAGLEdb
+- motive scanner (split input sequence inti windows -> calculates stats for windows -> merge significant windows)
 - tblastn in multithread mode is not stable
 - db_info is not final version
 - HMMER multithread does not works?
