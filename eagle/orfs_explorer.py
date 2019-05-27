@@ -61,13 +61,13 @@ def explore_orfs(in_fasta,
         btax_dict = json.load(btax_dict_f)
     if btax_name is None:
         btax_name = get_btax_name(in_fasta,
-                                   db_info.repr_profiles,
-                                   btax_names=btax_dict.keys(),
-                                   work_dir=out_dir,
-                                   num_threads=conf_constants.num_threads,
-                                   method=btax_det_method,
-                                   hmmer_inst_dir=conf_constants.hmmer_inst_dir,
-                                   config_path=config_path)
+                                  db_info.repr_profiles,
+                                  btax_names=btax_dict.keys(),
+                                  work_dir=out_dir,
+                                  num_threads=conf_constants.num_threads,
+                                  method=btax_det_method,
+                                  hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                                  config_path=config_path)
 
     orfs_fasta_path = os.path.join(out_dir, os.path.basename(in_fasta)+".orfs")
     res_gtf_json = get_orfs(in_fasta_path=in_fasta,
@@ -78,10 +78,10 @@ def explore_orfs(in_fasta,
                                  logger=eagle_logger)
 
     if btax_name == "Unclassified":
-        eagle_logger.warning("The family was not detected - cannot run further analysis")
+        eagle_logger.warning("Basic taxon was not detected - cannot run further analysis")
     else:
         btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
-        eagle_logger.info("Family '%s' will be used for the sequence from %s" % (btax_name, in_fasta))
+        eagle_logger.info("Basic taxon '%s' will be used for the sequence from %s" % (btax_name, in_fasta))
         tblastn_out_path = kwargs.get("tblastn_result_path", None)  # for debug and testing
         if tblastn_out_path is None:
             tblastn_out_path = os.path.join(out_dir, os.path.basename(in_fasta) + ".bl")
@@ -102,7 +102,8 @@ def explore_orfs(in_fasta,
     res_gtf_df = pd.DataFrame(res_gtf_json.values())
     res_gtf_df.sort_values("start", inplace=True)
     res_gtf_df = res_gtf_df[["seqid", "source", "type", "start", "end", "score", "strand", "frame", "attribute"]]
-    res_gtf_df.to_csv(os.path.join(out_dir, os.path.basename(in_fasta)+".gtf"), sep="\t", index=False, quotechar="'")
+    res_gtf_df.to_csv(os.path.join(out_dir, os.path.basename(in_fasta)+".orfs.gtf"),
+                      sep="\t", index=False, quotechar="'")
 
 
 def _get_queries_btax(queries_scores_dict):
