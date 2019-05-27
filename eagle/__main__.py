@@ -27,8 +27,8 @@ def _parse_cmd_args(*args):
                         required=False)
     parser.add_argument("-btn",
                         "--btax-name",
-                        help="The name of base taxon. If specified eagle will not scan the eagledb and "
-                             "will work straight with this base taxon. Applicable only with 'genome' mode",
+                        help="The name of basic taxon. If specified, EAGLE will not scan the EAGLEdb profiles and "
+                             "will work straight with this basic taxon",
                         required=False,
                         default=None)
     parser.add_argument("-nt",
@@ -38,7 +38,7 @@ def _parse_cmd_args(*args):
                         default=conf_constants.num_threads)
     parser.add_argument("-btd",
                         "--btax-det-method",
-                        help="Method name to detect base taxon for input sequence (default: 'hmmer')",
+                        help="Method name to detect basic taxon for input sequence (default: 'hmmer')",
                         required=False,
                         default="hmmer")
     parser.add_argument("-c",
