@@ -5,11 +5,11 @@ from collections import defaultdict
 
 
 class JsonEntry(object):
-    __metaclass__ = ABCMeta  # probably not compatible with Python 3
+    __metaclass__ = ABCMeta  # not compatible with Python 3
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def attr_scheme():
+    def attr_scheme(cls):
         """
         json scheme (the keys must match attribute names defined in __init__)
         CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
@@ -70,55 +70,56 @@ class GenomeInfo(JsonEntry):
     # default values
     genome_id_0 = None
     org_name_0 = None
-    taxonomy_0 = None
+    taxonomy_0 = list()
     ncbi_download_prefix_0 = None
     fna_path_0 = None
     btc_seqs_fasta_0 = None
-    btc_seqs_id_0 = None  # must be a dict: {btc_seq_id: btc_seq_profile_name}
+    btc_seqs_id_0 = defaultdict(str)  # {btc_seq_id: btc_seq_profile_name}
     source_db_0 = None
     is_repr_0 = False
 
     def __init__(self,
                  genome_id=genome_id_0,
                  org_name=org_name_0,
-                 taxonomy=taxonomy_0,
+                 taxonomy=None,
                  ncbi_download_prefix=ncbi_download_prefix_0,
                  fna_path=fna_path_0,
                  btc_seqs_fasta=btc_seqs_fasta_0,
-                 btc_seqs_id=btc_seqs_id_0,
+                 btc_seqs_id=None,
                  source_db=source_db_0,
                  is_repr=is_repr_0):
 
         # attribute names must match keys form GenomeInfo.attr_scheme()
+        if taxonomy is None:
+            taxonomy = self.taxonomy_0
+        if btc_seqs_id is None:
+            btc_seqs_id = self.btc_seqs_id_0
+        
         self.genome_id = genome_id
         self.org_name = org_name
-        self.taxonomy = list()
-        if taxonomy is not None:
-            self.taxonomy = taxonomy
+        self.taxonomy = taxonomy
         self.ncbi_download_prefix = ncbi_download_prefix
         self.fna_path = fna_path
         self.btc_seqs_fasta = btc_seqs_fasta
         self.btc_seqs_id = btc_seqs_id
-        if self.btc_seqs_id is None:
-            self.btc_seqs_id = defaultdict(str)  # {btc_seq_id: btc_profile_name}
         self.source_db = source_db
         self.is_repr = is_repr
 
-    @staticmethod
-    def attr_scheme():
+    @classmethod
+    def attr_scheme(cls):
         # json scheme (the keys must match attribute names defined in __init__)
         # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
         # don't include it to the result dict
         return {
-            "genome_id": (GenomeInfo.genome_id_key,),
-            "org_name": (GenomeInfo.org_name_key,),
-            "taxonomy": (GenomeInfo.taxonomy_key,),
-            "ncbi_download_prefix": (GenomeInfo.ncbi_download_prefix_key,),
-            "fna_path": (GenomeInfo.fna_path_key,),
-            "btc_seqs_fasta": (GenomeInfo.btc_seqs_key, GenomeInfo.btc_seqs_fasta_key,),
-            "btc_seqs_id": (GenomeInfo.btc_seqs_key, GenomeInfo.btc_seqs_id_key,),
-            "source_db": (GenomeInfo.source_db_key,),
-            "is_repr": (GenomeInfo.is_repr_key,),
+            "genome_id": (cls.genome_id_key,),
+            "org_name": (cls.org_name_key,),
+            "taxonomy": (cls.taxonomy_key,),
+            "ncbi_download_prefix": (cls.ncbi_download_prefix_key,),
+            "fna_path": (cls.fna_path_key,),
+            "btc_seqs_fasta": (cls.btc_seqs_key, cls.btc_seqs_fasta_key,),
+            "btc_seqs_id": (cls.btc_seqs_key, cls.btc_seqs_id_key,),
+            "source_db": (cls.source_db_key,),
+            "is_repr": (cls.is_repr_key,),
         }
 
     @classmethod
@@ -152,16 +153,16 @@ class SeqProfileInfo(JsonEntry):
         self.seq_type = seq_type
         self.weight = weight
 
-    @staticmethod
-    def attr_scheme():
+    @classmethod
+    def attr_scheme(cls):
         # json scheme (the keys must match attribute names defined in __init__)
         # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
         # don't include it to the result dict
         return {
-            "name": (SeqProfileInfo.name_key,),
-            "path": (SeqProfileInfo.path_key,),
-            "seq_type": (SeqProfileInfo.seq_type_key,),
-            "weight": (SeqProfileInfo.weight_key,),
+            "name": (cls.name_key,),
+            "path": (cls.path_key,),
+            "seq_type": (cls.seq_type_key,),
+            "weight": (cls.weight_key,),
         }
 
 
@@ -183,64 +184,65 @@ class BtaxInfo(JsonEntry):
 
     # default values
     name_0 = None
-    genomes_0 = None
+    genomes_0 = list()
     btax_fna_0 = None
-    fna_id_0 = None
+    fna_id_0 = defaultdict(str)  # {seq_id: fna_path}
     blastdb_0 = None
-    repr_profiles_0 = None
+    repr_profiles_0 = dict()
     ref_tree_newick_0 = None
-    ref_tree_full_names_0 = None
+    ref_tree_full_names_0 = defaultdict(str)  # {short_name: full_name}
     mean_d_0 = float()
     median_d_0 = float()
 
     def __init__(self,
                  name=name_0,
-                 genomes=genomes_0,
+                 genomes=None,
                  btax_fna=btax_fna_0,
-                 fna_id=fna_id_0,
+                 fna_id=None,
                  blastdb=blastdb_0,
-                 repr_profiles=repr_profiles_0,
+                 repr_profiles=None,
                  ref_tree_newick=ref_tree_newick_0,
-                 ref_tree_full_names=ref_tree_full_names_0,
+                 ref_tree_full_names=None,
                  mean_d=mean_d_0,
                  median_d=median_d_0):
 
         # attribute names must match keys form SeqProfileInfo.attr_scheme()
+        if genomes is None:
+            genomes = self.genomes_0
+        if fna_id is None:
+            fna_id = self.fna_id_0
+        if repr_profiles is None:
+            repr_profiles = self.repr_profiles_0
+        if ref_tree_full_names is None:
+            ref_tree_full_names = self.ref_tree_full_names_0
+        
         self.name = name
         self.genomes=genomes
-        if self.genomes is None:
-            self.genomes = list()
         self.btax_fna = btax_fna
         self.fna_id = fna_id
-        if self.fna_id is None:
-            self.fna_id = defaultdict(str)  # {seq_id: fna_path}
         self.blastdb = blastdb
         self.repr_profiles = repr_profiles
-        if self.repr_profiles is None:
-            self.repr_profiles = dict()
         self.ref_tree_newick = ref_tree_newick
         self.ref_tree_full_names = ref_tree_full_names
-        if self.ref_tree_full_names is None:
-            self.ref_tree_full_names = defaultdict(str)  # {short_name: full_name}###
         self.mean_d = mean_d
         self.median_d = median_d
 
-    @staticmethod
-    def attr_scheme():
+    @classmethod
+    def attr_scheme(cls):
         # json scheme (the keys must match attribute names defined in __init__)
         # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
         # don't include it to the result dict
         return {
-            "name": (BtaxInfo.name_key,),
-            "genomes": (BtaxInfo.genomes_key,),
-            "btax_fna": (BtaxInfo.btax_fna_key,),
-            "fna_id": (BtaxInfo.fna_id_key,),
-            "blastdb": (BtaxInfo.blastdb_key,),
-            "repr_profiles": (BtaxInfo.repr_profiles_key,),
-            "ref_tree_newick": (BtaxInfo.ref_tree_key, BtaxInfo.ref_tree_newick_key,),
-            "ref_tree_full_names": (BtaxInfo.ref_tree_key, BtaxInfo.ref_tree_full_names_key,),
-            "mean_d": (BtaxInfo.distance_key, BtaxInfo.mean_d_key,),
-            "median_d": (BtaxInfo.distance_key, BtaxInfo.median_d_key,),
+            "name": (cls.name_key,),
+            "genomes": (cls.genomes_key,),
+            "btax_fna": (cls.btax_fna_key,),
+            "fna_id": (cls.fna_id_key,),
+            "blastdb": (cls.blastdb_key,),
+            "repr_profiles": (cls.repr_profiles_key,),
+            "ref_tree_newick": (cls.ref_tree_key, cls.ref_tree_newick_key,),
+            "ref_tree_full_names": (cls.ref_tree_key, cls.ref_tree_full_names_key,),
+            "mean_d": (cls.distance_key, cls.mean_d_key,),
+            "median_d": (cls.distance_key, cls.median_d_key,),
         }
 
 
@@ -273,15 +275,15 @@ class DBInfo(JsonEntry):
         self.global_dist_matrix = global_dist_matrix
         self.all_org_full_names = all_org_full_names
 
-    @staticmethod
-    def attr_scheme():
+    @classmethod
+    def attr_scheme(cls):
         # json scheme (the keys must match attribute names defined in __init__)
         # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
         # don't include it to the result dict
         return {
-            "all_genomes": (DBInfo.all_genomes_key,),
-            "btax_json": (DBInfo.btax_json_key,),
-            "repr_profiles": (DBInfo.repr_profiles_key,),
-            "global_dist_matrix": (DBInfo.global_dist_matrix_key,),
-            "all_org_full_names": (DBInfo.all_org_full_names_key,),
+            "all_genomes": (cls.all_genomes_key,),
+            "btax_json": (cls.btax_json_key,),
+            "repr_profiles": (cls.repr_profiles_key,),
+            "global_dist_matrix": (cls.global_dist_matrix_key,),
+            "all_org_full_names": (cls.all_org_full_names_key,),
         }
