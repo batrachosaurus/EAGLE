@@ -1,13 +1,13 @@
 from setuptools import setup, find_packages
 
 setup(name='EAGLE',
-      version='0.22.3',
+      version='0.0.1',
       author="Denis Moshensky",
       author_email="loven-doo@fbb.msu.ru", 
       description="Essential and Advantageous Genes Location Explorer",
       url="https://github.com/loven-doo/EAGLE",
       classifiers=[
-          "Programming Language :: Python :: 2.7",
+          "Programming Language :: Python :: 3",
           "License :: OSI Approved :: MIT License",
           "Operating System :: OS Independent",
       ],
@@ -18,13 +18,14 @@ setup(name='EAGLE',
           'wget >= 3.2',
           'pyaml >= 3.12',
           'numpy >= 1.14.3',
-          'pandas == 0.22.0',
+          'pandas >= 0.22.0',
           'matplotlib >= 2.2.3',
           'scipy >= 1.1.0',
           'biopython >= 1.72',
           'DendroPy >= 4.4.0',
           'redis >= 2.10.6',
           'psutil >= 5.6.1',
+          'jsondler >= 0.0.4',
       ],
       entry_points={
           'console_scripts': [
