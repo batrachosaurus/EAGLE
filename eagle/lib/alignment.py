@@ -8,6 +8,7 @@ from copy import copy, deepcopy
 from collections import defaultdict, OrderedDict, Counter
 
 import numpy as np
+from scipy.stats import gmean
 import pandas
 from Bio.Seq import Seq
 
@@ -514,6 +515,7 @@ class MultAln(ConfBase):
                                window_l=None,
                                top_fract=None,
                                method="KaKs_Calculator",
+                               only_first_seq=False,
                                **kwargs):
         if window_l is None:
             window_l = conf_constants.kaks_window_l
@@ -542,19 +544,23 @@ class MultAln(ConfBase):
         kaks_list = list()
         for w in windows_list:
             w.tmp_dir = self.tmp_dir
-            w_kaks = w.calculate_KaKs(method=method, remove_tmp=False, **kwargs)
+            w_kaks = w.calculate_KaKs(method=method,
+                                      remove_tmp=False,
+                                      only_first_seq=only_first_seq,
+                                      raref_base=kwargs.pop("raref_base", 10.0),
+                                      **kwargs)
             if type(w_kaks) is float or isinstance(w_kaks, np.floating):
                 if w_kaks >= 0.0:
                     kaks_list.append(w_kaks)
 
         shutil.rmtree(self.tmp_dir)
-        return np.mean(sorted(kaks_list)[: int(float(len(kaks_list)) * top_fract)])
+        return gmean(sorted(kaks_list)[: int(float(len(kaks_list)) * top_fract)])
 
-    def calculate_KaKs(self, method="KaKs_Calculator", max_kaks=10.0, **kwargs):
+    def calculate_KaKs(self, method="KaKs_Calculator", max_kaks=10.0, only_first_seq=False, **kwargs):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
 
-        seq_pairs = self.generate_seqs_pairs()
+        seq_pairs = self.generate_seqs_pairs(only_first_seq=only_first_seq, raref_base=kwargs.get("raref_base", None))
         if method.lower() == "kaks_calculator":
             pairs_axt_path = os.path.join(self.tmp_dir, self.aln_name+".axt")
             with open(pairs_axt_path, "w") as pairs_axt_f:
@@ -572,20 +578,28 @@ class MultAln(ConfBase):
             subprocess.call(kaks_calculator_cmd, shell=True)
             try:
                 kaks_df = pandas.read_csv(out_path, sep="\t")
-                kaks = kaks_df["Ka/Ks"][kaks_df["Ka/Ks"] <= max_kaks].mean()
+                kaks = gmean(kaks_df["Ka/Ks"].apply(lambda v: min(v, max_kaks)))
             except:
                 kaks = -1.0
         if kwargs.get("remove_tmp", True):
             shutil.rmtree(self.tmp_dir)
         return kaks
 
-    def generate_seqs_pairs(self, rarefy=True, raref_base=10.0):
+    def generate_seqs_pairs(self, only_first_seq=False, raref_base=None):
+        """
+        Generates pars of aligned sequences from multiple alignment (n(n-1)/2 by deafault)
+        :param only_first_seq: set it True to get only pairs containig first sequence (default False)
+        :param raref_base: randomly rarefies pairs: n(n-1)/2 -> n*raref_base/2 (10.0 makes sense to use)
+        :return:
+        """
         seqs_pairs = dict()
         seq_names_list = list(self.seq_names)
         for i, seqi_name in enumerate(seq_names_list[:-1]):
             for seqj_name in seq_names_list[i+1:]:
                 seqs_pairs[frozenset({seqi_name, seqj_name})] = [self[seqi_name], self[seqj_name]]
-        if rarefy and int(raref_base) < len(seq_names_list):
+            if only_first_seq:
+                break
+        if raref_base is not None and int(raref_base) < len(seq_names_list) and not only_first_seq:
             for seqs_pair in np.random.permutation(list(seqs_pairs.keys()))[(len(seq_names_list)-1)*int(raref_base/2.0):]:
                 del seqs_pairs[seqs_pair]
         return seqs_pairs
@@ -1003,7 +1017,7 @@ def construct_mult_aln(seq_dict=None,
         if logger:
             logger.warning("No sequences input")
         else:
-            print "No sequences input"
+            print("No sequences input")
         return 1
     if not aln_type:
         detect_seqs_type(fasta_path)

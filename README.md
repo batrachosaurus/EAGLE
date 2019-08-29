@@ -10,7 +10,7 @@ EMBOSS + PHYLIPNEW (EMBASSY package)
 FastME 2.07  
 Blast+  
 KaKs_Calculator 2.0  
-Python 2.7  
+Python >= 3.6
 ### Python packages:  
 &nbsp; - wget >= 3.2  
 &nbsp; - pyaml >= 3.12  
@@ -42,9 +42,14 @@ It can be very difficult to install some requirements on Windows. Linux is recom
 
 ### Install the package:
 ```
+pip install eagle
+```
+or from the repository:
+
+```
 pip install git+https://github.com/loven-doo/EAGLE.git --upgrade  
 ```
-from dev branch:
+from the repository dev branch:
 ```
 pip install git+https://github.com/loven-doo/EAGLE.git@dev --upgrade
 ```
