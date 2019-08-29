@@ -1,10 +1,11 @@
 wget >= 3.2
 pyaml >= 3.12
 numpy >= 1.14.3
-pandas == 0.22.0
+pandas >= 0.22.0
 matplotlib >= 2.2.3
 scipy >= 1.1.0
 biopython >= 1.72
 DendroPy >= 4.4.0
 redis >= 2.10.6
 psutil >= 5.6.1
+jsondler >= 0.0.4
