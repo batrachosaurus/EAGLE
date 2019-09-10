@@ -1,5 +1,5 @@
 # This code can have only standard Python imports
-import ConfigParser
+import configparser
 import gzip
 import io
 import gc
@@ -54,7 +54,7 @@ class ConfBase(object):
     def _get_from_config(config_obj, section, option, fallback):
         try:
             return config_obj.get(section, option)
-        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        except (configparser.NoSectionError, configparser.NoOptionError):
             return fallback
 
 
@@ -63,7 +63,7 @@ def _config_parser(config_path):
       :param config_path: path to config file
       :return: a ConfigParser object
       """
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     config.read(config_path)
     return config
 
