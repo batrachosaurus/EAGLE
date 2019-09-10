@@ -4,7 +4,7 @@ import os
 import io
 import platform
 import subprocess
-import urllib2
+import urllib.request
 import gzip
 import shutil
 from functools import reduce
@@ -24,10 +24,10 @@ def get_links_from_html(html_link, n_tries=3, debug=False):
     n_t = 0
     links = dict()
     while n_t < n_tries:
-        html_file = urllib2.urlopen(html_link)
+        html_file = urllib.request.urlopen(html_link)
         _read_html_file_links(html_file=html_file.read().split("\n"), links=links, debug=debug)
         n_t += 1
-    links_list = links.keys()
+    links_list = list(links.keys())
     links_list.sort()
     return links_list
 
@@ -111,7 +111,10 @@ def download_btax_files(download_pref_dict, suffix, download_dir="./", logger=No
     return downloaded_fna
 
 
-def get_from_btax_data(key, btax_data, key_path=list()):
+def get_from_btax_data(key, btax_data, key_path=None):
+    if key_path is None:
+        key_path = list()
+
     try:
         btax_data_keys = btax_data.keys()
         if key in btax_data_keys:
