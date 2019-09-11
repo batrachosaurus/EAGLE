@@ -7,14 +7,26 @@ from collections import OrderedDict
 import pandas
 import dendropy
 
-from eagle.constants import conf_constants, eagle_logger
-from eagle.lib.general import ConfBase, filter_list
+from eagle.constants import conf_constants
+from eagle.lib.general import ConfBase, filter_list, generate_random_string
 from eagle.lib.alignment import DistanceMatrix
 
 
 class PhyloTree(ConfBase):
 
-    def __init__(self, tree, full_seq_names=None, tree_name="phylo_tree", tmp_dir="tmp", config_path=None, logger=None):
+    def __init__(self,
+                 tree,
+                 full_seq_names=None,
+                 tree_name="phylo_tree",
+                 tmp_dir=None,
+                 config_path=None,
+                 logger=None):
+
+        if tmp_dir is None:
+            tmp_dir = generate_random_string(10) + "_phylo_tree_tmp"
+        if full_seq_names is None:
+            full_seq_names = dict()
+
         self.tree = tree
         self.full_seq_names = full_seq_names
         self.tree_name = tree_name
@@ -22,6 +34,42 @@ class PhyloTree(ConfBase):
         self.logger = logger
 
         super(PhyloTree, self).__init__(config_path=config_path)
+
+    def copy(self):
+        return self._sub_phylo_tree(tree=self.tree,
+                                    tree_name=self.tree_name)
+
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memodict={}):
+        return self._sub_phylo_tree(tree=deepcopy(self.tree),
+                                    full_seq_names=self.full_seq_names.copy(),
+                                    tree_name=self.tree_name)
+
+    def _sub_phylo_tree(self,
+                        tree,
+                        full_seq_names=None,
+                        tree_name="phylo_tree",
+                        tmp_dir=None,
+                        config_path=None,
+                        logger=None):
+
+        if full_seq_names is None:
+            full_seq_names = self.full_seq_names
+        if tmp_dir is None:
+            tmp_dir = generate_random_string(10) + "_phylo_tree_tmp"
+        if config_path is None:
+            config_path = self.config_path
+        if logger is None:
+            logger = self.logger
+
+        return PhyloTree(tree=tree,
+                         full_seq_names=full_seq_names,
+                         tree_name=tree_name,
+                         tmp_dir=tmp_dir,
+                         config_path=config_path,
+                         logger=logger)
 
     @property
     def names(self):
@@ -78,6 +126,8 @@ class PhyloTree(ConfBase):
 
     def set_full_names(self, inplace=False):
         if inplace:
+            if not self.full_seq_names:
+                return
             names_to_remove = list()
             for name in self.names:
                 node_to_rename = self.tree.find_node_with_taxon_label(name)
@@ -87,12 +137,7 @@ class PhyloTree(ConfBase):
                     names_to_remove.append(name)
             self.tree.prune_taxa_with_labels(names_to_remove)
         else:
-            logger = self.logger
-            self.logger = None
             full_names_pht = deepcopy(self)
-            #full_names_pht.full_seq_names = None
-            full_names_pht.logger = logger
-            self.logger = logger
             full_names_pht.set_full_names(inplace=True)
             return full_names_pht
 
@@ -100,11 +145,7 @@ class PhyloTree(ConfBase):
         if inplace:
             self.tree.prune_taxa_with_labels(names_to_remove)
         else:
-            logger = self.logger
-            self.logger = None
             rem_names_pht = deepcopy(self)
-            rem_names_pht.logger = logger
-            self.logger = logger
             rem_names_pht.remove_names(names_to_remove, inplace=True)
             return rem_names_pht
 

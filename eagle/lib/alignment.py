@@ -13,12 +13,17 @@ import pandas
 from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
-from eagle.lib.general import ConfBase, join_files, filter_list, generate_random_string
+from eagle.lib.general import ConfBase, join_files, filter_list, generate_random_string, send_log_message
 from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs, SeqsDict
 
 
 class MultAln(ConfBase):
     # Consider inherit it from SeqsDict and making ConfBase the mixin
+
+    prot_type = "prot"
+    nucl_type = "nucl"
+    prot_types = ("protein", prot_type, "p")
+    nucl_types = ("nucleotide", nucl_type, "n")
 
     dist_matr_method = "phylip"
     low_memory = False
@@ -42,7 +47,10 @@ class MultAln(ConfBase):
         if kaks_calculator_exec_path is None:
             kaks_calculator_exec_path = conf_constants.kaks_calculator_exec_path
 
-        self.short_to_full_seq_names = dict()
+        self._nucl_seqs_dict = dict()
+        self.short_to_full_seq_names = dict()###
+        self.seq_ids_to_orgs = dict()###
+
         if mult_aln_dict:
             self.mult_aln_dict = mult_aln_dict
         else:
@@ -63,6 +71,20 @@ class MultAln(ConfBase):
         self.kaks_calculator_exec_path=kaks_calculator_exec_path
         self.logger = logger
         super(MultAln, self).__init__(config_path=config_path)
+
+    @property
+    def nucl_seqs_dict(self):
+        return self._nucl_seqs_dict
+
+    @nucl_seqs_dict.setter
+    def nucl_seqs_dict(self, nucl_seqs_dict):
+        if self.aln_type.lower() not in self.prot_types:
+            send_log_message(message="The alignment seems to be nucleotide - not applicable",
+                             mes_type="w", logger=self.logger)
+        else:
+            if not isinstance(nucl_seqs_dict, SeqsDict):
+                nucl_seqs_dict = SeqsDict.load_from_dict(nucl_seqs_dict)
+            self._nucl_seqs_dict = nucl_seqs_dict
 
     def __len__(self):
         return len(self.mult_aln_dict)
@@ -122,7 +144,7 @@ class MultAln(ConfBase):
         if tmp_dir is None:
             tmp_dir = generate_random_string(10) + "_mult_aln_tmp"
         if short_to_full_seq_names is None:
-            short_to_full_seq_names = self.short_to_full_seq_names.copy()
+            short_to_full_seq_names = self.short_to_full_seq_names
         if emboss_inst_dir is None:
             emboss_inst_dir = self.emboss_inst_dir
         if hmmer_inst_dir is None:
@@ -148,7 +170,9 @@ class MultAln(ConfBase):
         return mult_aln
 
     def copy(self):
-        return self._sub_mult_aln(mult_aln_dict=self.mult_aln_dict)
+        return self._sub_mult_aln(mult_aln_dict=self.mult_aln_dict,
+                                  aln_name=self.aln_name,
+                                  states_seq=self.states_seq)
 
     def __copy__(self):
         return self.copy()
@@ -156,7 +180,7 @@ class MultAln(ConfBase):
     def __deepcopy__(self, memodict={}):
         return self._sub_mult_aln(mult_aln_dict=deepcopy(self.mult_aln_dict),
                                   aln_name=self.aln_name,
-                                  aln_type=self.aln_type,
+                                  short_to_full_seq_names=self.short_to_full_seq_names.copy(),
                                   states_seq=copy(self.states_seq))  # may be deepcopy is needed
 
     def __contains__(self, item):
@@ -436,7 +460,7 @@ class MultAln(ConfBase):
             shutil.rmtree(self.tmp_dir)
 
     def nucl_by_prot_aln(self, nucl_fasta_dict=None, nucl_fasta_path=None):
-        if self.aln_type.lower() not in ("protein", "prot", "p"):
+        if self.aln_type.lower() not in self.prot_types:
             if self.logger:
                 self.logger.error("reference alignment type is not protein")
             else:
@@ -459,7 +483,7 @@ class MultAln(ConfBase):
             nucl_aln_dict[seq_name] = nucl_accord_prot(self[seq_name],
                                                        nucl_fasta_dict[seq_name][match.start()*3: match.end()*3])
         nucl_aln = self._sub_mult_aln(SeqsDict.load_from_dict(nucl_aln_dict),
-                                      aln_type="nucl",
+                                      aln_type=self.nucl_type,
                                       aln_name="nucl_"+self.aln_name)
         return nucl_aln
 
@@ -517,6 +541,8 @@ class MultAln(ConfBase):
                                method="KaKs_Calculator",
                                only_first_seq=False,
                                **kwargs):
+        if nucl_seqs_dict is not None:
+            self.nucl_seqs_dict = nucl_seqs_dict
         if window_l is None:
             window_l = conf_constants.kaks_window_l
         if top_fract is None:
@@ -524,16 +550,14 @@ class MultAln(ConfBase):
         if self.aln_type is None:
             self.aln_type = detect_seqs_type(fasta_dict=self.mult_aln_dict)
 
-        if self.aln_type.lower() in ("protein", "prot", "p"):
-            if nucl_seqs_dict is None:
+        if self.aln_type.lower() in self.prot_types:
+            if not self.nucl_seqs_dict:
                 if self.logger:
                     self.logger.error("protein alignment but no value input for argument 'nucl_seqs_dict'")
                 else:
                     print("ERROR: protein alignment but no value input for argument 'nucl_seqs_dict'")
                 return
-            if not isinstance(nucl_seqs_dict, SeqsDict):
-                nucl_seqs_dict = SeqsDict.load_from_dict(nucl_seqs_dict)
-            nucl_aln = self.nucl_by_prot_aln(nucl_fasta_dict=nucl_seqs_dict)
+            nucl_aln = self.nucl_by_prot_aln()
             windows_list = nucl_aln.split_into_windows(window_l=window_l)
         else:
             windows_list = self.split_into_windows(window_l=window_l)
@@ -556,9 +580,26 @@ class MultAln(ConfBase):
         shutil.rmtree(self.tmp_dir)
         return gmean(sorted(kaks_list)[: int(float(len(kaks_list)) * top_fract)])
 
-    def calculate_KaKs(self, method="KaKs_Calculator", max_kaks=10.0, only_first_seq=False, **kwargs):
+    def calculate_KaKs(self,
+                       nucl_seqs_dict=None,
+                       method="KaKs_Calculator",
+                       max_kaks=10.0,
+                       only_first_seq=False,
+                       **kwargs):
+
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
+        if nucl_seqs_dict is not None:
+            self.nucl_seqs_dict = nucl_seqs_dict
+
+        if self.aln_type.lower() in self.prot_types:
+            if not self.nucl_seqs_dict:
+                send_log_message(message="protein alignment but no value input for argument 'nucl_seqs_dict'",
+                                 mes_type="e",
+                                 logger=self.logger)
+                return
+            nucl_aln = self.nucl_by_prot_aln()
+            return nucl_aln.calculate_KaKs(method=method, max_kaks=max_kaks, only_first_seq=only_first_seq, **kwargs)
 
         seq_pairs = self.generate_seqs_pairs(only_first_seq=only_first_seq, raref_base=kwargs.get("raref_base", None))
         if method.lower() == "kaks_calculator":
@@ -610,7 +651,7 @@ class MultAln(ConfBase):
         else:
             improved_aln = self
         stops_per_seq = list()
-        if improved_aln.aln_type in ("protein", "prot", "p"):
+        if improved_aln.aln_type in self.prot_types:
             for seq_name in improved_aln:
                 stops_per_seq.append(improved_aln[seq_name].count("*"))
         else:
@@ -717,7 +758,7 @@ class DistanceMatrix(object):
                     print("No sequences in alignment")
                 return 1
             dump_fasta_dict(fasta_dict=mult_aln.mult_aln_dict_short_id, fasta_path=aln_fasta_path)
-            if mult_aln.aln_type.lower() in ("protein", "prot", "p"):
+            if mult_aln.aln_type.lower() in mult_aln.prot_types:
                 if mult_aln.logger:
                     mult_aln.logger.info("protdist is starting")
                 else:
@@ -1092,9 +1133,9 @@ def detect_seqs_type(fasta_path=None, fasta_dict=None, nuc_freq_thr=0.75):
         let_counts = Counter("".join(seqs_list))
         if float(let_counts.get("a", 0)+let_counts.get("c", 0)+let_counts.get("g", 0)+
                          let_counts.get("t", 0))/float(summ_l) >= nuc_freq_thr:
-            return "nucl"
+            return MultAln.nucl_type
         else:
-            return "prot"
+            return MultAln.prot_type
     else:
         return None
 
