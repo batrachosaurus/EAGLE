@@ -13,6 +13,7 @@ from eagle.lib.alignment import BlastHandler, construct_mult_aln
 from eagle.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees
 from eagle.lib.general import worker
 from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out, parse_orf_id
+from eagle.lib.orthan import explore_ortho_group
 from eagledb.scheme import BtaxInfo, DBInfo
 
 
@@ -220,14 +221,15 @@ def get_orf_stats(orf_id,
                                       tmp_dir=os.path.join(work_dir, orf_id.replace("|:", "_")+"_aln_tmp"),
                                       logger=eagle_logger)
     eagle_logger.info("got multiple alignment for ORF '%s' homologs" % orf_id)
-    orf_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
-    orf_stats["representation"] = float(len(orf_mult_aln)-1) / float(len(btax_info.genomes))
-    if len(orf_mult_aln.seq_names) < 4:
-        orfs_stats[orf_id] = orf_stats
-        eagle_logger.warning("A few homologs number for ORF '%s'" % orf_id)
-        return
 
-    orf_mult_aln.improve_aln(inplace=True)
+    orf_mult_aln.nucl_seqs_dict = orf_homologs_nucl
+    orf_mult_aln, ortho_stats, orf_homs_tree = explore_ortho_group(homologs_mult_aln=orf_mult_aln,
+                                                                   ref_tree_newick=btax_info.ref_tree_newick,
+                                                                   ref_tree_full_names=btax_info.ref_tree_full_names,
+                                                                   kaks_for_only_first=True,
+                                                                   work_dir=work_dir,
+                                                                   logger=eagle_logger)
+    orf_stats["representation"] = float(len(orf_mult_aln) - 1) / float(len(btax_info.genomes))
     dist_matrix = orf_mult_aln.get_distance_matrix().replace_negative(inplace=False)
     btax_dist_matrix = dist_matrix[list(filter(lambda seq_name: seq_name != orf_id, dist_matrix.seq_names))]
     if btax_info.median_d > 0.0:
@@ -239,53 +241,7 @@ def get_orf_stats(orf_id,
     stops_stats = orf_mult_aln.stop_codons_stats()
     orf_stats["stops_per_seq_median"] = stops_stats["stops_per_seq_median"]
     orf_stats["seqs_with_stops_fract"] = stops_stats["seqs_with_stops_fract"]
-
-    # Uniformity
-    orf_stats["uniformity_std"] = orf_mult_aln.estimate_uniformity(
-        cons_thr=conf_constants.cons_thr,
-        window_l=conf_constants.unif_window_l,
-        windows_step=conf_constants.unif_windows_step
-    )
-    if np.isnan(orf_stats["uniformity_std"]):
-        orf_stats["uniformity_std"] = -1.0
-    eagle_logger.info("got uniformity_std for ORF '%s'" % orf_id)
-
-    # Ka/Ks
-    orf_kaks = orf_mult_aln.calculate_KaKs_windows(nucl_seqs_dict=orf_homologs_nucl, only_first_seq=True)
-    if not pd.isna(orf_kaks):
-        orf_stats["Ka/Ks"] = orf_kaks
-        eagle_logger.info("got Ka/Ks for ORF '%s'" % orf_id)
-
-    # Phylo
-    phylo_tmp_dir = os.path.join(work_dir, orf_id.replace("|:", "_")+"_phylo_tmp")
-    try:
-        del orf_mult_aln[orf_id]
-    except KeyError:
-        pass
-    orf_homs_tree = build_tree_by_dist(
-        dist_matrix=orf_mult_aln.get_distance_matrix(),
-        method="FastME",
-        full_seq_names=dict((short_id, seq_ids_to_orgs[full_id])
-                            for short_id, full_id in orf_mult_aln.short_to_full_seq_names.items()),
-        tree_name=orf_id.replace("|:", "_")+"_tree",
-        tmp_dir=phylo_tmp_dir,
-        logger=eagle_logger
-    )
-    orf_homs_tree.set_full_names(inplace=True)
-    btax_tree = PhyloTree.load_tree_from_str(
-        tree_str=btax_info.ref_tree_newick,
-        full_seq_names=btax_info.ref_tree_full_names,
-        tree_name="btax_tree",
-        tmp_dir=phylo_tmp_dir,
-        logger=eagle_logger
-    )
-    btax_tree.set_full_names(inplace=True)
-    phylo_diff = compare_trees(phylo_tree1=orf_homs_tree,
-                               phylo_tree2=btax_tree,
-                               method="Robinson-Foulds")
-    if not pd.isna(phylo_diff):
-        orf_stats["phylo_diff"] = phylo_diff
-    eagle_logger.info("got phylo_diff for ORF '%s'" % orf_id)
+    orf_stats.update(ortho_stats)
 
     orfs_stats[orf_id] = orf_stats
     eagle_logger.info("got ORF '%s' stats" % orf_id)

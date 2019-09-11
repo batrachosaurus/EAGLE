@@ -11,7 +11,7 @@ import numpy as np
 import pandas
 
 from eagle.constants import eagle_logger, conf_constants
-from eagle.lib.alignment import construct_mult_aln, DistanceMatrix
+from eagle.lib.alignment import construct_mult_aln, DistanceMatrix, MultAln
 from eagle.lib.general import worker, get_un_fix, bool_from_str
 from eagle.lib.phylo import build_tree_by_dist
 from eagle.lib.seqs import load_fasta_to_dict, reduce_seq_names
@@ -175,7 +175,7 @@ def get_bacterium(ncbi_db_link, bacterium_name, is_repr, prepared_bacteria, db_d
     bacterium_info.btc_seqs_id = {seq_id: "16S_rRNA" for seq_id in seq_id_list}
     eagle_logger.info("got %s 16S rRNA" % bacterium_info.org_name)
     f = io.open(os.path.join(db_dir, BACTERIA_LIST_F_NAME), 'a', newline="\n")
-    f.write(unicode("  "+json.dumps(bacterium_info.get_json())+",\n"))
+    f.write("  "+json.dumps(bacterium_info.get_json()+",\n"))  # TODO: check unicode
     f.close()
     prepared_bacteria[bacterium_info.genome_id] = True
 
@@ -711,7 +711,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
     tmp_fam_dir = os.path.join(db_dir, family_name+"_tmp")
     rRNA_aln = construct_mult_aln(seq_dict=rRNA_seqs_dict,
                                   method="MUSCLE",
-                                  aln_type="nucl",
+                                  aln_type=MultAln.nucl_type,
                                   aln_name=family_name+"_rRNA_aln",
                                   tmp_dir=tmp_fam_dir,
                                   muscle_exec_path=conf_constants.muscle_exec_path,
@@ -801,7 +801,7 @@ def create_bactdb(input_table_refseq=None,
         # TODO: implement loading btc_profiles from custom profiles
         eagle_logger.warning("custom btax classification profiles are not implemented currently - default will be used")
     # else:
-    btc_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl").get_json()]  # TODO: include it to 'else' bock
+    btc_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type=MultAln.nucl_type).get_json()]  # TODO: include it to 'else' bock
 
     if btax_rep_profile is not None:
         # TODO: implement loading btr_profiles from custom profiles

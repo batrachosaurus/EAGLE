@@ -306,3 +306,20 @@ def np_memmap_astype(dat_path, old_dtype, new_dtype, shape):
         memmap_array[i] = x
     os.remove(old_dat_path)
     return memmap_array
+
+
+def send_log_message(message, mes_type="info", logger=None):
+    if isinstance(logger, logging.Logger):
+        if mes_type.lower() in ("info", "i"):
+            logger.info(message)
+        if mes_type.lower() in ("warning", "warn", "w"):
+            logger.warning(message)
+        if mes_type.lower() in ("error", "err", "e"):
+            logger.error(message)
+    else:
+        if mes_type.lower() in ("info", "i"):
+            print("INFO: %s" % message)
+        if mes_type.lower() in ("warning", "warn", "w"):
+            print("WARNING: %s" % message)
+        if mes_type.lower() in ("error", "err", "e"):
+            print("ERROR: %s" % message)
