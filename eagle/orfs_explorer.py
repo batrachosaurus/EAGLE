@@ -223,6 +223,7 @@ def get_orf_stats(orf_id,
     eagle_logger.info("got multiple alignment for ORF '%s' homologs" % orf_id)
 
     orf_mult_aln.nucl_seqs_dict = orf_homologs_nucl
+    orf_mult_aln.seq_ids_to_orgs = seq_ids_to_orgs
     orf_mult_aln, ortho_stats, orf_homs_tree = explore_ortho_group(homologs_mult_aln=orf_mult_aln,
                                                                    ref_tree_newick=btax_info.ref_tree_newick,
                                                                    ref_tree_full_names=btax_info.ref_tree_full_names,

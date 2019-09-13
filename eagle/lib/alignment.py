@@ -48,8 +48,8 @@ class MultAln(ConfBase):
             kaks_calculator_exec_path = conf_constants.kaks_calculator_exec_path
 
         self._nucl_seqs_dict = dict()
-        self.short_to_full_seq_names = dict()###
-        self.seq_ids_to_orgs = dict()###
+        self._short_to_full_seq_names = dict()
+        self._seq_ids_to_orgs = dict()
 
         if mult_aln_dict:
             self.mult_aln_dict = mult_aln_dict
@@ -85,6 +85,28 @@ class MultAln(ConfBase):
             if not isinstance(nucl_seqs_dict, SeqsDict):
                 nucl_seqs_dict = SeqsDict.load_from_dict(nucl_seqs_dict)
             self._nucl_seqs_dict = nucl_seqs_dict
+
+    @property
+    def short_to_full_seq_names(self):
+        return self._short_to_full_seq_names
+
+    @short_to_full_seq_names.setter
+    def short_to_full_seq_names(self, stfsn_dict):
+        if isinstance(stfsn_dict, dict):  # not exhaustive condition
+            self._short_to_full_seq_names = stfsn_dict
+        else:
+            send_log_message(message="the value to assign should be a dict", mes_type="e", logger=self.logger)
+
+    @property
+    def seq_ids_to_orgs(self):
+        return self._seq_ids_to_orgs
+
+    @seq_ids_to_orgs.setter
+    def seq_ids_to_orgs(self, sito_dict):
+        if isinstance(sito_dict, dict):  # not exhaustive condition
+            self._seq_ids_to_orgs = sito_dict
+        else:
+            send_log_message(message="the value to assign should be a dict", mes_type="e", logger=self.logger)
 
     def __len__(self):
         return len(self.mult_aln_dict)
@@ -355,7 +377,7 @@ class MultAln(ConfBase):
         self._distance_matrix = DistanceMatrix.calculate(mult_aln=self, method=method)
         return self._distance_matrix
 
-    def remove_paralogs(self, seq_ids_to_orgs, method="min_dist", inplace=False):
+    def remove_paralogs(self, seq_ids_to_orgs=None, method="min_dist", inplace=False):
         """
 
         :param seq_ids_to_orgs: {seq_id: org_name}
@@ -363,14 +385,14 @@ class MultAln(ConfBase):
         :param inplace:
         :return:
         """
-        if self.logger:
-            self.logger.info("paralogs removing started")
-        else:
-            print("paralogs removing started")
-        
+        send_log_message(message="paralogs removing started", mes_type='i', logger=self.logger)
+
+        if seq_ids_to_orgs is not None:
+            self.seq_ids_to_orgs = seq_ids_to_orgs
+
         org_dist_dict = defaultdict(dict)
         for seq_name in self.distance_matrix.seq_names:
-            org_dist_dict[seq_ids_to_orgs[seq_name]][seq_name] = sum(map(float, self.distance_matrix[seq_name]))
+            org_dist_dict[self.seq_ids_to_orgs[seq_name]][seq_name] = sum(map(float, self.distance_matrix[seq_name]))
         org_names = org_dist_dict.keys()
         for org in org_names:
             org_dist_dict[org] = sorted(org_dist_dict[org].items(), key=lambda x: x[1])
@@ -378,7 +400,7 @@ class MultAln(ConfBase):
         short_to_full_seq_names_filt = dict()
         if method.lower() in ("minimal_distance", "min_dist", "md"):
             for seq_name in self.seq_names:
-                if seq_name == org_dist_dict[seq_ids_to_orgs[seq_name]][0][0]:
+                if seq_name == org_dist_dict[self.seq_ids_to_orgs[seq_name]][0][0]:
                     mult_aln_dict_filt[seq_name] = self.mult_aln_dict[seq_name]
         else:
             # TODO: write spec_pos method

@@ -24,7 +24,7 @@ def explore_ortho_group(homologs_mult_aln, ref_tree_newick=None, **kwargs):
         "Ka/Ks": -1.0,
     }
 
-    homologs_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, method="min_dist", inplace=True)
+    homologs_mult_aln.remove_paralogs(method="min_dist", inplace=True)
     if len(homologs_mult_aln.seq_names) < 4:
         send_log_message(message="A few (<4) homologs number in the alignment '%s'" % homologs_mult_aln.aln_name,
                          mes_type="w", logger=logger)
@@ -55,7 +55,7 @@ def explore_ortho_group(homologs_mult_aln, ref_tree_newick=None, **kwargs):
     homologs_tree = build_tree_by_dist(
         dist_matrix=homologs_mult_aln.get_distance_matrix(),
         method="FastME",
-        full_seq_names=dict((short_id, seq_ids_to_orgs[full_id])
+        full_seq_names=dict((short_id, homologs_mult_aln.seq_ids_to_orgs[full_id])
                             for short_id, full_id in homologs_mult_aln.short_to_full_seq_names.items()),
         tree_name=homologs_mult_aln.aln_name.replace("|:", "_")+"_tree",
         tmp_dir=phylo_tmp_dir,
