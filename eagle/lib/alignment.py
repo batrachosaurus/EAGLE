@@ -466,22 +466,21 @@ class MultAln(ConfBase):
             else:
                 print("ERROR: reference alignment type is not protein")
             return
-        if not nucl_fasta_dict:
-            if nucl_fasta_path:
-                nucl_fasta_dict = load_fasta_to_dict(fasta_path=nucl_fasta_path)
-            else:
-                if self.logger:
-                    self.logger.error("no nucleotide sequences are input")
-                else:
-                    print("ERROR: no nucleotide sequences are input")
-                return
+
+        if nucl_fasta_dict is not None:
+            self.nucl_seqs_dict = nucl_fasta_dict
+        elif nucl_fasta_path is not None:
+            self.nucl_seqs_dict = load_fasta_to_dict(fasta_path=nucl_fasta_path)
+        if not self.nucl_seqs_dict:
+            send_log_message(message="no nucleotide sequences are input", mes_type="e", logger=self.logger)
+            return
 
         nucl_aln_dict = dict()
         for seq_name in self.seq_names:
             match = re.search(re.sub("[-\.]", "", self[seq_name]).replace("*", "."),
-                              str(Seq(nucl_fasta_dict[seq_name]).translate()))
+                              str(Seq(self.nucl_seqs_dict[seq_name]).translate()))
             nucl_aln_dict[seq_name] = nucl_accord_prot(self[seq_name],
-                                                       nucl_fasta_dict[seq_name][match.start()*3: match.end()*3])
+                                                       self.nucl_seqs_dict[seq_name][match.start()*3: match.end()*3])
         nucl_aln = self._sub_mult_aln(SeqsDict.load_from_dict(nucl_aln_dict),
                                       aln_type=self.nucl_type,
                                       aln_name="nucl_"+self.aln_name)
