@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import multiprocessing as mp
 from copy import copy, deepcopy
-from collections import defaultdict, OrderedDict, Counter
+from collections import defaultdict, OrderedDict
 
 import numpy as np
 from scipy.stats import gmean
@@ -13,17 +13,18 @@ import pandas
 from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
-from eagle.lib.general import ConfBase, join_files, filter_list, generate_random_string, send_log_message
-from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs, SeqsDict
+from eagle.lib.general import ConfBase, join_files, generate_random_string, send_log_message
+from eagle.lib.phylo import DistanceMatrix
+from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs, SeqsDict, detect_seqs_type
 
 
 class MultAln(ConfBase):
     # Consider inherit it from SeqsDict and making ConfBase the mixin
 
-    prot_type = "prot"
-    nucl_type = "nucl"
-    prot_types = ("protein", prot_type, "p")
-    nucl_types = ("nucleotide", nucl_type, "n")
+    prot_type = SeqsDict.prot_type
+    nucl_type = SeqsDict.nucl_type
+    prot_types = SeqsDict.prot_types
+    nucl_types = SeqsDict.nucl_types
 
     dist_matr_method = "phylip"
     low_memory = False
@@ -59,8 +60,8 @@ class MultAln(ConfBase):
         if self.states_seq is None:
             self.states_seq = list()
         self.aln_type = aln_type
-        if not self.aln_type:
-            self.aln_type = detect_seqs_type(fasta_dict=self.mult_aln_dict)
+        if self.aln_type is None:
+            self.aln_type = detect_seqs_type(seqs_dict=self.mult_aln_dict)
         self._distance_matrix = None
         self.aln_name = aln_name
         if tmp_dir is None:
@@ -215,6 +216,10 @@ class MultAln(ConfBase):
         else:
             return list()
 
+    @property
+    def name(self):
+        return self.aln_name
+
     def rename_seqs(self, old_to_new_dict):
         if isinstance(self.mult_aln_dict, SeqsDict):
             self.mult_aln_dict.rename_seqs(old_to_new_dict)
@@ -230,7 +235,7 @@ class MultAln(ConfBase):
     @property
     def length(self):
         if self.mult_aln_dict:
-            return len(self.mult_aln_dict.values()[0])
+            return len(self.mult_aln_dict[self.seq_names[0]])
         else:
             return 0
 
@@ -269,8 +274,20 @@ class MultAln(ConfBase):
         dump_fasta_dict(fasta_dict=self.mult_aln_dict, fasta_path=aln_fasta_path)
 
     @classmethod
-    def load_alignment(cls, aln_fasta_path, aln_type=None, aln_name=None, config_path=None, logger=None, **kwargs):
-        return cls(mult_aln_dict=load_fasta_to_dict(fasta_path=aln_fasta_path, **kwargs),
+    def load_alignment(cls, aln_path=None, aln_format="fasta", aln_type=None, aln_name=None,
+                       config_path=None, logger=None, **kwargs):
+        # For backward compatibility
+        if aln_path is None:
+            aln_path = kwargs.get("aln_fasta_path", None)
+
+        if aln_name is None:
+            aln_name = os.path.splitext(aln_path)[0]
+        if aln_format.lower() in ("fasta", "fas"):
+            mult_aln_dict = load_fasta_to_dict(fasta_path=aln_path, **kwargs)
+        else:
+            print("ERROR: only fasta supported yet")
+            return
+        return cls(mult_aln_dict=mult_aln_dict,
                    aln_type=aln_type,
                    aln_name=aln_name,
                    config_path=config_path,
@@ -294,8 +311,8 @@ class MultAln(ConfBase):
             # Constructs a list of rarefied by different distance thresholds alignments and runs improve_aln on it with dist_filt=False
             pass
         coords = list()
-        seq_id_list = self.mult_aln_dict.keys()
-        for i in range(len(self.mult_aln_dict[seq_id_list[0]])):
+        seq_id_list = list(self.mult_aln_dict.keys())
+        for i in range(self.length):
             if self.states_seq:
                 if self.states_seq[i] in ("match", "specific"):
                     coords = self._update_coords(i+1, coords)
@@ -316,7 +333,7 @@ class MultAln(ConfBase):
             coords = [(coords[0][0], coords[-1][1])]
         if output.lower() in ("coordinates", "coords", "coord", "c"):
             seq_coord_list = list()
-            for seq_id in self.mult_aln_dict.iterkeys():
+            for seq_id in self.seq_names:
                 seq_c_dict = {"seq_id": seq_id}
                 coords_for_seq = self._get_coords_for_seq(coords, self.mult_aln_dict[seq_id])
                 for k in range(len(coords_for_seq)):
@@ -533,7 +550,7 @@ class MultAln(ConfBase):
 
     def cons_cols_num(self, cons_thr=conf_constants.cons_thr):
         cln = 0
-        for i in range(len(self.mult_aln_dict[self.mult_aln_dict.keys()[0]])):
+        for i in range(self.length):
             s_num_dict = defaultdict(int)
             for seq_id in self.mult_aln_dict:
                 s_num_dict[self.mult_aln_dict[seq_id][i].lower()] += 1
@@ -569,7 +586,7 @@ class MultAln(ConfBase):
         if top_fract is None:
             top_fract = conf_constants.kaks_top_fract
         if self.aln_type is None:
-            self.aln_type = detect_seqs_type(fasta_dict=self.mult_aln_dict)
+            self.aln_type = detect_seqs_type(seqs_dict=self.mult_aln_dict)
 
         if self.aln_type.lower() in self.prot_types:
             if not self.nucl_seqs_dict:
@@ -683,228 +700,6 @@ class MultAln(ConfBase):
                 "seqs_with_stops_fract": float(len(list(filter(lambda x: x > 0, stops_per_seq)))) / float(len(self))}
 
 
-class DistanceMatrix(object):
-    # implement _sub_distance_matrx method
-
-    default_format = "phylip"
-    default_method = "phylip"
-    default_emboss_inst_dir = conf_constants.emboss_inst_dir
-
-    def __init__(self, seqs_order, matr, short_to_full_seq_names=None, **kwargs):
-        self.seqs_order = seqs_order
-        assert isinstance(matr, np.ndarray), "ERROR: value for 'matr' argument should be numpy.ndarray"
-        self.matr = matr
-        self.short_to_full_seq_names = short_to_full_seq_names
-        if self.short_to_full_seq_names is None:
-            self.short_to_full_seq_names = dict()
-
-        self.aln_name = kwargs.get("aln_name", None)
-        self.aln_type = kwargs.get("aln_type", None)
-        self.calc_method = kwargs.get("calc_method", None)
-
-        self.emboss_inst_dir = kwargs.get("emboss_inst_dir", self.default_emboss_inst_dir)
-        self.tmp_dir = kwargs.get("tmp_dir", generate_random_string(10) + "_dm_tmp")
-        self.logger = kwargs.get("logger", None)
-
-    @property
-    def seq_names(self):
-        return [seq_name for seq_name, seq_i in sorted(self.seqs_order.items(), key=lambda si: si[1])]
-
-    @property
-    def full_to_short_seq_names(self):
-        if not self.short_to_full_seq_names:
-            self.short_to_full_seq_names = reduce_seq_names({seq_name: "" for seq_name in self.seq_names},
-                                                            num_letters=10)[1]
-        return {full_name: short_name for short_name, full_name in self.short_to_full_seq_names.items()}
-
-    def __getitem__(self, item):
-        if type(item) in (list, set):
-            seq_names = sorted(item, key=lambda i: self.seqs_order[i])
-            matr = list()
-            short_to_full_seq_names = dict()
-            full_to_short_seq_names = self.full_to_short_seq_names
-            for seq_name in seq_names:
-                short_to_full_seq_names[full_to_short_seq_names[seq_name]] = seq_name
-                matr.append(list(self[seq_name][seq_names]))
-
-            return DistanceMatrix(seqs_order={seq_name: i for i, seq_name in enumerate(seq_names)},
-                                  matr=np.array(matr),
-                                  short_to_full_seq_names=short_to_full_seq_names,
-                                  aln_type=self.aln_type,
-                                  calc_method=self.calc_method,
-                                  emboss_inst_dir=self.emboss_inst_dir,
-                                  logger=self.logger)
-        else:
-            return pandas.Series(self.matr[self.seqs_order[item]], index=self.seq_names)
-
-    def __setitem__(self, key, value):
-        # WARNING: new key cannot be set (key must be in self.seq_names)
-        assert isinstance(value, pandas.Series), \
-            "Error: value must be a pandas.Series object with org_names as indices"
-        for seq_name in value.index:
-            if seq_name == key:
-                self.matr[self.seqs_order[key]] = np.array([value[seq_name_] for seq_name_ in self.seq_names])
-            else:
-                self.matr[self.seqs_order[seq_name]][self.seqs_order[key]] = value[seq_name]
-
-    def __iter__(self):
-        for seq_name in self.seq_names:
-            yield seq_name
-
-    @property
-    def mean_dist(self):
-        return np.mean(self.matr[self.matr >= 0.0])
-
-    @property
-    def median_dist(self):
-        return np.median(self.matr[self.matr >= 0.0])
-
-    @property
-    def nseqs(self):
-        return len(self.seq_names)
-
-    @classmethod
-    def calculate(cls, mult_aln, method="phylip", emboss_inst_dir=default_emboss_inst_dir):
-        assert isinstance(mult_aln, MultAln), \
-            "Error: the value for mult_aln argument is not eagle.lib.alignment.MultAln object"
-        if not os.path.exists(mult_aln.tmp_dir):
-            os.makedirs(mult_aln.tmp_dir)
-        if method.lower() == "phylip":
-            aln_fasta_path = os.path.join(mult_aln.tmp_dir, mult_aln.aln_name+".fasta")
-            phylip_matrix_path = os.path.join(mult_aln.tmp_dir, mult_aln.aln_name+".phylip")
-            if not mult_aln.mult_aln_dict:
-                if mult_aln.logger:
-                    mult_aln.logger.warning("No sequences in alignment")
-                else:
-                    print("No sequences in alignment")
-                return 1
-            dump_fasta_dict(fasta_dict=mult_aln.mult_aln_dict_short_id, fasta_path=aln_fasta_path)
-            if mult_aln.aln_type.lower() in mult_aln.prot_types:
-                if mult_aln.logger:
-                    mult_aln.logger.info("protdist is starting")
-                else:
-                    print("protdist is starting")
-                phylip_cmd = os.path.join(emboss_inst_dir, "fprotdist") + " -sequence " + aln_fasta_path + \
-                             " -method d -outfile " + phylip_matrix_path
-            else:
-                if mult_aln.logger:
-                    mult_aln.logger.info("dnadist is starting")
-                else:
-                    print("dnadist is starting")
-                phylip_cmd = os.path.join(emboss_inst_dir, "fdnadist") + " -sequence " + aln_fasta_path + \
-                             " -method f -outfile " + phylip_matrix_path
-            subprocess.call(phylip_cmd, shell=True)
-            if mult_aln.logger:
-                mult_aln.logger.info("distance calculations finished")
-            else:
-                print("distance calculations finished")
-            distance_matrix = cls.load(matrix_path=phylip_matrix_path,
-                                       matr_format="phylip",
-                                       short_to_full_seq_names=mult_aln.short_to_full_seq_names,
-                                       emboss_inst_dir=emboss_inst_dir)
-
-        shutil.rmtree(mult_aln.tmp_dir)
-        distance_matrix.aln_name = mult_aln.aln_name
-        distance_matrix.aln_type = mult_aln.aln_type
-        return distance_matrix
-
-    @classmethod
-    def load(cls,
-             matrix_path,
-             matr_format="phylip",
-             short_to_full_seq_names=None,
-             emboss_inst_dir=default_emboss_inst_dir):
-
-        if matr_format == "phylip":
-            matr_f = open(matrix_path)
-            lines_dict = OrderedDict()
-            seqs_list = list()
-            matrix_started = False
-            seq_dists_list = list()
-            num_seqs = 0
-            got_seqs = 0
-            for line_ in matr_f:
-                line = None
-                line = line_.strip()
-                if not line:
-                    continue
-                line_list = filter_list(line.split())
-                if len(line_list) == 1 and not matrix_started:
-                    num_seqs = int(line_list[0])
-                    continue
-                if not matrix_started:
-                    matrix_started = True
-                if got_seqs == 0:
-                    seqs_list.append(line_list[0])
-                    seq_dists_list.__iadd__(line_list[1:])
-                    got_seqs += len(line_list[1:])
-                elif got_seqs <= num_seqs:
-                    seq_dists_list.__iadd__(line_list)
-                    got_seqs += len(line_list)
-                if got_seqs == num_seqs:
-                    lines_dict[seqs_list[-1]] = list(map(float, seq_dists_list))
-                    seq_dists_list = list()
-                    got_seqs = 0
-            matr_f.close()
-
-            seqs_order = dict()
-            matr = list()
-            i = 0
-            for seq_id in lines_dict:
-                matr.append(lines_dict[seq_id])
-                if short_to_full_seq_names:
-                    seqs_order[short_to_full_seq_names[seq_id]] = i
-                else:
-                    seqs_order[seq_id] = i
-                i += 1
-
-            distance_matrix = cls(seqs_order=seqs_order,
-                                  matr=np.array(matr),
-                                  short_to_full_seq_names=short_to_full_seq_names,
-                                  calc_method="phylip",
-                                  emboss_inst_dir=emboss_inst_dir)
-
-        return distance_matrix
-
-    def dump(self, matrix_path, matr_format="phylip"):
-        if matr_format == "phylip":
-            matr_f = open(matrix_path, 'w')
-            matr_f.write("    %s\n" % self.nseqs)
-            full_to_short_seq_names = self.full_to_short_seq_names
-            for seq_name in self.seq_names:
-                num_spaces_to_add = 10 - len(full_to_short_seq_names[seq_name])
-                spaces_to_add = [" " for i in range(num_spaces_to_add)]
-                matr_f.write("%s %s\n" % (full_to_short_seq_names[seq_name] + "".join(spaces_to_add),
-                                          " ".join(map(str, self[seq_name]))))
-            matr_f.close()
-        return self.short_to_full_seq_names
-
-    def set_new_seq_names(self, old_to_new_seq_names):
-        if self.short_to_full_seq_names:
-            full_to_short_seq_names = self.full_to_short_seq_names
-        for seq_old_name in old_to_new_seq_names:
-            self.seqs_order[old_to_new_seq_names[seq_old_name]] = self.seqs_order.pop(seq_old_name)
-            if self.short_to_full_seq_names:
-                self.short_to_full_seq_names[full_to_short_seq_names[seq_old_name]] = old_to_new_seq_names[seq_old_name]
-
-    def replace_negative(self, value=None, inplace=False):
-        if value is None:
-            value = self.mean_dist
-        if inplace:
-            self.matr[self.matr < 0.0] = value
-        else:
-            matr = self.matr.copy()
-            matr[matr < 0.0] = value
-            return DistanceMatrix(seqs_order=self.seqs_order,
-                                  matr=matr,
-                                  short_to_full_seq_names=self.short_to_full_seq_names,
-                                  aln_name=self.aln_name,
-                                  aln_type=self.aln_type,
-                                  calc_method=self.calc_method,
-                                  emboss_inst_dir=self.emboss_inst_dir,
-                                  logger=self.logger)
-
-
 class BlastHandler(ConfBase):
 
     def __init__(self,
@@ -985,6 +780,9 @@ class BlastHandler(ConfBase):
             else:
                 print("INFO: run '%s' command" % blast_search_cmd)
             subprocess.call(blast_search_cmd, shell=True)
+
+    def build_tree(self):
+        return
 
 
 class HmmerHandler(ConfBase):
@@ -1141,24 +939,6 @@ def construct_mult_aln(seq_dict=None,
     if remove_tmp:
         shutil.rmtree(tmp_dir)
     return mult_aln
-
-
-def detect_seqs_type(fasta_path=None, fasta_dict=None, nuc_freq_thr=0.75):
-    seqs_list = list()
-    summ_l = 0
-    if not fasta_dict and fasta_path:
-        fasta_dict = load_fasta_to_dict(fasta_path)
-        for seq_key in fasta_dict.keys():
-            seqs_list.append(fasta_dict[seq_key].lower().replace("-", ""))
-            summ_l += len(seqs_list[-1])
-        let_counts = Counter("".join(seqs_list))
-        if float(let_counts.get("a", 0)+let_counts.get("c", 0)+let_counts.get("g", 0)+
-                         let_counts.get("t", 0))/float(summ_l) >= nuc_freq_thr:
-            return MultAln.nucl_type
-        else:
-            return MultAln.prot_type
-    else:
-        return None
 
 
 def nucl_accord_prot(prot_seq, nucl_seq):

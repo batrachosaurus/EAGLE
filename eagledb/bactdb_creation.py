@@ -11,9 +11,9 @@ import numpy as np
 import pandas
 
 from eagle.constants import eagle_logger, conf_constants
-from eagle.lib.alignment import construct_mult_aln, DistanceMatrix, MultAln
+from eagle.lib.alignment import construct_mult_aln, MultAln
 from eagle.lib.general import worker, get_un_fix, bool_from_str
-from eagle.lib.phylo import build_tree_by_dist
+from eagle.lib.phylo import build_tree_by_dist, DistanceMatrix
 from eagle.lib.seqs import load_fasta_to_dict, reduce_seq_names
 from eagledb import join_genomes_lists
 from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \

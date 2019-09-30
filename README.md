@@ -7,7 +7,7 @@ MAFFT
 MSAProbs  
 HMMER3  
 EMBOSS + PHYLIPNEW (EMBASSY package)  
-FastME 2.07  
+FastME >= 2.0  
 Blast+  
 KaKs_Calculator 2.0  
 Python >= 3.6

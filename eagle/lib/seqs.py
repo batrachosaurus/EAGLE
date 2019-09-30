@@ -9,11 +9,15 @@ import numpy as np
 from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
-from eagle.lib.general import generate_random_string, np_memmap_astype
-from eagle.lib.general import filter_list, get_un_fix
+from eagle.lib.general import generate_random_string, np_memmap_astype, filter_list, get_un_fix
 
 
 class SeqsDict(object):
+
+    prot_type = "prot"
+    nucl_type = "nucl"
+    prot_types = ("protein", prot_type, "p")
+    nucl_types = ("nucleotide", nucl_type, "n")
 
     def __init__(self, seqs_order, seqs_array, seqs_type=None, low_memory=False):
         self.seqs_order = seqs_order
@@ -24,7 +28,7 @@ class SeqsDict(object):
         self._empty_rows = list()
 
     def __getitem__(self, item):
-        return self.seqs_array[self.seqs_order[item]]
+        return self.seqs_array[self.seqs_order[item]].decode()
 
     def get_sample(self, seqs, low_memory='auto', **kwargs):
         if low_memory == "auto":
@@ -155,6 +159,7 @@ class SeqsDict(object):
                             new_seq = "".join(seq_list)
                         if len(new_seq) > seqs_array.itemsize:
                             if low_memory:
+                                # TODO: try "np.astype(... , copy=False)" instead of next line
                                 seqs_array = np_memmap_astype(dat_path=seqs_array.filename,
                                                               old_dtype=seqs_array.dtype,
                                                               new_dtype=np.dtype("S%s" % len(new_seq)),
@@ -504,3 +509,28 @@ def read_blast_out(blast_out_path, ev_thr=1.0e-06, aln_l_thr=180, ident_thr=0.35
                 "subj_end": int(line_list[9].strip()),
             })
     return blast_res_dict
+
+
+def detect_seqs_type(seqs_dict=None, nuc_freq_thr=0.75, **kwargs):
+    # For backward compatibility
+    if kwargs.get("fasta_dict", None) is not None:
+        seqs_dict = kwargs["fasta_dict"]
+    fasta_path = kwargs.get("fasta_path", None)
+    if seqs_dict is None:
+        if fasta_path is not None:
+            seqs_dict = load_fasta_to_dict(fasta_path)
+        else:
+            return
+
+    summ_l = 0
+    let_counts = Counter()
+    for seq_key in seqs_dict.keys():
+        seq = None
+        seq = seqs_dict[seq_key].lower().replace("-", "")
+        let_counts += Counter(seq)
+        summ_l += len(seq)
+    if float(let_counts.get("a", 0)+let_counts.get("c", 0)+let_counts.get("g", 0)+
+                        let_counts.get("t", 0))/float(summ_l) >= nuc_freq_thr:
+        return SeqsDict.nucl_type
+    else:
+        return SeqsDict.prot_type
