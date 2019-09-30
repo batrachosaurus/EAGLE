@@ -3,13 +3,15 @@ import shutil
 from copy import deepcopy
 import subprocess
 from collections import OrderedDict
+import numbers
 
+import numpy as np
 import pandas
 import dendropy
 
 from eagle.constants import conf_constants
-from eagle.lib.general import ConfBase, filter_list, generate_random_string
-from eagle.lib.alignment import DistanceMatrix
+from eagle.lib.general import ConfBase, filter_list, generate_random_string, send_log_message
+from eagle.lib.seqs import reduce_seq_names, dump_fasta_dict
 
 
 class PhyloTree(ConfBase):
@@ -154,51 +156,304 @@ class PhyloTree(ConfBase):
         pass
 
 
+class DistanceMatrix(object):
+    # implement _sub_distance_matrx method
+
+    default_format = "phylip"
+    default_method = "phylip"
+    default_emboss_inst_dir = conf_constants.emboss_inst_dir
+
+    def __init__(self, seqs_order, matr, short_to_full_seq_names=None, **kwargs):
+        self.seqs_order = seqs_order
+        assert isinstance(matr, np.ndarray), "ERROR: value for 'matr' argument should be numpy.ndarray"
+        self.matr = matr
+        self.short_to_full_seq_names = short_to_full_seq_names
+        if self.short_to_full_seq_names is None:
+            self.short_to_full_seq_names = dict()
+
+        self.aln_name = kwargs.get("aln_name", None)
+        self.aln_type = kwargs.get("aln_type", None)
+        self.calc_method = kwargs.get("calc_method", None)
+
+        self.emboss_inst_dir = kwargs.get("emboss_inst_dir", self.default_emboss_inst_dir)
+        self.tmp_dir = kwargs.get("tmp_dir", generate_random_string(10) + "_dm_tmp")
+        self.logger = kwargs.get("logger", None)
+
+    @property
+    def seq_names(self):
+        return [seq_name for seq_name, seq_i in sorted(self.seqs_order.items(), key=lambda si: si[1])]
+
+    @property
+    def full_to_short_seq_names(self):
+        if not self.short_to_full_seq_names:
+            self.short_to_full_seq_names = reduce_seq_names({seq_name: "" for seq_name in self.seq_names},
+                                                            num_letters=10)[1]
+        return {full_name: short_name for short_name, full_name in self.short_to_full_seq_names.items()}
+
+    def __getitem__(self, item):
+        if type(item) in (list, set):
+            seq_names = sorted(item, key=lambda i: self.seqs_order[i])
+            matr = list()
+            short_to_full_seq_names = dict()
+            full_to_short_seq_names = self.full_to_short_seq_names
+            for seq_name in seq_names:
+                short_to_full_seq_names[full_to_short_seq_names[seq_name]] = seq_name
+                matr.append(list(self[seq_name][seq_names]))
+
+            return DistanceMatrix(seqs_order={seq_name: i for i, seq_name in enumerate(seq_names)},
+                                  matr=np.array(matr),
+                                  short_to_full_seq_names=short_to_full_seq_names,
+                                  aln_type=self.aln_type,
+                                  calc_method=self.calc_method,
+                                  emboss_inst_dir=self.emboss_inst_dir,
+                                  logger=self.logger)
+        else:
+            return pandas.Series(self.matr[self.seqs_order[item]], index=self.seq_names)
+
+    def __setitem__(self, key, value):
+        # WARNING: new key cannot be set (key must be in self.seq_names)
+        assert isinstance(value, pandas.Series), \
+            "Error: value must be a pandas.Series object with org_names as indices"
+        for seq_name in value.index:
+            if seq_name == key:
+                self.matr[self.seqs_order[key]] = np.array([value[seq_name_] for seq_name_ in self.seq_names])
+            else:
+                self.matr[self.seqs_order[seq_name]][self.seqs_order[key]] = value[seq_name]
+
+    def __iter__(self):
+        for seq_name in self.seq_names:
+            yield seq_name
+
+    @property
+    def mean_dist(self):
+        return np.mean(self.matr[self.matr >= 0.0])
+
+    @property
+    def median_dist(self):
+        return np.median(self.matr[self.matr >= 0.0])
+
+    @property
+    def nseqs(self):
+        return len(self.seq_names)
+
+    @classmethod
+    def calculate(cls, mult_aln, method="phylip", emboss_inst_dir=default_emboss_inst_dir):
+        from eagle.lib.alignment import MultAln
+        assert isinstance(mult_aln, MultAln), \
+            "Error: the value for mult_aln argument is not eagle.lib.alignment.MultAln object"
+        if not os.path.exists(mult_aln.tmp_dir):
+            os.makedirs(mult_aln.tmp_dir)
+        if method.lower() == "phylip":
+            aln_fasta_path = os.path.join(mult_aln.tmp_dir, mult_aln.aln_name+".fasta")
+            phylip_matrix_path = os.path.join(mult_aln.tmp_dir, mult_aln.aln_name+".phylip")
+            if not mult_aln.mult_aln_dict:
+                if mult_aln.logger:
+                    mult_aln.logger.warning("No sequences in alignment")
+                else:
+                    print("No sequences in alignment")
+                return 1
+            dump_fasta_dict(fasta_dict=mult_aln.mult_aln_dict_short_id, fasta_path=aln_fasta_path)
+            if mult_aln.aln_type.lower() in mult_aln.prot_types:
+                if mult_aln.logger:
+                    mult_aln.logger.info("protdist is starting")
+                else:
+                    print("protdist is starting")
+                phylip_cmd = os.path.join(emboss_inst_dir, "fprotdist") + " -sequence " + aln_fasta_path + \
+                             " -method d -outfile " + phylip_matrix_path
+            else:
+                if mult_aln.logger:
+                    mult_aln.logger.info("dnadist is starting")
+                else:
+                    print("dnadist is starting")
+                phylip_cmd = os.path.join(emboss_inst_dir, "fdnadist") + " -sequence " + aln_fasta_path + \
+                             " -method f -outfile " + phylip_matrix_path
+            subprocess.call(phylip_cmd, shell=True)
+            if mult_aln.logger:
+                mult_aln.logger.info("distance calculations finished")
+            else:
+                print("distance calculations finished")
+            distance_matrix = cls.load(matrix_path=phylip_matrix_path,
+                                       matr_format="phylip",
+                                       short_to_full_seq_names=mult_aln.short_to_full_seq_names,
+                                       emboss_inst_dir=emboss_inst_dir)
+
+        shutil.rmtree(mult_aln.tmp_dir)
+        distance_matrix.aln_name = mult_aln.aln_name
+        distance_matrix.aln_type = mult_aln.aln_type
+        return distance_matrix
+
+    @classmethod
+    def load(cls,
+             matrix_path,
+             matr_format="phylip",
+             short_to_full_seq_names=None,
+             emboss_inst_dir=default_emboss_inst_dir):
+
+        if matr_format == "phylip":
+            matr_f = open(matrix_path)
+            lines_dict = OrderedDict()
+            seqs_list = list()
+            matrix_started = False
+            seq_dists_list = list()
+            num_seqs = 0
+            got_seqs = 0
+            for line_ in matr_f:
+                line = None
+                line = line_.strip()
+                if not line:
+                    continue
+                line_list = filter_list(line.split())
+                if len(line_list) == 1 and not matrix_started:
+                    num_seqs = int(line_list[0])
+                    continue
+                if not matrix_started:
+                    matrix_started = True
+                if got_seqs == 0:
+                    seqs_list.append(line_list[0])
+                    seq_dists_list.__iadd__(line_list[1:])
+                    got_seqs += len(line_list[1:])
+                elif got_seqs <= num_seqs:
+                    seq_dists_list.__iadd__(line_list)
+                    got_seqs += len(line_list)
+                if got_seqs == num_seqs:
+                    lines_dict[seqs_list[-1]] = list(map(float, seq_dists_list))
+                    seq_dists_list = list()
+                    got_seqs = 0
+            matr_f.close()
+
+            seqs_order = dict()
+            matr = list()
+            i = 0
+            for seq_id in lines_dict:
+                matr.append(lines_dict[seq_id])
+                if short_to_full_seq_names:
+                    seqs_order[short_to_full_seq_names[seq_id]] = i
+                else:
+                    seqs_order[seq_id] = i
+                i += 1
+
+            distance_matrix = cls(seqs_order=seqs_order,
+                                  matr=np.array(matr),
+                                  short_to_full_seq_names=short_to_full_seq_names,
+                                  calc_method="phylip",
+                                  emboss_inst_dir=emboss_inst_dir)
+
+        return distance_matrix
+
+    def dump(self, matrix_path, matr_format="phylip"):
+        float_to_str = lambda x: "%f" % x if isinstance(x, numbers.Number) else str(x)
+        if matr_format == "phylip":
+            matr_f = open(matrix_path, 'w')
+            matr_f.write("    %s\n" % self.nseqs)
+            full_to_short_seq_names = self.full_to_short_seq_names
+            for seq_name in self.seq_names:
+                num_spaces_to_add = 10 - len(full_to_short_seq_names[seq_name])
+                spaces_to_add = [" " for i in range(num_spaces_to_add)]
+                matr_f.write("%s %s\n" % (full_to_short_seq_names[seq_name] + "".join(spaces_to_add),
+                                          " ".join(map(float_to_str, self[seq_name]))))
+            matr_f.close()
+        return self.short_to_full_seq_names
+
+    def set_new_seq_names(self, old_to_new_seq_names):
+        if self.short_to_full_seq_names:
+            full_to_short_seq_names = self.full_to_short_seq_names
+        for seq_old_name in old_to_new_seq_names:
+            self.seqs_order[old_to_new_seq_names[seq_old_name]] = self.seqs_order.pop(seq_old_name)
+            if self.short_to_full_seq_names:
+                self.short_to_full_seq_names[full_to_short_seq_names[seq_old_name]] = old_to_new_seq_names[seq_old_name]
+
+    def replace_negative(self, value=None, inplace=False):
+        if value is None:
+            value = self.mean_dist
+        if inplace:
+            self.matr[self.matr < 0.0] = value
+        else:
+            matr = self.matr.copy()
+            matr[matr < 0.0] = value
+            return DistanceMatrix(seqs_order=self.seqs_order,
+                                  matr=matr,
+                                  short_to_full_seq_names=self.short_to_full_seq_names,
+                                  aln_name=self.aln_name,
+                                  aln_type=self.aln_type,
+                                  calc_method=self.calc_method,
+                                  emboss_inst_dir=self.emboss_inst_dir,
+                                  logger=self.logger)
+
+    def build_tree(self):
+        return
+
+
 def build_tree_by_dist(dist_matrix=None,
                        dist_matrix_path=None,
                        full_seq_names=None,
                        tree_name="phylo_tree",
                        tmp_dir="phylo_tree_tmp",
                        method="FastME",
+                       options=None,
                        fastme_exec_path=None,
                        config_path=None,
                        logger=None):
 
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
-    if fastme_exec_path is None:
-        fastme_exec_path = conf_constants.fastme_exec_path
+
     if not isinstance(dist_matrix, DistanceMatrix) and not dist_matrix_path:
-        if logger:
-            logger.warning("No distance matrix input or "
-                           "value for dist_matrix argument is not eagle.lib.alignment.DistanceMatrix object")
-        else:
-            print("No distance matrix input or"
-                  "value for dist_matrix argument is not eagle.lib.alignment.DistanceMatrix object")
-        return 1
+        send_log_message(message="no distance matrix input or "
+                                 "value for dist_matrix argument is not eagle.lib.alignment.DistanceMatrix object",
+                         mes_type="e",
+                         logger=logger)
+        return
 
     if method.lower() == "fastme":
         if not dist_matrix_path:
             dist_matrix_path = os.path.join(tmp_dir, "dist_matr.ph")
             dist_matrix.replace_negative(inplace=False).dump(matrix_path=dist_matrix_path, matr_format="phylip")
         tree_path = os.path.join(tmp_dir, "tree.nwk")
-        fastme_cmd = fastme_exec_path + " -i " + dist_matrix_path + " -o " + tree_path
-        subprocess.call(fastme_cmd, shell=True)
-        phylo_tree = PhyloTree.load_tree(tree_path=tree_path,
-                                         tree_format="newick",
-                                         full_seq_names=full_seq_names,
-                                         tree_name=tree_name,
-                                         tmp_dir=tmp_dir,
-                                         config_path=config_path,
-                                         logger=logger)
-        if logger:
-            logger.info("Phylogenetic tree built with FastME")
-        else:
-            print("Phylogenetic tree built with FastME")
+        phylo_tree = _run_fastme(input_data=dist_matrix_path,
+                                 output_tree=tree_path,
+                                 options=options,
+                                 fastme_exec_path=fastme_exec_path)[0]
+        phylo_tree.tree_name = tree_name
+        phylo_tree.full_seq_names=full_seq_names
+        phylo_tree.tmp_dir = tmp_dir
+        phylo_tree.config_path = config_path
+        phylo_tree.logger = logger
+        send_log_message(message="phylogenetic tree built with FastME", mes_type="i", logger=logger)
     else:
-        return 1
+        return
     shutil.rmtree(tmp_dir, ignore_errors=True)
     return phylo_tree
+
+
+def _run_fastme(input_data, output_tree=None, options=None, fastme_exec_path=None, **kwargs):
+    if fastme_exec_path is None:
+        fastme_exec_path = conf_constants.fastme_exec_path
+
+    if options is None:
+        options = dict()
+    for option in ("-i", "--input_data", "-o", "--output_tree", "-n", "--nni", "-c"):
+        options.pop(option, None)
+    options["-i"] = input_data
+    if output_tree is not None:
+        options["-o"] = output_tree
+    else:
+        options["-c"] = True
+    output_matrix = options.get("-O", options.get("--output_matrix", None))
+    if not kwargs.get("no_nni", False):
+        options["-n"] = True
+
+    filter_opt = lambda opt: [opt[0]] if opt[1] is True else opt
+    prepare_opt = lambda opt: " " + "=".join(opt) if "--" in opt[0] else " " + " ".join(opt)
+    fastme_cmd = fastme_exec_path + "".join(prepare_opt(filter_opt(opt)) for opt in options.items())
+    subprocess.call(fastme_cmd, shell=True)
+
+    phylo_tree = None
+    dist_matrix = None
+    if output_tree is not None:
+        phylo_tree = PhyloTree.load_tree(tree_path=output_tree, tree_format="newick")
+    if output_matrix is not None:
+        dist_matrix = DistanceMatrix.load(matrix_path=output_matrix, matr_format="phylip")  # actually it's not phylip
+    return phylo_tree, dist_matrix
 
 
 def compare_trees(phylo_tree1,
