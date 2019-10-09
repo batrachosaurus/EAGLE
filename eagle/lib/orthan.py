@@ -1,13 +1,110 @@
 # WARNING: this module cannot be imported in any eagle.lib module!
 import os
+import multiprocessing as mp
 
 import numpy as np
 import pandas as pd
 
 from eagle.constants import conf_constants
-from eagle.lib.general import send_log_message
-from eagle.lib.alignment import MultAln
+from eagle.lib.general import send_log_message, join_files, worker
+from eagle.lib.seqs import SeqsDict, read_blast_out
+from eagle.lib.alignment import MultAln, BlastHandler, search_profile
 from eagle.lib.phylo import PhyloTree, compare_trees, build_tree_by_dist
+from eagledb.scheme import GenomeInfo, SeqProfileInfo
+
+
+def hom_search_blast(seqs_dict, genomes_list, blastdb_path=None, work_dir="./blast_search", low_memory="auto",
+                     num_threads=None, blast_inst_dir=None, autoremove=True):
+    assert isinstance(seqs_dict, SeqsDict), "ERROR: the value for 'seqs_dict' argument should be an object " \
+                                            "of eagle.lib.seqs.SeqsDict class"
+
+    if num_threads is None:
+        num_threads = conf_constants.num_threads
+    if blast_inst_dir is None:
+        blast_inst_dir = conf_constants.blast_inst_dir
+
+    genome_id2org = dict()
+    genome_id2fna = dict()
+    for genome_dict in genomes_list:
+        genome_info = GenomeInfo.load_from_dict(in_dict=genome_dict)
+        genome_id2org[genome_info.genome_id] = genome_info.org_name
+        genome_id2fna[genome_info.genome_id] = genome_info.fna_path
+    blast_handler = BlastHandler(inst_dir=blast_inst_dir)
+    if blastdb_path is None:
+        blastdb_path = os.path.join(work_dir, "genomes_blastdb", "genomes")
+        os.makedirs(os.path.dirname(blastdb_path))
+        genomes_fasta = join_files(list(genome_id2fna.values()), out_file_path=blastdb_path+".fasta")
+        blast_handler.make_blastdb(in_fasta=genomes_fasta, dbtype="nucl", db_name=blastdb_path)
+    if seqs_dict.seqs_type in seqs_dict.prot_types:
+        blast_type = "tblastn"
+    else:
+        blast_type = "blastn"
+    blast_out_path = os.path.join(work_dir, "blast.out")
+    blast_handler.run_blast_search(blast_type=blast_type, query=seqs_dict, db=blastdb_path, out=blast_out_path,
+                                   num_threads=num_threads)
+    blast_res_dict = read_blast_out(blast_out_path=blast_out_path)
+
+    for seq_name in seqs_dict:
+        pass
+    return
+
+
+def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_search", low_memory="auto",
+                       num_threads=None, autoremove=True):
+    if num_threads is None:
+        num_threads = conf_constants.num_threads
+
+    seq_types = mp.Manager().dict()
+    seq_types["prot"] = False
+    seq_types["nucl"] = False
+    seq_ids_to_orgs = mp.Manager().dict()
+    protdb_path = os.path.join(work_dir, "protdb.fasta")
+    nucldb_path = os.path.join(work_dir, "nucldb.fasta")
+
+    pool = mp.Pool(num_threads)
+    profiles_list = pool.map(worker, map(lambda a_or_p: {"function": _prepare_profile,
+                                                         "a_or_p": a_or_p,
+                                                         "work_dir": work_dir,
+                                                         "seq_types": seq_types,
+                                                         "protdb_path": protdb_path,
+                                                         "nucldb_path": nucldb_path,
+                                                         "seq_ids_to_orgs": seq_ids_to_orgs},
+                                         alns_or_profiles))
+    pool.close()
+    pool.join()
+
+    for genome_dict in genomes_list:
+        genome_info = GenomeInfo.load_from_dict(in_dict=genome_dict)
+        if seq_types["prot"]:
+            pass
+        if seq_types["nucl"]:
+            pass
+
+    pool = mp.Pool(num_threads)
+    hom_alns = pool.map(worker, profiles_list)
+    pool.close()
+    pool.join()
+    return hom_alns
+
+
+def _prepare_profile(a_or_p, work_dir, seq_types, protdb_path, nucldb_path, seq_ids_to_orgs):
+    if isinstance(a_or_p, MultAln):
+        profile_path = None
+        profile_path = os.path.join(work_dir, a_or_p.aln_name, "profile.hmm")
+        a_or_p.get_hmm_profile(profile_path=profile_path, method="hmmer")
+        p = SeqProfileInfo(name=a_or_p.aln_name + "_profile", path=profile_path, seq_type=a_or_p.aln_type)
+    else:
+        p = SeqProfileInfo.load_from_dict(in_dict=a_or_p)
+    if p.seq_type in SeqsDict.prot_types:
+        seq_types["prot"] = True
+        seqdb = protdb_path
+    else:
+        seq_types["nucl"] = True
+        seqdb = nucldb_path
+    return {"function": search_profile,
+            "profile_dict": p.get_json(),
+            "seqdb": seqdb,
+            "seq_ids_to_orgs": seq_ids_to_orgs}
 
 
 def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick=None, **kwargs):

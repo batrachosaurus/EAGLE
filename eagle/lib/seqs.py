@@ -477,6 +477,7 @@ def parse_orf_id(orf_id):
 
 
 def read_blast_out(blast_out_path, ev_thr=1.0e-06, aln_l_thr=180, ident_thr=0.35):
+    # TODO: consider to write this function in parallel mode
     """
     Reads blast outfmt 6 or 7
     :param blast_out_path:
