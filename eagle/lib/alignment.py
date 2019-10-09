@@ -497,6 +497,7 @@ class MultAln(ConfBase):
             hmmer_handler = HmmerHandler(inst_dir=self.hmmer_inst_dir, config_path=self.config_path, logger=self.logger)
             hmmer_handler.build_hmm_profile(profile_path=profile_path, in_aln_path=aln_fasta_path)
             shutil.rmtree(self.tmp_dir)
+            return profile_path
 
     def nucl_by_prot_aln(self, nucl_fasta_dict=None, nucl_fasta_path=None):
         if self.aln_type.lower() not in self.prot_types:
@@ -699,6 +700,9 @@ class MultAln(ConfBase):
         return {"stops_per_seq_median": np.median(stops_per_seq),
                 "seqs_with_stops_fract": float(len(list(filter(lambda x: x > 0, stops_per_seq)))) / float(len(self))}
 
+    def build_tree(self):
+        return
+
 
 class BlastHandler(ConfBase):
 
@@ -735,7 +739,12 @@ class BlastHandler(ConfBase):
                 print("INFO: splitting '%s' into %s parts" % (query, num_threads))
             if not os.path.exists(self.tmp_dir):
                 os.makedirs(self.tmp_dir)
-            query_dict = load_fasta_to_dict(fasta_path=query, dat_path=os.path.join(self.tmp_dir, ".%s.dat" % query))
+            if isinstance(query, SeqsDict):
+                query_dict = query
+                query_path = os.path.join(self.tmp_dir, "query.fasta")
+            else:
+                query_dict = load_fasta_to_dict(fasta_path=query, dat_path=os.path.join(self.tmp_dir, ".%s.dat" % query))
+                query_path = query
             query_chunk_size = len(query_dict) // num_threads + 1
             p_list = list()
             query_seqs = list(query_dict.keys())
@@ -744,7 +753,7 @@ class BlastHandler(ConfBase):
             for i in range(num_threads):
                 query_chunk_path = None
                 query_chunk_path = os.path.join(self.tmp_dir,
-                                                ("_%s" % i).join(os.path.splitext(os.path.basename(query))))
+                                                ("_%s" % i).join(os.path.splitext(os.path.basename(query_path))))
                 query_chunks_list.append([query_chunk_path, query_chunk_path + ".bl"])
                 if len(query_dict) == i*query_chunk_size:
                     del query_chunks_list[-1]
@@ -767,8 +776,12 @@ class BlastHandler(ConfBase):
             if kwargs.get("remove_tmp", True):
                 shutil.rmtree(self.tmp_dir)
         else:
+            if isinstance(query, SeqsDict):
+                query_path = os.path.join(self.tmp_dir, "query.fasta")
+            else:
+                query_path = query
             blast_search_cmd = os.path.join(self.inst_dir, blast_type) + \
-                               " -query " + query + \
+                               " -query " + query_path + \
                                " -db " + db + \
                                " -out " + out + \
                                " -word_size " + kwargs.get("word_size", str(3)) + \
@@ -780,9 +793,6 @@ class BlastHandler(ConfBase):
             else:
                 print("INFO: run '%s' command" % blast_search_cmd)
             subprocess.call(blast_search_cmd, shell=True)
-
-    def build_tree(self):
-        return
 
 
 class HmmerHandler(ConfBase):
@@ -805,6 +815,7 @@ class HmmerHandler(ConfBase):
     def build_hmm_profile(self, profile_path, in_aln_path):
         hmmbuild_cmd = os.path.join(self.inst_dir, "hmmbuild") + " " + profile_path + " " + in_aln_path
         subprocess.call(hmmbuild_cmd, shell=True)
+        return profile_path
 
     def make_profiles_db(self, profiles_list, profiles_db_path):
         join_files(profiles_list, profiles_db_path)
@@ -823,7 +834,10 @@ class HmmerHandler(ConfBase):
                 out_path = ".".join(in_fasta.split(".")[:-1]) + ".hsr"
             else:
                 out_path = in_fasta + ".hsr"
-        in_fasta_dict = load_fasta_to_dict(fasta_path=in_fasta)
+        if isinstance(in_fasta, SeqsDict):
+            in_fasta_dict = in_fasta
+        else:
+            in_fasta_dict = load_fasta_to_dict(fasta_path=in_fasta)
         shredded_in_fasta = shred_seqs(fasta_dict=in_fasta_dict, part_l=50000, parts_ov=5000)
         fasta_to_scan_dict = OrderedDict()
         for seq_id in shredded_in_fasta:
@@ -836,6 +850,7 @@ class HmmerHandler(ConfBase):
                       shredded_fasta_path + " > " + out_path
         subprocess.call(hmmscan_cmd, shell=True)
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
+        return out_path
 
 
 def construct_mult_aln(seq_dict=None,
@@ -953,3 +968,8 @@ def nucl_accord_prot(prot_seq, nucl_seq):
             nucl_seq_list.append(nucl_seq[i*3:(i+1)*3])
             i += 1
     return "".join(nucl_seq_list)
+
+
+def search_profile(profile_dict, seqdb, seq_ids_to_orgs, work_dir=None, method="hmmer"):
+
+    return
