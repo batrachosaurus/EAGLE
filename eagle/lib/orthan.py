@@ -42,7 +42,7 @@ def hom_search_blast(seqs_dict, genomes_list, blastdb_path=None, work_dir="./bla
     blast_out_path = os.path.join(work_dir, "blast.out")
     blast_handler.run_blast_search(blast_type=blast_type, query=seqs_dict, db=blastdb_path, out=blast_out_path,
                                    num_threads=num_threads)
-    blast_res_dict = read_blast_out(blast_out_path=blast_out_path)
+    blast_res_dict = read_blast_out(blast_out_path=blast_out_path)###
 
     for seq_name in seqs_dict:
         pass
@@ -118,7 +118,10 @@ def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick
     # TODO: store parameters for paralogs removing, paralogs removing, tree construction etc.
 
     stats_dict = {
-        "uniformity_std": -1.0,
+        "uniformity_std90": -1.0,
+        "uniformity_std95": -1.0,
+        "uniformity_std98": -1.0,
+        "uniformity_std100": -1.0,
         "phylo_diff": -1.0,
         "Ka/Ks": -1.0,
     }
@@ -132,13 +135,34 @@ def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick
     homologs_mult_aln.improve_aln(inplace=True)
 
     # Uniformity
-    stats_dict["uniformity_std"] = homologs_mult_aln.estimate_uniformity(
-        cons_thr=conf_constants.cons_thr,
+    std90 = homologs_mult_aln.estimate_uniformity(
+        cons_thr=90,
         window_l=conf_constants.unif_window_l,
         windows_step=conf_constants.unif_windows_step
     )
-    if np.isnan(stats_dict["uniformity_std"]):
-        stats_dict["uniformity_std"] = -1.0
+    std95 = homologs_mult_aln.estimate_uniformity(
+        cons_thr=95,
+        window_l=conf_constants.unif_window_l,
+        windows_step=conf_constants.unif_windows_step
+    )
+    std98 = homologs_mult_aln.estimate_uniformity(
+        cons_thr=98,
+        window_l=conf_constants.unif_window_l,
+        windows_step=conf_constants.unif_windows_step
+    )
+    std100 = homologs_mult_aln.estimate_uniformity(
+        cons_thr=100,
+        window_l=conf_constants.unif_window_l,
+        windows_step=conf_constants.unif_windows_step
+    )
+    if not np.isnan(std90):
+        stats_dict["uniformity_std90"] = std90
+    if not np.isnan(std95):
+        stats_dict["uniformity_std95"] = std95
+    if not np.isnan(std98):
+        stats_dict["uniformity_std98"] = std98
+    if not np.isnan(std100):
+        stats_dict["uniformity_std100"] = std100
     send_log_message(message="got uniformity_std for the alignment '%s'" % homologs_mult_aln.aln_name,
                      mes_type="info", logger=logger)
 
