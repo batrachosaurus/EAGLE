@@ -183,7 +183,10 @@ def get_orf_stats(orf_id,
                   **kwargs):
 
     orf_stats = {
-        "uniformity_std": -1.0,
+        "uniformity_std90": -1.0,
+        "uniformity_std95": -1.0,
+        "uniformity_std98": -1.0,
+        "uniformity_std100": -1.0,
         "phylo_diff": -1.0,
         "Ka/Ks": -1.0,
         "representation": 0.0,
