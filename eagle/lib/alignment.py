@@ -14,7 +14,7 @@ from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
 from eagle.lib.general import ConfBase, join_files, generate_random_string, send_log_message
-from eagle.lib.phylo import DistanceMatrix
+from eagle.lib.phylo import DistanceMatrix, run_fastme
 from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs, SeqsDict, detect_seqs_type
 
 
@@ -270,8 +270,16 @@ class MultAln(ConfBase):
         else:
             return dict()
 
-    def dump_alignment(self, aln_fasta_path):
-        dump_fasta_dict(fasta_dict=self.mult_aln_dict, fasta_path=aln_fasta_path)
+    def dump_alignment(self, aln_path, aln_format="fasta"):
+        if aln_format.lower() == "fasta":
+            dump_fasta_dict(fasta_dict=self.mult_aln_dict, fasta_path=aln_path)
+        if aln_format.lower() == "phylip":
+            with open(aln_path, "w") as aln_f:
+                aln_f.write("    %s    %s\n" % self.shape)
+                for seq_name in self.seq_names:
+                    num_spaces_to_add = 10 - len(seq_name)
+                    spaces_to_add = [" " for i in range(num_spaces_to_add)]
+                    aln_f.write("%s%s\n" % (seq_name+"".join(spaces_to_add), self[seq_name]))
 
     @classmethod
     def load_alignment(cls, aln_path=None, aln_format="fasta", aln_type=None, aln_name=None,
@@ -387,11 +395,21 @@ class MultAln(ConfBase):
     @property
     def distance_matrix(self):
         if self._distance_matrix is None:
-            self._distance_matrix = DistanceMatrix.calculate(mult_aln=self, method=self.dist_matr_method)
+            self._distance_matrix = DistanceMatrix.calculate(mult_aln=self,
+                                                             method=self.dist_matr_method,
+                                                             emboss_inst_dir=self.emboss_inst_dir,
+                                                             logger=self.logger,
+                                                             config_path=self.config_path)
         return self._distance_matrix
 
-    def get_distance_matrix(self, method=dist_matr_method):
-        self._distance_matrix = DistanceMatrix.calculate(mult_aln=self, method=method)
+    def get_distance_matrix(self, method=None):
+        if method is None:
+            method = self.dist_matr_method
+        self._distance_matrix = DistanceMatrix.calculate(mult_aln=self,
+                                                         method=method,
+                                                         emboss_inst_dir=self.emboss_inst_dir,
+                                                         logger=self.logger,
+                                                         config_path=self.config_path)
         return self._distance_matrix
 
     def remove_paralogs(self, seq_ids_to_orgs=None, method="min_dist", inplace=False):
@@ -605,6 +623,7 @@ class MultAln(ConfBase):
             os.makedirs(self.tmp_dir)
 
         kaks_list = list()
+        ks_list = list()
         for w in windows_list:
             w.tmp_dir = self.tmp_dir
             w_kaks = w.calculate_KaKs(method=method,
@@ -613,11 +632,17 @@ class MultAln(ConfBase):
                                       raref_base=kwargs.pop("raref_base", 10.0),
                                       **kwargs)
             if type(w_kaks) is float or isinstance(w_kaks, np.floating):
-                if w_kaks >= 0.0:
-                    kaks_list.append(w_kaks)
+                if w_kaks["Ka/Ks"] >= 0.0 and not pandas.isna(w_kaks["Ka/Ks"]):
+                    kaks_list.append(w_kaks["Ka/Ks"])
+                    ks_list.append(w_kaks["Ks"])
+                else:
+                    kaks_list.append(-1.0)
+                    ks_list.append(-1.0)
 
         shutil.rmtree(self.tmp_dir)
-        return gmean(sorted(kaks_list)[: int(float(len(kaks_list)) * top_fract)])
+        return {"Ka/Ks": kaks_list, "Ks": ks_list}
+        #return (gmean(sorted(kaks_list)[: int(float(len(kaks_list)) * top_fract)]),
+        #        gmean(sorted(ks_list)[: int(float(len(ks_list)) * top_fract)]))
 
     def calculate_KaKs(self,
                        nucl_seqs_dict=None,
@@ -659,11 +684,13 @@ class MultAln(ConfBase):
             try:
                 kaks_df = pandas.read_csv(out_path, sep="\t")
                 kaks = gmean(kaks_df["Ka/Ks"].apply(lambda v: min(v, max_kaks)))
+                ks = gmean(kaks_df["Ks"])
             except:
                 kaks = -1.0
+                ks = -1.0
         if kwargs.get("remove_tmp", True):
             shutil.rmtree(self.tmp_dir)
-        return kaks
+        return {"Ka/Ks": kaks, "Ks": ks}
 
     def generate_seqs_pairs(self, only_first_seq=False, raref_base=None):
         """
@@ -700,8 +727,39 @@ class MultAln(ConfBase):
         return {"stops_per_seq_median": np.median(stops_per_seq),
                 "seqs_with_stops_fract": float(len(list(filter(lambda x: x > 0, stops_per_seq)))) / float(len(self))}
 
-    def build_tree(self):
-        return
+    def build_tree(self,
+                   tree_name="phylo_tree",
+                   tmp_dir="phylo_tree_tmp",
+                   method="FastME",
+                   options=None,
+                   fastme_exec_path=None,
+                   **kwargs):
+
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+
+        if method.lower() == "fastme":
+            if "-b" not in options and "--bootstrap" not in options and \
+                    self._distance_matrix is not None and not kwargs.get("rebuild_dist_matr", False):
+                return self.distance_matrix.build_tree(tree_name=tree_name, tmp_dir=tmp_dir, method=method,
+                                                       options=options, fastme_exec_path=fastme_exec_path)
+            aln_phylip_path = os.path.join(tmp_dir, "mult_aln.ph")
+            self.dump_alignment(aln_path=aln_phylip_path, aln_format="phylip")
+            tree_path = os.path.join(tmp_dir, "tree.nwk")
+            phylo_tree = run_fastme(input_data=aln_phylip_path,
+                                    output_tree=tree_path,
+                                    options=options,
+                                    fastme_exec_path=fastme_exec_path)[0]
+            phylo_tree.tree_name = tree_name
+            phylo_tree.full_seq_names = self.short_to_full_seq_names
+            phylo_tree.tmp_dir = tmp_dir
+            phylo_tree.config_path = self.config_path
+            phylo_tree.logger = self.logger
+            send_log_message(message="phylogenetic tree built with FastME", mes_type="i", logger=self.logger)
+        else:
+            return
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        return phylo_tree
 
 
 class BlastHandler(ConfBase):
@@ -973,3 +1031,27 @@ def nucl_accord_prot(prot_seq, nucl_seq):
 def search_profile(profile_dict, seqdb, seq_ids_to_orgs, work_dir=None, method="hmmer"):
 
     return
+
+
+def get_kaks_gmean(kaks_array, ks_array=None, stype="negative", top_fract=None):
+    if top_fract is None:
+        top_fract = conf_constants.kaks_top_fract
+
+    l = len(kaks_array)
+    kaks_syn_array = sorted(filter(lambda p: True if p[0] >= 0 else False,
+                                   [(kaks_array[i], ks_array[i] if ks_array is not None else None) for i in range(l)]),
+                            key=lambda p: p[0])
+    kaks_list = list(map(lambda p: p[0], kaks_syn_array))
+    ks_list = list(map(lambda p: p[1], kaks_syn_array))
+    sep_ind = top_fract*float(l)
+
+    ks = None
+    if stype.lower() in ("n", "neg", "negative", "s", "stab", "stabilising"):
+        kaks = gmean(kaks_list[: sep_ind])
+        if ks_array is not None:
+            ks = gmean(ks_list[: sep_ind])
+    else:
+        kaks = gmean(kaks_list[-sep_ind: ])
+        if ks_array is not None:
+            ks = gmean(ks_list[-sep_ind: ])
+    return kaks, ks
