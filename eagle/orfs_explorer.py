@@ -9,8 +9,7 @@ from Bio.Data.CodonTable import TranslationError
 
 from eagle.btax_scanner import get_btax_name
 from eagle.constants import conf_constants, eagle_logger, ORF_ALNS_DIR, ORF_TREES_DIR
-from eagle.lib.alignment import BlastHandler, construct_mult_aln
-from eagle.lib.phylo import PhyloTree, build_tree_by_dist, compare_trees
+from eagle.lib.alignment import BlastHandler, construct_mult_aln, get_kaks_gmean
 from eagle.lib.general import worker
 from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out, parse_orf_id
 from eagle.lib.orthan import explore_ortho_group
@@ -189,6 +188,7 @@ def get_orf_stats(orf_id,
         "uniformity_std100": -1.0,
         "phylo_diff": -1.0,
         "Ka/Ks": -1.0,
+        "Ks": -1.0,
         "representation": 0.0,
         "relative_mean_btax_dist": -1.0,
         "relative_median_btax_dist": -1.0,
@@ -246,6 +246,7 @@ def get_orf_stats(orf_id,
     stops_stats = orf_mult_aln.stop_codons_stats()
     orf_stats["stops_per_seq_median"] = stops_stats["stops_per_seq_median"]
     orf_stats["seqs_with_stops_fract"] = stops_stats["seqs_with_stops_fract"]
+    orf_stats["Ka/Ks"], orf_stats["Ks"] = get_kaks_gmean(ortho_stats.pop("Ka/Ks"), ortho_stats.pop("Ks"), stype="neg")
     orf_stats.update(ortho_stats)
 
     orfs_stats[orf_id] = orf_stats

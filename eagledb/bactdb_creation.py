@@ -389,7 +389,7 @@ def get_btax_dict(genomes_list,
         btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()  # TODO: implement specific positions method
         short_to_full_seq_names.update(btc_mult_aln.short_to_full_seq_names)
         if kwargs.get("save_alignments", False):
-            btc_mult_aln.dump_alignment(aln_fasta_path=os.path.join(db_dir, btc_mult_aln.aln_name+".fasta"))
+            btc_mult_aln.dump_alignment(aln_path=os.path.join(db_dir, btc_mult_aln.aln_name + ".fasta"))
         btc_mult_aln.rename_seqs(seq_ids_to_orgs)
         btc_aln_dict[btc_profile_name] = deepcopy(btc_mult_aln)
 

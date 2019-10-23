@@ -178,6 +178,7 @@ class DistanceMatrix(object):
         self.emboss_inst_dir = kwargs.get("emboss_inst_dir", self.default_emboss_inst_dir)
         self.tmp_dir = kwargs.get("tmp_dir", generate_random_string(10) + "_dm_tmp")
         self.logger = kwargs.get("logger", None)
+        self.config_path = kwargs.get("config_path", None)
 
     @property
     def seq_names(self):
@@ -206,7 +207,8 @@ class DistanceMatrix(object):
                                   aln_type=self.aln_type,
                                   calc_method=self.calc_method,
                                   emboss_inst_dir=self.emboss_inst_dir,
-                                  logger=self.logger)
+                                  logger=self.logger,
+                                  config_path=self.config_path)
         else:
             return pandas.Series(self.matr[self.seqs_order[item]], index=self.seq_names)
 
@@ -237,7 +239,9 @@ class DistanceMatrix(object):
         return len(self.seq_names)
 
     @classmethod
-    def calculate(cls, mult_aln, method="phylip", emboss_inst_dir=default_emboss_inst_dir):
+    def calculate(cls, mult_aln, method="phylip", emboss_inst_dir=None, **kwargs):
+        if emboss_inst_dir is None:
+            emboss_inst_dir = cls.default_emboss_inst_dir
         from eagle.lib.alignment import MultAln
         assert isinstance(mult_aln, MultAln), \
             "Error: the value for mult_aln argument is not eagle.lib.alignment.MultAln object"
@@ -275,7 +279,8 @@ class DistanceMatrix(object):
             distance_matrix = cls.load(matrix_path=phylip_matrix_path,
                                        matr_format="phylip",
                                        short_to_full_seq_names=mult_aln.short_to_full_seq_names,
-                                       emboss_inst_dir=emboss_inst_dir)
+                                       emboss_inst_dir=emboss_inst_dir,
+                                       **kwargs)
 
         shutil.rmtree(mult_aln.tmp_dir)
         distance_matrix.aln_name = mult_aln.aln_name
@@ -287,7 +292,7 @@ class DistanceMatrix(object):
              matrix_path,
              matr_format="phylip",
              short_to_full_seq_names=None,
-             emboss_inst_dir=default_emboss_inst_dir):
+             **kwargs):
 
         if matr_format == "phylip":
             matr_f = open(matrix_path)
@@ -335,8 +340,7 @@ class DistanceMatrix(object):
             distance_matrix = cls(seqs_order=seqs_order,
                                   matr=np.array(matr),
                                   short_to_full_seq_names=short_to_full_seq_names,
-                                  calc_method="phylip",
-                                  emboss_inst_dir=emboss_inst_dir)
+                                  **kwargs)
 
         return distance_matrix
 
@@ -377,14 +381,64 @@ class DistanceMatrix(object):
                                   aln_type=self.aln_type,
                                   calc_method=self.calc_method,
                                   emboss_inst_dir=self.emboss_inst_dir,
-                                  logger=self.logger)
+                                  logger=self.logger,
+                                  config_path=self.config_path)
 
-    def build_tree(self):
+    def build_tree(self,
+                   tree_name="phylo_tree",
+                   tmp_dir="phylo_tree_tmp",
+                   method="FastME",
+                   options=None,
+                   fastme_exec_path=None):
+
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+
+        if method.lower() == "fastme":
+            dist_matrix_path = os.path.join(tmp_dir, "dist_matr.ph")
+            self.replace_negative(inplace=False).dump(matrix_path=dist_matrix_path, matr_format="phylip")
+            tree_path = os.path.join(tmp_dir, "tree.nwk")
+            phylo_tree = run_fastme(input_data=dist_matrix_path,
+                                    output_tree=tree_path,
+                                    options=options,
+                                    fastme_exec_path=fastme_exec_path)[0]
+            phylo_tree.tree_name = tree_name
+            phylo_tree.full_seq_names = self.short_to_full_seq_names
+            phylo_tree.tmp_dir = tmp_dir
+            phylo_tree.config_path = self.config_path
+            phylo_tree.logger = self.logger
+            send_log_message(message="phylogenetic tree built with FastME", mes_type="i", logger=self.logger)
+        else:
+            return
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        return phylo_tree
+
+
+def build_tree_by_aln(mult_aln=None,
+                      mult_aln_fasta=None,
+                      tree_name="phylo_tree",
+                      tmp_dir="phylo_tree_tmp",
+                      method="FastME",
+                      options=None,
+                      fastme_exec_path=None,
+                      config_path=None,
+                      logger=None):
+
+    from eagle.lib.alignment import MultAln
+
+    if mult_aln is None and mult_aln_fasta is not None:
+        mult_aln = MultAln.load_alignment(aln_path=mult_aln_fasta, config_path=config_path, logger=logger)
+    if not isinstance(mult_aln, MultAln):
+        send_log_message(message="the value for mult_aln argument is not eagle.lib.alignment.MultAln object",
+                         mes_type='e', logger=logger)
         return
+
+    return mult_aln.build_tree(tree_name=tree_name, tmp_dir=tmp_dir, method=method, options=options,
+                               fastme_exec_path=fastme_exec_path)
 
 
 def build_tree_by_dist(dist_matrix=None,
-                       dist_matrix_path=None,
+                       dist_matrix_path=None,  # should be in phylip format
                        full_seq_names=None,
                        tree_name="phylo_tree",
                        tmp_dir="phylo_tree_tmp",
@@ -394,38 +448,19 @@ def build_tree_by_dist(dist_matrix=None,
                        config_path=None,
                        logger=None):
 
-    if not os.path.exists(tmp_dir):
-        os.makedirs(tmp_dir)
-
-    if not isinstance(dist_matrix, DistanceMatrix) and not dist_matrix_path:
+    if dist_matrix is None and dist_matrix_path is not None:
+        dist_matrix = DistanceMatrix.load(matrix_path=dist_matrix_path, short_to_full_seq_names=full_seq_names)
+    if not isinstance(dist_matrix, DistanceMatrix):
         send_log_message(message="no distance matrix input or "
                                  "value for dist_matrix argument is not eagle.lib.alignment.DistanceMatrix object",
-                         mes_type="e",
-                         logger=logger)
+                         mes_type="e", logger=logger)
         return
 
-    if method.lower() == "fastme":
-        if not dist_matrix_path:
-            dist_matrix_path = os.path.join(tmp_dir, "dist_matr.ph")
-            dist_matrix.replace_negative(inplace=False).dump(matrix_path=dist_matrix_path, matr_format="phylip")
-        tree_path = os.path.join(tmp_dir, "tree.nwk")
-        phylo_tree = _run_fastme(input_data=dist_matrix_path,
-                                 output_tree=tree_path,
-                                 options=options,
-                                 fastme_exec_path=fastme_exec_path)[0]
-        phylo_tree.tree_name = tree_name
-        phylo_tree.full_seq_names=full_seq_names
-        phylo_tree.tmp_dir = tmp_dir
-        phylo_tree.config_path = config_path
-        phylo_tree.logger = logger
-        send_log_message(message="phylogenetic tree built with FastME", mes_type="i", logger=logger)
-    else:
-        return
-    shutil.rmtree(tmp_dir, ignore_errors=True)
-    return phylo_tree
+    return dist_matrix.build_tree(tree_name=tree_name, tmp_dir=tmp_dir, method=method, options=options,
+                                  fastme_exec_path=fastme_exec_path)
 
 
-def _run_fastme(input_data, output_tree=None, options=None, fastme_exec_path=None, **kwargs):
+def run_fastme(input_data, output_tree=None, options=None, fastme_exec_path=None, **kwargs):
     if fastme_exec_path is None:
         fastme_exec_path = conf_constants.fastme_exec_path
 
@@ -440,7 +475,9 @@ def _run_fastme(input_data, output_tree=None, options=None, fastme_exec_path=Non
         options["-c"] = True
     output_matrix = options.get("-O", options.get("--output_matrix", None))
     if not kwargs.get("no_nni", False):
-        options["-n"] = True
+        if "-n" not in options and "-nB" not in options and "-nO" not in options \
+                and "--nni" not in options and "--nniB" not in options and "--nniO" not in options:
+            options["-n"] = True
 
     filter_opt = lambda opt: [opt[0]] if opt[1] is True else opt
     prepare_opt = lambda opt: " " + "=".join(opt) if "--" in opt[0] else " " + " ".join(opt)

@@ -107,10 +107,9 @@ def _prepare_profile(a_or_p, work_dir, seq_types, protdb_path, nucldb_path, seq_
             "seq_ids_to_orgs": seq_ids_to_orgs}
 
 
-def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick=None, **kwargs):
+def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick=None, phylo_params=None, **kwargs):
     assert isinstance(homologs_mult_aln, MultAln), \
         "ERROR: the value for 'homologs_mult_aln' argument is not an object of eagle.lib.alignment.MultAln class"
-    logger = kwargs.get("logger", None)
     work_dir = kwargs.get("work_dir", "./")
     ref_tree_full_names = kwargs.get("ref_tree_full_names", None)
     kaks_for_only_first = kwargs.get("kaks_for_only_first", False)
@@ -123,14 +122,15 @@ def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick
         "uniformity_std98": -1.0,
         "uniformity_std100": -1.0,
         "phylo_diff": -1.0,
-        "Ka/Ks": -1.0,
+        "Ka/Ks": list(),
+        "Ks": list(),
     }
 
     if remove_paralogs and homologs_mult_aln.seq_ids_to_orgs:
         homologs_mult_aln.remove_paralogs(method="min_dist", inplace=True)
     if len(homologs_mult_aln.seq_names) < 4:
         send_log_message(message="A few (<4) homologs number in the alignment '%s'" % homologs_mult_aln.aln_name,
-                         mes_type="w", logger=logger)
+                         mes_type="w", logger=homologs_mult_aln.logger)
         return homologs_mult_aln, stats_dict, None
     homologs_mult_aln.improve_aln(inplace=True)
 
@@ -164,29 +164,31 @@ def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick
     if not np.isnan(std100):
         stats_dict["uniformity_std100"] = std100
     send_log_message(message="got uniformity_std for the alignment '%s'" % homologs_mult_aln.aln_name,
-                     mes_type="info", logger=logger)
+                     mes_type="info", logger=homologs_mult_aln.logger)
 
     # Ka/Ks
     if homologs_mult_aln.aln_type.lower() in MultAln.prot_types and homologs_mult_aln.nucl_seqs_dict:
         aln_kaks = homologs_mult_aln.calculate_KaKs_windows(only_first_seq=kaks_for_only_first)
-        if not pd.isna(aln_kaks):
-            stats_dict["Ka/Ks"] = aln_kaks
-            send_log_message(message="got Ka/Ks for the alignment '%s'" % homologs_mult_aln.aln_name,
-                             mes_type="info", logger=logger)
+        stats_dict["Ka/Ks"], stats_dict["Ks"] = aln_kaks["Ka/Ks"], aln_kaks["Ks"]
+        send_log_message(message="got Ka/Ks for the alignment '%s'" % homologs_mult_aln.aln_name,
+                         mes_type="info", logger=homologs_mult_aln.logger)
 
     # Phylo
+    if phylo_params is None:
+        phylo_params = dict()
+    build_tree_method = phylo_params.get("method", "FastME")
+    options = phylo_params.get("options", {})
+    fastme_exec_path = phylo_params.get("fastme_exec_path", None)
+
     if orgs_tree:
         org_names_dict = dict((short_id, homologs_mult_aln.seq_ids_to_orgs[full_id])
                               for short_id, full_id in homologs_mult_aln.short_to_full_seq_names.items())
     phylo_tmp_dir = os.path.join(work_dir, homologs_mult_aln.aln_name.replace("|:", "_")+"_phylo_tmp")
-    homologs_tree = build_tree_by_dist(
-        dist_matrix=homologs_mult_aln.get_distance_matrix(),
-        method="FastME",
-        full_seq_names=org_names_dict if orgs_tree else homologs_mult_aln.short_to_full_seq_names,
-        tree_name=homologs_mult_aln.aln_name.replace("|:", "_")+"_tree",
-        tmp_dir=phylo_tmp_dir,
-        logger=logger
-    )
+    homologs_tree = homologs_mult_aln.build_tree(tree_name=homologs_mult_aln.aln_name.replace("|:", "_")+"_tree",
+                                                 tmp_dir=phylo_tmp_dir,
+                                                 method=build_tree_method,
+                                                 options=options,
+                                                 fastme_exec_path=fastme_exec_path)
     homologs_tree.set_full_names(inplace=True)
     if ref_tree_newick is not None:
         ref_tree = PhyloTree.load_tree_from_str(
@@ -194,7 +196,7 @@ def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick
             full_seq_names=ref_tree_full_names,
             tree_name="ref_tree",
             tmp_dir=phylo_tmp_dir,
-            logger=logger
+            logger=homologs_mult_aln.logger
         )
         ref_tree.set_full_names(inplace=True)
         phylo_diff = compare_trees(phylo_tree1=homologs_tree,
@@ -203,6 +205,6 @@ def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick
         if not pd.isna(phylo_diff):
             stats_dict["phylo_diff"] = phylo_diff
         send_log_message(message="got phylo_diff for the alignment '%s'" % homologs_mult_aln.aln_name,
-                         mes_type="info", logger=logger)
+                         mes_type="info", logger=homologs_mult_aln.logger)
 
     return homologs_mult_aln, stats_dict, homologs_tree
