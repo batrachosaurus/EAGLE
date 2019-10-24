@@ -276,10 +276,11 @@ class MultAln(ConfBase):
         if aln_format.lower() == "phylip":
             with open(aln_path, "w") as aln_f:
                 aln_f.write("    %s    %s\n" % self.shape)
+                full_to_short_seq_names = self.full_to_short_seq_names
                 for seq_name in self.seq_names:
-                    num_spaces_to_add = 10 - len(seq_name)
+                    num_spaces_to_add = 10 - len(full_to_short_seq_names[seq_name])
                     spaces_to_add = [" " for i in range(num_spaces_to_add)]
-                    aln_f.write("%s%s\n" % (seq_name+"".join(spaces_to_add), self[seq_name]))
+                    aln_f.write("%s %s\n" % (full_to_short_seq_names[seq_name]+"".join(spaces_to_add), self[seq_name]))
 
     @classmethod
     def load_alignment(cls, aln_path=None, aln_format="fasta", aln_type=None, aln_name=None,
@@ -1038,7 +1039,7 @@ def get_kaks_gmean(kaks_array, ks_array=None, stype="negative", top_fract=None):
         top_fract = conf_constants.kaks_top_fract
 
     l = len(kaks_array)
-    kaks_syn_array = sorted(filter(lambda p: True if p[0] >= 0 else False,
+    kaks_syn_array = sorted(filter(lambda p: True if p[0] > 0 else False,
                                    [(kaks_array[i], ks_array[i] if ks_array is not None else None) for i in range(l)]),
                             key=lambda p: p[0])
     kaks_list = list(map(lambda p: p[0], kaks_syn_array))

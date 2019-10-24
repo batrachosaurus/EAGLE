@@ -479,7 +479,7 @@ def run_fastme(input_data, output_tree=None, options=None, fastme_exec_path=None
                 and "--nni" not in options and "--nniB" not in options and "--nniO" not in options:
             options["-n"] = True
 
-    filter_opt = lambda opt: [opt[0]] if opt[1] is True else opt
+    filter_opt = lambda opt: [opt[0]] if opt[1] is True else [opt[0], str(opt[1])]
     prepare_opt = lambda opt: " " + "=".join(opt) if "--" in opt[0] else " " + " ".join(opt)
     fastme_cmd = fastme_exec_path + "".join(prepare_opt(filter_opt(opt)) for opt in options.items())
     subprocess.call(fastme_cmd, shell=True)
