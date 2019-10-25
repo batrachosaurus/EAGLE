@@ -13,7 +13,7 @@ import pandas
 from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
-from eagle.lib.general import ConfBase, join_files, generate_random_string, send_log_message
+from eagle.lib.general import ConfBase, join_files, generate_random_string, send_log_message, fullmatch_regexp_list
 from eagle.lib.phylo import DistanceMatrix, run_fastme
 from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs, SeqsDict, detect_seqs_type
 
@@ -26,7 +26,7 @@ class MultAln(ConfBase):
     prot_types = SeqsDict.prot_types
     nucl_types = SeqsDict.nucl_types
 
-    dist_matr_method = "phylip"
+    dist_matr_method = "FastME"
     low_memory = False
 
     def __init__(self,
@@ -37,6 +37,7 @@ class MultAln(ConfBase):
                  tmp_dir=None,
                  emboss_inst_dir=None,
                  hmmer_inst_dir=None,
+                 fastme_exec_path=None,
                  kaks_calculator_exec_path=None,
                  config_path=None,
                  logger=None):
@@ -45,6 +46,8 @@ class MultAln(ConfBase):
             emboss_inst_dir = conf_constants.emboss_inst_dir
         if hmmer_inst_dir is None:
             hmmer_inst_dir = conf_constants.hmmer_inst_dir
+        if fastme_exec_path is None:
+            fastme_exec_path = conf_constants.fastme_exec_path
         if kaks_calculator_exec_path is None:
             kaks_calculator_exec_path = conf_constants.kaks_calculator_exec_path
 
@@ -59,9 +62,7 @@ class MultAln(ConfBase):
         self.states_seq = states_seq
         if self.states_seq is None:
             self.states_seq = list()
-        self.aln_type = aln_type
-        if self.aln_type is None:
-            self.aln_type = detect_seqs_type(seqs_dict=self.mult_aln_dict)
+        self._aln_type = aln_type
         self._distance_matrix = None
         self.aln_name = aln_name
         if tmp_dir is None:
@@ -69,6 +70,7 @@ class MultAln(ConfBase):
         self.tmp_dir = tmp_dir
         self.emboss_inst_dir = emboss_inst_dir
         self.hmmer_inst_dir = hmmer_inst_dir
+        self.fastme_exec_path = fastme_exec_path
         self.kaks_calculator_exec_path=kaks_calculator_exec_path
         self.logger = logger
         super(MultAln, self).__init__(config_path=config_path)
@@ -155,6 +157,7 @@ class MultAln(ConfBase):
                       tmp_dir=None,
                       short_to_full_seq_names=None,
                       emboss_inst_dir=None,
+                      fastme_exec_path=None,
                       hmmer_inst_dir=None,
                       kaks_calculator_exec_path=None,
                       config_path=None,
@@ -170,6 +173,8 @@ class MultAln(ConfBase):
             short_to_full_seq_names = self.short_to_full_seq_names
         if emboss_inst_dir is None:
             emboss_inst_dir = self.emboss_inst_dir
+        if fastme_exec_path is None:
+            fastme_exec_path = self.fastme_exec_path
         if hmmer_inst_dir is None:
             hmmer_inst_dir = self.hmmer_inst_dir
         if kaks_calculator_exec_path is None:
@@ -185,11 +190,13 @@ class MultAln(ConfBase):
                            tmp_dir=tmp_dir,
                            states_seq=states_seq,
                            emboss_inst_dir=emboss_inst_dir,
+                           fastme_exec_path=fastme_exec_path,
                            hmmer_inst_dir=hmmer_inst_dir,
                            kaks_calculator_exec_path=kaks_calculator_exec_path,
                            config_path=config_path,
                            logger=logger)
         mult_aln.short_to_full_seq_names = short_to_full_seq_names
+        mult_aln._seq_ids_to_orgs = self._seq_ids_to_orgs
         return mult_aln
 
     def copy(self):
@@ -219,6 +226,16 @@ class MultAln(ConfBase):
     @property
     def name(self):
         return self.aln_name
+
+    @property
+    def aln_type(self):
+        if self._aln_type is None:
+            self._aln_type = detect_seqs_type(seqs_dict=self.mult_aln_dict)
+        return self._aln_type
+
+    @aln_type.setter
+    def aln_type(self, aln_type):
+        self._aln_type = aln_type
 
     def rename_seqs(self, old_to_new_dict):
         if isinstance(self.mult_aln_dict, SeqsDict):
@@ -274,13 +291,14 @@ class MultAln(ConfBase):
         if aln_format.lower() == "fasta":
             dump_fasta_dict(fasta_dict=self.mult_aln_dict, fasta_path=aln_path)
         if aln_format.lower() == "phylip":
+            mult_aln_dict_short_id = self.mult_aln_dict_short_id
             with open(aln_path, "w") as aln_f:
                 aln_f.write("    %s    %s\n" % self.shape)
-                full_to_short_seq_names = self.full_to_short_seq_names
-                for seq_name in self.seq_names:
-                    num_spaces_to_add = 10 - len(full_to_short_seq_names[seq_name])
+                for seq_name in mult_aln_dict_short_id:
+                    num_spaces_to_add = 10 - len(seq_name)
                     spaces_to_add = [" " for i in range(num_spaces_to_add)]
-                    aln_f.write("%s %s\n" % (full_to_short_seq_names[seq_name]+"".join(spaces_to_add), self[seq_name]))
+                    aln_f.write("%s %s\n" % (seq_name+"".join(spaces_to_add), mult_aln_dict_short_id[seq_name]))
+        return self.short_to_full_seq_names
 
     @classmethod
     def load_alignment(cls, aln_path=None, aln_format="fasta", aln_type=None, aln_name=None,
@@ -399,6 +417,7 @@ class MultAln(ConfBase):
             self._distance_matrix = DistanceMatrix.calculate(mult_aln=self,
                                                              method=self.dist_matr_method,
                                                              emboss_inst_dir=self.emboss_inst_dir,
+                                                             fastme_exec_path=self.fastme_exec_path,
                                                              logger=self.logger,
                                                              config_path=self.config_path)
         return self._distance_matrix
@@ -409,6 +428,7 @@ class MultAln(ConfBase):
         self._distance_matrix = DistanceMatrix.calculate(mult_aln=self,
                                                          method=method,
                                                          emboss_inst_dir=self.emboss_inst_dir,
+                                                         fastme_exec_path=self.fastme_exec_path,
                                                          logger=self.logger,
                                                          config_path=self.config_path)
         return self._distance_matrix
@@ -463,15 +483,6 @@ class MultAln(ConfBase):
             else:
                 print("paralogs removed")
             return filtered_aln
-
-    def _check_seq_ids_to_org(self, seq_ids_to_orgs):
-        to_short_dict = dict()
-        for key in self.short_to_full_seq_names.keys():
-            if seq_ids_to_orgs.get(key, None):
-                to_short_dict[key] = seq_ids_to_orgs[key]["organism_name"]
-            if seq_ids_to_orgs.get(self.short_to_full_seq_names[key], None):
-                to_short_dict[key] = seq_ids_to_orgs[self.short_to_full_seq_names[key]]["organism_name"]
-        return to_short_dict
 
     def get_blocks_tsv(self, tsv_path, fasta_path, split_into_blocks=False, meta_dict=None):
         # Three block types: CB - conservetive block, SB - specific block, MB - major block. UB - unclassified block (not any of three types => MB=NA)
@@ -568,7 +579,12 @@ class MultAln(ConfBase):
             i += windows_step
         return windows_list
 
-    def cons_cols_num(self, cons_thr=conf_constants.cons_thr):
+    def cons_cols_num(self, cons_thr=None):
+        if cons_thr is None:
+            cons_thr = conf_constants.cons_thr
+        if cons_thr > 1.0:
+            cons_thr = float(cons_thr) / 100.0
+
         cln = 0
         for i in range(self.length):
             s_num_dict = defaultdict(int)
@@ -642,8 +658,6 @@ class MultAln(ConfBase):
 
         shutil.rmtree(self.tmp_dir)
         return {"Ka/Ks": kaks_list, "Ks": ks_list}
-        #return (gmean(sorted(kaks_list)[: int(float(len(kaks_list)) * top_fract)]),
-        #        gmean(sorted(ks_list)[: int(float(len(ks_list)) * top_fract)]))
 
     def calculate_KaKs(self,
                        nucl_seqs_dict=None,
@@ -736,6 +750,9 @@ class MultAln(ConfBase):
                    fastme_exec_path=None,
                    **kwargs):
 
+        if fastme_exec_path is None:
+            fastme_exec_path = self.fastme_exec_path
+
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
 
@@ -744,7 +761,15 @@ class MultAln(ConfBase):
                     self._distance_matrix is not None and not kwargs.get("rebuild_dist_matr", False):
                 return self.distance_matrix.build_tree(tree_name=tree_name, tmp_dir=tmp_dir, method=method,
                                                        options=options, fastme_exec_path=fastme_exec_path)
-            aln_phylip_path = os.path.join(tmp_dir, "mult_aln.ph")
+            if self.aln_type.lower() in self.nucl_types:
+                if not list(filter(None, fullmatch_regexp_list("-d.*", options))) \
+                       and not list(filter(None, fullmatch_regexp_list("--dna.*", options))):
+                    options["-d"] = True
+            else:
+                if not list(filter(None, fullmatch_regexp_list("-p.*", options))) \
+                       and not list(filter(None, fullmatch_regexp_list("--protein.*", options))):
+                    options["-p"] = True
+            aln_phylip_path = os.path.join(tmp_dir, self.aln_name+".phylip")
             self.dump_alignment(aln_path=aln_phylip_path, aln_format="phylip")
             tree_path = os.path.join(tmp_dir, "tree.nwk")
             phylo_tree = run_fastme(input_data=aln_phylip_path,
