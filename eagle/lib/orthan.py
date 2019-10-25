@@ -180,15 +180,15 @@ def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick
     options = phylo_params.get("options", {})
     fastme_exec_path = phylo_params.get("fastme_exec_path", None)
 
-    if orgs_tree:
-        org_names_dict = dict((short_id, homologs_mult_aln.seq_ids_to_orgs[full_id])
-                              for short_id, full_id in homologs_mult_aln.short_to_full_seq_names.items())
     phylo_tmp_dir = os.path.join(work_dir, homologs_mult_aln.aln_name.replace("|:", "_")+"_phylo_tmp")
     homologs_tree = homologs_mult_aln.build_tree(tree_name=homologs_mult_aln.aln_name.replace("|:", "_")+"_tree",
                                                  tmp_dir=phylo_tmp_dir,
                                                  method=build_tree_method,
                                                  options=options,
                                                  fastme_exec_path=fastme_exec_path)
+    if orgs_tree:
+        homologs_tree.full_seq_names = dict((short_id, homologs_mult_aln.seq_ids_to_orgs[full_id])
+                                            for short_id, full_id in homologs_mult_aln.short_to_full_seq_names.items())
     homologs_tree.set_full_names(inplace=True)
     if ref_tree_newick is not None:
         ref_tree = PhyloTree.load_tree_from_str(

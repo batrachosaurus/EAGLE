@@ -3,6 +3,7 @@ import configparser
 import gzip
 import io
 import gc
+import re
 from collections import OrderedDict
 import logging
 import logging.config
@@ -324,3 +325,7 @@ def send_log_message(message, mes_type="info", logger=None):
             print("WARNING: %s" % message)
         if mes_type.lower() in ("error", "err", "e"):
             print("ERROR: %s" % message)
+
+
+def fullmatch_regexp_list(pattern, target_list):
+    return list(map(lambda x: re.fullmatch(pattern, x), target_list))

@@ -10,7 +10,7 @@ import pandas
 import dendropy
 
 from eagle.constants import conf_constants
-from eagle.lib.general import ConfBase, filter_list, generate_random_string, send_log_message
+from eagle.lib.general import ConfBase, filter_list, generate_random_string, send_log_message, fullmatch_regexp_list
 from eagle.lib.seqs import reduce_seq_names, dump_fasta_dict
 
 
@@ -161,7 +161,6 @@ class DistanceMatrix(object):
 
     default_format = "phylip"
     default_method = "phylip"
-    default_emboss_inst_dir = conf_constants.emboss_inst_dir
 
     def __init__(self, seqs_order, matr, short_to_full_seq_names=None, **kwargs):
         self.seqs_order = seqs_order
@@ -175,7 +174,8 @@ class DistanceMatrix(object):
         self.aln_type = kwargs.get("aln_type", None)
         self.calc_method = kwargs.get("calc_method", None)
 
-        self.emboss_inst_dir = kwargs.get("emboss_inst_dir", self.default_emboss_inst_dir)
+        self.emboss_inst_dir = kwargs.get("emboss_inst_dir", conf_constants.emboss_inst_dir)
+        self.fastme_exec_path = kwargs.get("fastme_exec_path", conf_constants.fastme_exec_path)
         self.tmp_dir = kwargs.get("tmp_dir", generate_random_string(10) + "_dm_tmp")
         self.logger = kwargs.get("logger", None)
         self.config_path = kwargs.get("config_path", None)
@@ -207,6 +207,7 @@ class DistanceMatrix(object):
                                   aln_type=self.aln_type,
                                   calc_method=self.calc_method,
                                   emboss_inst_dir=self.emboss_inst_dir,
+                                  fastme_exec_path=self.fastme_exec_path,
                                   logger=self.logger,
                                   config_path=self.config_path)
         else:
@@ -239,9 +240,11 @@ class DistanceMatrix(object):
         return len(self.seq_names)
 
     @classmethod
-    def calculate(cls, mult_aln, method="phylip", emboss_inst_dir=None, **kwargs):
+    def calculate(cls, mult_aln, method="FastME", emboss_inst_dir=None, fastme_exec_path=None, **kwargs):
         if emboss_inst_dir is None:
-            emboss_inst_dir = cls.default_emboss_inst_dir
+            emboss_inst_dir = conf_constants.emboss_inst_dir
+        if fastme_exec_path is None:
+            fastme_exec_path = conf_constants.fastme_exec_path
         from eagle.lib.alignment import MultAln
         assert isinstance(mult_aln, MultAln), \
             "Error: the value for mult_aln argument is not eagle.lib.alignment.MultAln object"
@@ -255,7 +258,7 @@ class DistanceMatrix(object):
                     mult_aln.logger.warning("No sequences in alignment")
                 else:
                     print("No sequences in alignment")
-                return 1
+                return
             dump_fasta_dict(fasta_dict=mult_aln.mult_aln_dict_short_id, fasta_path=aln_fasta_path)
             if mult_aln.aln_type.lower() in mult_aln.prot_types:
                 if mult_aln.logger:
@@ -280,6 +283,29 @@ class DistanceMatrix(object):
                                        matr_format="phylip",
                                        short_to_full_seq_names=mult_aln.short_to_full_seq_names,
                                        emboss_inst_dir=emboss_inst_dir,
+                                       fastme_exec_path=fastme_exec_path,
+                                       **kwargs)
+        if method.lower() == "fastme":
+            aln_phylip_path = os.path.join(mult_aln.tmp_dir, mult_aln.aln_name+".phylip")
+            phylip_matrix_path = os.path.join(mult_aln.tmp_dir, mult_aln.aln_name+"_dm.phylip")
+            if not mult_aln.mult_aln_dict:
+                send_log_message(message="no sequences in alignment", mes_type="e", logger=mult_aln.logger)
+                return
+            mult_aln.dump_alignment(aln_path=aln_phylip_path, aln_format="phylip")
+            if mult_aln.aln_type.lower() in mult_aln.prot_types:
+                fastme_options = {"-p": True, "-O": phylip_matrix_path}
+            else:
+                fastme_options = {"-d": True, "-O": phylip_matrix_path}
+
+            send_log_message(message="distances calculation started", mes_type="i", logger=mult_aln.logger)
+            run_fastme(input_data=aln_phylip_path, options=fastme_options, fastme_exec_path=fastme_exec_path)
+            send_log_message(message="distances calculation finished", mes_type="i", logger=mult_aln.logger)
+
+            distance_matrix = cls.load(matrix_path=phylip_matrix_path,
+                                       matr_format="phylip",
+                                       short_to_full_seq_names=mult_aln.short_to_full_seq_names,
+                                       emboss_inst_dir=emboss_inst_dir,
+                                       fastme_exec_path=fastme_exec_path,
                                        **kwargs)
 
         shutil.rmtree(mult_aln.tmp_dir)
@@ -391,6 +417,9 @@ class DistanceMatrix(object):
                    options=None,
                    fastme_exec_path=None):
 
+        if fastme_exec_path is None:
+            fastme_exec_path = self.fastme_exec_path
+
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
 
@@ -475,8 +504,8 @@ def run_fastme(input_data, output_tree=None, options=None, fastme_exec_path=None
         options["-c"] = True
     output_matrix = options.get("-O", options.get("--output_matrix", None))
     if not kwargs.get("no_nni", False):
-        if "-n" not in options and "-nB" not in options and "-nO" not in options \
-                and "--nni" not in options and "--nniB" not in options and "--nniO" not in options:
+        if not list(filter(None, fullmatch_regexp_list("-n.*", options))) \
+               and not list(filter(None, fullmatch_regexp_list("--nni.*", options))):
             options["-n"] = True
 
     filter_opt = lambda opt: [opt[0]] if opt[1] is True else [opt[0], str(opt[1])]
