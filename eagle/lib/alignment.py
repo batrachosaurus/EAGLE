@@ -31,6 +31,7 @@ class MultAln(ConfBase):
 
     def __init__(self,
                  mult_aln_dict=None,
+                 seq_info_dict=None,
                  aln_type=None,
                  states_seq=None,
                  aln_name="mult_aln",
@@ -42,6 +43,12 @@ class MultAln(ConfBase):
                  config_path=None,
                  logger=None):
 
+        if mult_aln_dict is None:
+            mult_aln_dict = dict()
+        if seq_info_dict is None:
+            seq_info_dict = defaultdict(lambda: defaultdict(lambda: None))
+        if states_seq is None:
+            states_seq = list()
         if emboss_inst_dir is None:
             emboss_inst_dir = conf_constants.emboss_inst_dir
         if hmmer_inst_dir is None:
@@ -55,13 +62,9 @@ class MultAln(ConfBase):
         self._short_to_full_seq_names = dict()
         self._seq_ids_to_orgs = dict()
 
-        if mult_aln_dict:
-            self.mult_aln_dict = mult_aln_dict
-        else:
-            self.mult_aln_dict = dict()
+        self.mult_aln_dict = mult_aln_dict
+        self.seq_info_dict = seq_info_dict
         self.states_seq = states_seq
-        if self.states_seq is None:
-            self.states_seq = list()
         self._aln_type = aln_type
         self._distance_matrix = None
         self.aln_name = aln_name
@@ -151,6 +154,7 @@ class MultAln(ConfBase):
 
     def _sub_mult_aln(self,
                       mult_aln_dict,
+                      seq_info_dict=None,
                       aln_type=None,
                       states_seq=None,
                       aln_name="mult_aln",
@@ -163,6 +167,8 @@ class MultAln(ConfBase):
                       config_path=None,
                       logger=None):
 
+        if seq_info_dict is None:
+            seq_info_dict = self.seq_info_dict
         if aln_type is None:
             aln_type = self.aln_type
         if states_seq is None:
@@ -185,6 +191,7 @@ class MultAln(ConfBase):
             logger = self.logger
 
         mult_aln = MultAln(mult_aln_dict=mult_aln_dict,
+                           seq_info_dict=seq_info_dict,
                            aln_type=aln_type,
                            aln_name=aln_name,
                            tmp_dir=tmp_dir,
