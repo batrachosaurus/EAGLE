@@ -19,9 +19,13 @@ class SeqsDict(object):
     prot_types = ("protein", prot_type, "p")
     nucl_types = ("nucleotide", nucl_type, "n")
 
-    def __init__(self, seqs_order, seqs_array, seqs_type=None, low_memory=False):
+    def __init__(self, seqs_order, seqs_array, seq_info_dict=None, seqs_type=None, low_memory=False):
+        if seq_info_dict is None:
+            seq_info_dict = defaultdict(lambda: defaultdict(lambda: None))
+
         self.seqs_order = seqs_order
         self.seqs_array = seqs_array
+        self.seq_info_dict = seq_info_dict
         self.seqs_type = seqs_type
         self.low_memory = low_memory
 

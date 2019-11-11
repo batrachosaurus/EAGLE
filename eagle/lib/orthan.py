@@ -42,7 +42,7 @@ def hom_search_blast(seqs_dict, genomes_list, blastdb_path=None, work_dir="./bla
     blast_out_path = os.path.join(work_dir, "blast.out")
     blast_handler.run_blast_search(blast_type=blast_type, query=seqs_dict, db=blastdb_path, out=blast_out_path,
                                    num_threads=num_threads)
-    blast_res_dict = read_blast_out(blast_out_path=blast_out_path)###
+    blast_res_dict = read_blast_out(blast_out_path=blast_out_path)  # TODO: consider to reduce memory of 'blast_res_dict'
 
     for seq_name in seqs_dict:
         pass
@@ -76,9 +76,14 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
     for genome_dict in genomes_list:
         genome_info = GenomeInfo.load_from_dict(in_dict=genome_dict)
         if seq_types["prot"]:
+            # getorf
             pass
         if seq_types["nucl"]:
+            # shred genome sequence
             pass
+
+    # create protdb
+    # create nucldb
 
     pool = mp.Pool(num_threads)
     hom_alns = pool.map(worker, profiles_list)

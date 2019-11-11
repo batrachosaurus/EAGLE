@@ -180,6 +180,7 @@ def _maintain_procs(p_dict, p_states, p_args, end_message="done", no_response_ma
 
 def worker(kwargs, use_try=False):
     func = kwargs.pop('function', None)
+    res = None
     if 'try_err_message' in kwargs.keys():
         use_try = True
     logger_name = kwargs.get('logger_name', None)
@@ -190,20 +191,21 @@ def worker(kwargs, use_try=False):
     if callable(func):
         if use_try:
             try:
-                func(**kwargs)
+                res = func(**kwargs)
             except:
                 if logger:
                     logger.warning("%s %s" % (kwargs['try_err_message'], sys.exc_info()))
                 else:
                     print("%s %s" % (kwargs['try_err_message'], sys.exc_info()))
         else:
-            func(**kwargs)
+            res = func(**kwargs)
     else:
         if logger:
             logger.warning("No function to run")
         else:
             print("No function to run")
     gc.collect()
+    return res
 
 
 def filter_list(in_list):
