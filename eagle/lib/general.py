@@ -259,6 +259,9 @@ def join_files(in_files_list, out_file_path, files_transform=None, **kwargs):
                 shutil.copyfileobj(f, out_file)
             f.close()
         out_file.close()
+    if kwargs.get("remove_infiles", False):
+        for f_path in in_files_list:
+            os.remove(f_path)
     return out_file_path
 
 

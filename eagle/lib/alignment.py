@@ -15,7 +15,8 @@ from Bio.Seq import Seq
 from eagle.constants import conf_constants
 from eagle.lib.general import ConfBase, join_files, generate_random_string, send_log_message, fullmatch_regexp_list
 from eagle.lib.phylo import DistanceMatrix, run_fastme
-from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, shred_seqs, SeqsDict, detect_seqs_type
+from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, SeqsDict, detect_seqs_type, \
+    shred_fasta
 
 
 class MultAln(ConfBase):
@@ -913,32 +914,44 @@ class HmmerHandler(ConfBase):
         hmmpress_cmd = os.path.join(self.inst_dir, "hmmpress") + " " + profiles_db_path
         subprocess.call(hmmpress_cmd, shell=True)
 
-    def run_hmmsearch(self):
-        pass
-
-    def run_hmmscan(self, profiles_db, in_fasta, num_threads=4, out_path=None):
+    def run_hmmsearch(self, in_profile_path, seqdb, out_path=None, shred_seqdb=False):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
-        shredded_fasta_path = os.path.join(self.tmp_dir, os.path.basename(in_fasta))
-        if not out_path:
-            if "." in in_fasta:
-                out_path = ".".join(in_fasta.split(".")[:-1]) + ".hsr"
-            else:
-                out_path = in_fasta + ".hsr"
-        if isinstance(in_fasta, SeqsDict):
-            in_fasta_dict = in_fasta
+        if shred_seqdb:
+            seqdb_path = shred_fasta(in_fasta=seqdb,
+                                     shredded_fasta_path=os.path.join(self.tmp_dir, os.path.basename(seqdb)),
+                                     part_l=50000,
+                                     parts_ov=5000,)
+        elif isinstance(seqdb, SeqsDict):
+            seqdb_path = seqdb.dump(os.path.join(self.tmp_dir, "seqdb_to_search.fasta"))
         else:
-            in_fasta_dict = load_fasta_to_dict(fasta_path=in_fasta)
-        shredded_in_fasta = shred_seqs(fasta_dict=in_fasta_dict, part_l=50000, parts_ov=5000)
-        fasta_to_scan_dict = OrderedDict()
-        for seq_id in shredded_in_fasta:
-            i = 1
-            for seq in shredded_in_fasta[seq_id]:
-                fasta_to_scan_dict[seq_id+"_"+str(i)] = seq
-                i += 1
-        dump_fasta_dict(fasta_dict=fasta_to_scan_dict, fasta_path=shredded_fasta_path)
+            seqdb_path = seqdb
+        if out_path is None:
+            out_path = os.path.splitext(in_profile_path) + ".hsr"
+        hmmsearch_cmd = os.path.join(self.inst_dir, "hmmsearch") + " " + in_profile_path + " " + seqdb_path
+        subprocess.call(hmmsearch_cmd, shell=True)
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
+        return out_path
+
+    def run_hmmscan(self, profiles_db, in_seqs, num_threads=4, out_path=None, shred_in_fasta=False):
+        if not os.path.exists(self.tmp_dir):
+            os.makedirs(self.tmp_dir)
+        if shred_in_fasta:
+            in_fasta_path = shred_fasta(in_fasta=in_seqs,
+                                        shredded_fasta_path=os.path.join(self.tmp_dir, os.path.basename(in_seqs)),
+                                        part_l=50000,
+                                        parts_ov=5000)
+        elif isinstance(in_seqs, SeqsDict):
+            in_fasta_path = in_seqs.dump(os.path.join(self.tmp_dir, "seqfile_to_scan.fasta"))
+        else:
+            in_fasta_path = in_seqs
+        if out_path is None:
+            if "." in in_seqs:
+                out_path = ".".join(in_seqs.split(".")[:-1]) + ".hsr"
+            else:
+                out_path = in_seqs + ".hsr"
         hmmscan_cmd = os.path.join(self.inst_dir, "hmmscan") + " --cpu " + str(num_threads) + " " + profiles_db + " " +\
-                      shredded_fasta_path + " > " + out_path
+                      in_fasta_path + " > " + out_path
         subprocess.call(hmmscan_cmd, shell=True)
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
         return out_path
@@ -1061,7 +1074,7 @@ def nucl_accord_prot(prot_seq, nucl_seq):
     return "".join(nucl_seq_list)
 
 
-def search_profile(profile_dict, seqdb, seq_ids_to_orgs, work_dir=None, method="hmmer"):
+def search_profile(profile_dict, seqdb, seq_ids_to_orgs, work_dir=None, method="hmmer"):###
 
     return
 
