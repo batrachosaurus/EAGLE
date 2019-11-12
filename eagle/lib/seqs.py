@@ -1,7 +1,7 @@
 import os
 import shutil
 from copy import deepcopy
-from collections import defaultdict, Counter
+from collections import defaultdict, Counter, OrderedDict
 import subprocess
 
 import psutil
@@ -247,6 +247,7 @@ class SeqsDict(object):
                     fasta_f.write(">" + seq_id + "\n")
                     fasta_f.write(self[seq_id] + "\n")
             fasta_f.close()
+        return seqs_path
 
     def detect_seqs_type(self, nuc_freq_thr=0.75):
         seqs_list = list()
@@ -280,21 +281,38 @@ def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
             return str(Seq(fasta_dict[seq_id][end-1: start]).reverse_complement())
 
 
-def shred_seqs(fasta_dict, part_l=50000, parts_ov=5000):
+def shred_fasta(in_fasta, shredded_fasta_path, part_l=50000, parts_ov=5000):
+    if isinstance(in_fasta, SeqsDict):
+        in_seqs_dict = in_fasta
+    else:
+        in_seqs_dict = load_fasta_to_dict(fasta_path=in_fasta)
+
+    shredded_in_seqs = shred_seqs(seqs_dict=in_seqs_dict, part_l=part_l, parts_ov=parts_ov)
+    seqs_to_scan_dict = OrderedDict()
+    for seq_id in shredded_in_seqs:
+        i = 1
+        for seq in shredded_in_seqs[seq_id]:
+            seqs_to_scan_dict[seq_id + "_" + str(i)] = seq
+            i += 1
+    dump_fasta_dict(fasta_dict=seqs_to_scan_dict, fasta_path=shredded_fasta_path)
+    return shredded_fasta_path
+
+
+def shred_seqs(seqs_dict, part_l=50000, parts_ov=5000):
     shredded_seqs = defaultdict(list)
-    for seq_id in fasta_dict:
+    for seq_id in seqs_dict:
         i = 0
-        l_seq = len(fasta_dict[seq_id])
+        l_seq = len(seqs_dict[seq_id])
         while i < l_seq:
             if i+part_l < l_seq:
-                shredded_seqs[seq_id].append(fasta_dict[seq_id][i: i+part_l])
+                shredded_seqs[seq_id].append(seqs_dict[seq_id][i: i + part_l])
                 last_ov_c = i + part_l + int(parts_ov/2)
                 if last_ov_c < l_seq:
-                    shredded_seqs[seq_id].append(fasta_dict[seq_id][i+part_l-int(parts_ov/2): last_ov_c])
+                    shredded_seqs[seq_id].append(seqs_dict[seq_id][i + part_l - int(parts_ov / 2): last_ov_c])
                 else:
-                    shredded_seqs[seq_id].append(fasta_dict[seq_id][i+part_l-int(parts_ov/2):])
+                    shredded_seqs[seq_id].append(seqs_dict[seq_id][i + part_l - int(parts_ov / 2):])
             else:
-                shredded_seqs[seq_id].append(fasta_dict[seq_id][i:])
+                shredded_seqs[seq_id].append(seqs_dict[seq_id][i:])
             i += part_l
     return shredded_seqs
 

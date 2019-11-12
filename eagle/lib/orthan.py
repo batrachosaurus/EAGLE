@@ -7,9 +7,9 @@ import pandas as pd
 
 from eagle.constants import conf_constants
 from eagle.lib.general import send_log_message, join_files, worker
-from eagle.lib.seqs import SeqsDict, read_blast_out
+from eagle.lib.seqs import SeqsDict, read_blast_out, get_orfs
 from eagle.lib.alignment import MultAln, BlastHandler, search_profile
-from eagle.lib.phylo import PhyloTree, compare_trees, build_tree_by_dist
+from eagle.lib.phylo import PhyloTree, compare_trees
 from eagledb.scheme import GenomeInfo, SeqProfileInfo
 
 
@@ -73,17 +73,27 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
     pool.close()
     pool.join()
 
-    for genome_dict in genomes_list:
-        genome_info = GenomeInfo.load_from_dict(in_dict=genome_dict)
-        if seq_types["prot"]:
-            # getorf
-            pass
-        if seq_types["nucl"]:
-            # shred genome sequence
-            pass
+    pool = mp.Pool(num_threads)
+    db_part_paths = pool.map(worker, map(lambda genome_dict: {
+                                             "function": _prepare_genome_db,
+                                             "genome_fna_path": GenomeInfo.load_from_dict(in_dict=genome_dict).fna_path,
+                                             "work_dir": work_dir,
+                                             "seq_prot": seq_types["prot"],
+                                             "seq_nucl": seq_types["nucl"]
+                                         },
+                                         genomes_list))
+    pool.close()
+    pool.join()
 
-    # create protdb
-    # create nucldb
+    orfs_fasta_paths = list()
+    shreds_fasta_paths = list()
+    for db_part_path in db_part_paths:
+        if db_part_path["prot"] is not None:
+            orfs_fasta_paths.append(db_part_path["prot"])
+        if db_part_path["nucl"] is not None:
+            shreds_fasta_paths.append(db_part_path["nucl"])
+    join_files(in_files_list=orfs_fasta_paths, out_file_path=protdb_path, remove_infiles=True)
+    join_files(in_files_list=shreds_fasta_paths, out_file_path=nucldb_path, remove_infiles=True)
 
     pool = mp.Pool(num_threads)
     hom_alns = pool.map(worker, profiles_list)
@@ -110,6 +120,17 @@ def _prepare_profile(a_or_p, work_dir, seq_types, protdb_path, nucldb_path, seq_
             "profile_dict": p.get_json(),
             "seqdb": seqdb,
             "seq_ids_to_orgs": seq_ids_to_orgs}
+
+
+def _prepare_genome_db(genome_fna_path, work_dir, seq_prot, seq_nucl, **kwargs):
+    genome_db_path = {"prot": None, "nucl": None}
+    if seq_prot:
+        genome_db_path["prot"] = os.path.join(work_dir, os.path.splitext(os.path.basename(genome_fna_path))[0]) + \
+                                 "_orfs.fasta"
+        get_orfs(in_fasta_path=genome_fna_path, out_fasta_path=genome_db_path["prot"], minsize=90)
+    if seq_nucl:
+        genome_db_path["nucl"] = genome_fna_path
+    return genome_db_path
 
 
 def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick=None, phylo_params=None, **kwargs):

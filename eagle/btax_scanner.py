@@ -31,7 +31,8 @@ def get_btax_name(in_fasta,
         hmmer_handler.run_hmmscan(profiles_db,
                                   in_fasta,
                                   num_threads=num_threads,
-                                  out_path=os.path.join(work_dir, PROFILES_SCAN_OUT))
+                                  out_path=os.path.join(work_dir, PROFILES_SCAN_OUT),
+                                  shred_in_fasta=True)
         eagle_logger.info("hmmscan finished")
         queries_scores_dict = defaultdict(dict)
         query_scores_dict = defaultdict(float)
