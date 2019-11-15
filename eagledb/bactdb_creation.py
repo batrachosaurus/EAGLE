@@ -321,9 +321,9 @@ def get_16S_fasta(f_name, f_dir, genome_id, remove_rna_f=True, max_l=3000):
 def get_btax_dict(genomes_list,
                   btax_level,
                   btc_profiles,
-                  db_dir,
+                  btr_profiles=None,
+                  db_dir=DEFAULT_BACTDB_DIR,
                   num_threads=None,
-                  build_tree=False,
                   config_path=None,
                   **kwargs):
 
@@ -407,7 +407,9 @@ def get_btax_dict(genomes_list,
     full_to_short_seq_names = {v: k for k, v in short_to_full_seq_names.items()}
     for btax_name in btax_dict:
         btax_orgs = set(GenomeInfo.load_from_dict(genome).org_name for genome in btax_dict[btax_name].genomes)
-        if build_tree:
+        if btr_profiles is not None:
+            pass
+        else:
             btax_dict[btax_name].mean_d = global_dist_matr[btax_orgs].mean_dist
             btax_dict[btax_name].median_d = global_dist_matr[btax_orgs].median_dist
             if len(btax_orgs) > 2:
@@ -837,9 +839,9 @@ def create_bactdb(input_table_refseq=None,
     btax_dict = get_btax_dict(genomes_list=bacteria_list,
                               btax_level=btax_level,
                               btc_profiles=btc_profiles,
+                              btr_profiles=btr_profiles,
                               db_dir=db_dir,
-                              num_threads=num_threads,
-                              build_tree=not bool(btr_profiles))
+                              num_threads=num_threads)
 
     btax_dict = get_btax_blastdb(btax_dict,
                                  db_dir=db_dir,

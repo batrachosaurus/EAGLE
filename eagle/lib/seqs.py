@@ -290,9 +290,10 @@ def shred_fasta(in_fasta, shredded_fasta_path, part_l=50000, parts_ov=5000):
     shredded_in_seqs = shred_seqs(seqs_dict=in_seqs_dict, part_l=part_l, parts_ov=parts_ov)
     seqs_to_scan_dict = OrderedDict()
     for seq_id in shredded_in_seqs:
-        i = 1
+        i = 0
         for seq in shredded_in_seqs[seq_id]:
-            seqs_to_scan_dict[seq_id + "_" + str(i)] = seq
+            start = i*(part_l-parts_ov)
+            seqs_to_scan_dict[seq_id + "|:" + str(start+1) + "-" + str(start+part_l)] = seq
             i += 1
     dump_fasta_dict(fasta_dict=seqs_to_scan_dict, fasta_path=shredded_fasta_path)
     return shredded_fasta_path

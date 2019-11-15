@@ -26,6 +26,7 @@ Python >= 3.6
 ## How to use
 
 ### Pull the docker image
+If you use Windows, [here](https://docs.docker.com/toolbox/toolbox_install_windows/) is the instruction how to set up Docker on Windows. Additionally, you have to modify the properties of Docker daemon virtual machine in VirtualBox if usage of Docker desktop is impossible.  
 ```
 docker pull loven7doo/eagle
 ```
