@@ -164,8 +164,15 @@ def transform_seq_id(fna_f, seq_id_dict, fna_to_orgs, **kwargs):
         if line[0] == b">":
             seq_id = None
             seq_id = line[1:].split()[0]
-            transf_fna_lines.append(b">"+seq_id)
-            seq_id_dict[seq_id] = fna_to_orgs[fna_f.name]
+            if seq_id not in seq_id_dict:
+                transf_fna_lines.append(b">"+seq_id)
+                seq_id_dict[seq_id] = fna_to_orgs[fna_f.name]
+            else:
+                i = 1
+                while seq_id + "_" + str(i) in seq_id_dict:
+                    i += 1
+                transf_fna_lines.append(b">"+seq_id+b"_"+str(i).encode("utf-8"))
+                seq_id_dict[seq_id+"_"+str(i)] = fna_to_orgs[fna_f.name]
         else:
             transf_fna_lines.append(line)
     return io.BytesIO(b"\n".join(transf_fna_lines)+b"\n")

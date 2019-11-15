@@ -232,6 +232,7 @@ def get_orf_stats(orf_id,
                                                                    ref_tree_full_names=btax_info.ref_tree_full_names,
                                                                    kaks_for_only_first=True,
                                                                    orgs_tree=True,
+                                                                   get_conflicting_taxons=False,
                                                                    work_dir=work_dir,
                                                                    logger=eagle_logger)
     orf_stats["representation"] = float(len(orf_mult_aln) - 1) / float(len(btax_info.genomes))

@@ -23,17 +23,19 @@ def hom_search_blast(seqs_dict, genomes_list, blastdb_path=None, work_dir="./bla
     if blast_inst_dir is None:
         blast_inst_dir = conf_constants.blast_inst_dir
 
-    genome_id2org = dict()
-    genome_id2fna = dict()
+    # TODO: this part can be parallel
+    fna_id2org = dict()
+    fna_paths = set()
     for genome_dict in genomes_list:
         genome_info = GenomeInfo.load_from_dict(in_dict=genome_dict)
-        genome_id2org[genome_info.genome_id] = genome_info.org_name
-        genome_id2fna[genome_info.genome_id] = genome_info.fna_path
+        fna_id2org.update(_link_fna_id2org(genome_info))
+        fna_paths.add(genome_info.fna_path)
+
     blast_handler = BlastHandler(inst_dir=blast_inst_dir)
     if blastdb_path is None:
         blastdb_path = os.path.join(work_dir, "genomes_blastdb", "genomes")
         os.makedirs(os.path.dirname(blastdb_path))
-        genomes_fasta = join_files(list(genome_id2fna.values()), out_file_path=blastdb_path+".fasta")
+        genomes_fasta = join_files(fna_paths, out_file_path=blastdb_path+".fasta")
         blast_handler.make_blastdb(in_fasta=genomes_fasta, dbtype="nucl", db_name=blastdb_path)
     if seqs_dict.seqs_type in seqs_dict.prot_types:
         blast_type = "tblastn"
@@ -73,10 +75,12 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
     pool.close()
     pool.join()
 
+    fna_id2org = mp.Manager().dict()
     pool = mp.Pool(num_threads)
     db_part_paths = pool.map(worker, map(lambda genome_dict: {
                                              "function": _prepare_genome_db,
-                                             "genome_fna_path": GenomeInfo.load_from_dict(in_dict=genome_dict).fna_path,
+                                             "genome_dict": genome_dict,
+                                             "fna_id2org": fna_id2org,
                                              "work_dir": work_dir,
                                              "seq_prot": seq_types["prot"],
                                              "seq_nucl": seq_types["nucl"]
@@ -85,21 +89,32 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
     pool.close()
     pool.join()
 
-    orfs_fasta_paths = list()
-    shreds_fasta_paths = list()
+    orfs_fasta_paths = set()
+    nucl_fasta_paths = set()
     for db_part_path in db_part_paths:
         if db_part_path["prot"] is not None:
-            orfs_fasta_paths.append(db_part_path["prot"])
+            orfs_fasta_paths.add(db_part_path["prot"])
         if db_part_path["nucl"] is not None:
-            shreds_fasta_paths.append(db_part_path["nucl"])
+            nucl_fasta_paths.add(db_part_path["nucl"])
     join_files(in_files_list=orfs_fasta_paths, out_file_path=protdb_path, remove_infiles=True)
-    join_files(in_files_list=shreds_fasta_paths, out_file_path=nucldb_path, remove_infiles=True)
+    join_files(in_files_list=nucl_fasta_paths, out_file_path=nucldb_path, remove_infiles=True)
 
     pool = mp.Pool(num_threads)
     hom_alns = pool.map(worker, profiles_list)
     pool.close()
     pool.join()
     return hom_alns
+
+
+def _link_fna_id2org(genome_info):
+    assert isinstance(genome_info, GenomeInfo), "ERROR: the value for 'genome_info' argument should be \
+                                                 an object of GenomeInfo class"
+    if genome_info.fna_id_list:
+        return {fna_id: genome_info.org_name for fna_id in genome_info.fna_id_list}
+    else:
+        return {
+            fna_id: genome_info.org_name for fna_id in SeqsDict.load_from_file(genome_info.fna_path).keys()
+        }    
 
 
 def _prepare_profile(a_or_p, work_dir, seq_types, protdb_path, nucldb_path, seq_ids_to_orgs):
@@ -122,14 +137,23 @@ def _prepare_profile(a_or_p, work_dir, seq_types, protdb_path, nucldb_path, seq_
             "seq_ids_to_orgs": seq_ids_to_orgs}
 
 
-def _prepare_genome_db(genome_fna_path, work_dir, seq_prot, seq_nucl, **kwargs):
+def _prepare_genome_db(genome_dict, fna_id2org, work_dir, seq_prot, seq_nucl, **kwargs):
     genome_db_path = {"prot": None, "nucl": None}
+    genome_info = GenomeInfo.load_from_dict(in_dict=genome_dict)
     if seq_prot:
-        genome_db_path["prot"] = os.path.join(work_dir, os.path.splitext(os.path.basename(genome_fna_path))[0]) + \
+        genome_db_path["prot"] = os.path.join(work_dir, os.path.splitext(os.path.basename(genome_info.fna_path))[0]) + \
                                  "_orfs.fasta"
-        get_orfs(in_fasta_path=genome_fna_path, out_fasta_path=genome_db_path["prot"], minsize=90)
+        orf_ids = get_orfs(in_fasta_path=genome_info.fna_path, 
+                           out_fasta_path=genome_db_path["prot"], 
+                           minsize=90).keys()
+        if genome_info.fna_id_list:
+            fna_id2org.update({orf_id: genome_info.org_name for orf_id in 
+                               filter(lambda orfid: orfid in genome_info.fna_id_list, orf_ids)})
+        else:      
+            fna_id2org.update({orf_id: genome_info.org_name for orf_id in orf_ids})
     if seq_nucl:
-        genome_db_path["nucl"] = genome_fna_path
+        genome_db_path["nucl"] = genome_info.fna_path
+        fna_id2org.update(_link_fna_id2org(genome_info))
     return genome_db_path
 
 
@@ -140,6 +164,7 @@ def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick
     ref_tree_full_names = kwargs.get("ref_tree_full_names", None)
     kaks_for_only_first = kwargs.get("kaks_for_only_first", False)
     orgs_tree = kwargs.get("orgs_tree", False)
+    get_conflicting_taxons = kwargs.get("get_conflicting_taxons", True)
     # TODO: store parameters for paralogs removing, paralogs removing, tree construction etc.
 
     stats_dict = {
@@ -148,6 +173,7 @@ def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick
         "uniformity_std98": -1.0,
         "uniformity_std100": -1.0,
         "phylo_diff": -1.0,
+        "conflicting_taxons": list(),
         "Ka/Ks": list(),
         "Ks": list(),
     }
