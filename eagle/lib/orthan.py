@@ -134,7 +134,9 @@ def _prepare_profile(a_or_p, work_dir, seq_types, protdb_path, nucldb_path, seq_
     return {"function": search_profile,
             "profile_dict": p.get_json(),
             "seqdb": seqdb,
-            "seq_ids_to_orgs": seq_ids_to_orgs}
+            "seq_ids_to_orgs": seq_ids_to_orgs,
+            "shred_seqdb": True if p.seq_type.lower() in SeqsDict.nucl_types else False,
+            "read_hsr_shred": True if p.seq_type.lower() in SeqsDict.prot_types else False}
 
 
 def _prepare_genome_db(genome_dict, fna_id2org, work_dir, seq_prot, seq_nucl, **kwargs):
