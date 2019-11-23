@@ -12,6 +12,7 @@ from scipy.stats import gmean
 import pandas
 from Bio.Seq import Seq
 
+from eagledb.scheme import SeqProfileInfo
 from eagle.constants import conf_constants
 from eagle.lib.general import ConfBase, join_files, generate_random_string, send_log_message, fullmatch_regexp_list
 from eagle.lib.phylo import DistanceMatrix, run_fastme
@@ -890,11 +891,13 @@ class BlastHandler(ConfBase):
 class HmmerHandler(ConfBase):
 
     def __init__(self,
-                 inst_dir=conf_constants.hmmer_inst_dir,
+                 inst_dir=None,
                  tmp_dir=None,
                  config_path=None,
                  logger=None):
 
+        if inst_dir is None:
+            inst_dir = conf_constants.hmmer_inst_dir
         if tmp_dir is None:
             tmp_dir = generate_random_string(10) + "_hmm_tmp"
 
@@ -927,11 +930,17 @@ class HmmerHandler(ConfBase):
         else:
             seqdb_path = seqdb
         if out_path is None:
+            read_hsr = True
             out_path = os.path.splitext(in_profile_path) + ".hsr"
+        else:
+            read_hsr = False
         hmmsearch_cmd = os.path.join(self.inst_dir, "hmmsearch") + " " + in_profile_path + " " + seqdb_path
         subprocess.call(hmmsearch_cmd, shell=True)
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
-        return out_path
+        if read_hsr:
+            return self.read_hsr(hsr_path=out_path, is_shred=shred_seqdb)
+        else:
+            return out_path
 
     def run_hmmscan(self, profiles_db, in_seqs, num_threads=4, out_path=None, shred_in_fasta=False):
         if not os.path.exists(self.tmp_dir):
@@ -946,15 +955,25 @@ class HmmerHandler(ConfBase):
         else:
             in_fasta_path = in_seqs
         if out_path is None:
+            read_hsr = True
             if "." in in_seqs:
                 out_path = ".".join(in_seqs.split(".")[:-1]) + ".hsr"
             else:
                 out_path = in_seqs + ".hsr"
+        else:
+            read_hsr = False
         hmmscan_cmd = os.path.join(self.inst_dir, "hmmscan") + " --cpu " + str(num_threads) + " " + profiles_db + " " +\
                       in_fasta_path + " > " + out_path
         subprocess.call(hmmscan_cmd, shell=True)
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
-        return out_path
+        if read_hsr:
+            return self.read_hsr(hsr_path=out_path, is_shred=shred_in_fasta)
+        else:
+            return out_path
+
+    @staticmethod
+    def read_hsr(hsr_path, is_shred=False):###
+        return
 
 
 def construct_mult_aln(seq_dict=None,
@@ -1074,8 +1093,27 @@ def nucl_accord_prot(prot_seq, nucl_seq):
     return "".join(nucl_seq_list)
 
 
-def search_profile(profile_dict, seqdb, seq_ids_to_orgs, work_dir=None, method="hmmer"):###
+def search_profile(profile_dict, seqdb, seq_ids_to_orgs, work_dir="./", method="hmmer", hmmer_inst_dir=None,
+                   shred_seqdb=False, config_path=None, logger=None, **kwargs):###
+    p = SeqProfileInfo.load_from_dict(in_dict=profile_dict)
+    if method.lower() == "hmmer":
+        if kwargs.get("read_hsr_shred", False):
+            hsr_path = os.path.join(work_dir, p.name + ".hsr")
+        else:
+            hsr_path = None
+        hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir,
+                                     tmp_dir=os.path.join(work_dir, p.name+"_tmp"),
+                                     config_path=config_path,
+                                     logger=logger)
+        search_res = hmmer_handler.run_hmmsearch(in_profile_path=p.path,
+                                                 seqdb=seqdb,
+                                                 out_path=hsr_path,
+                                                 shred_seqdb=shred_seqdb)
+        if hsr_path is not None:
+            search_res = None
+            search_res = hmmer_handler.read_hsr(hsr_path=hsr_path, is_shred=True)
 
+        pass
     return
 
 
