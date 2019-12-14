@@ -22,50 +22,29 @@ def get_btax_name(in_fasta,
                   config_path=None,
                   remove_scan_out=True):
 
+    query_scores_dict = defaultdict(lambda: defaultdict(float))
     if method.lower() == "hmmer":
         hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir,
                                      tmp_dir=os.path.join(work_dir, "hmmer_tmp"),
                                      config_path=config_path,
                                      logger=eagle_logger)
         eagle_logger.info("hmmscan started")
-        hmmer_handler.run_hmmscan(profiles_db,
-                                  in_fasta,
-                                  num_threads=num_threads,
-                                  out_path=os.path.join(work_dir, PROFILES_SCAN_OUT),
-                                  shred_in_fasta=True)
+        scan_out_path = hmmer_handler.run_hmmscan(profiles_db,
+                                                  in_fasta,
+                                                  num_threads=num_threads,
+                                                  out_path=os.path.join(work_dir, PROFILES_SCAN_OUT),
+                                                  shred_in_fasta=True)
         eagle_logger.info("hmmscan finished")
-        queries_scores_dict = defaultdict(dict)
-        query_scores_dict = defaultdict(float)
-        lines_from_query = 0
-        query = None
-        profiles_scan_f = open(os.path.join(work_dir, PROFILES_SCAN_OUT))
-        for line_ in profiles_scan_f:
-            line = None
-            line = line_.strip()
-            if not line:
-                continue
-            if line[0: 6] == "Query:":
-                line_list = filter_list(line.split())
-                query = line_list[1]
-            elif query and lines_from_query < 4:
-                lines_from_query += 1
-            elif line.startswith("Domain annotation for each model (and alignments):"):
-                queries_scores_dict[query] = query_scores_dict.copy()
-                query_scores_dict = defaultdict(float)
-                query = None
-                lines_from_query = 0
-            elif query:
-                try:
-                    line_list = filter_list(line.split())
-                    btax_name = _parse_btax_name(line_list[8], btax_names)
-                    if btax_name and float(line_list[4]) >= min_score:
-                        query_scores_dict[btax_name] += float(line_list[4])
-                except:
-                    pass
-        if remove_scan_out:
-            os.remove(os.path.join(work_dir, PROFILES_SCAN_OUT))
+        scan_result_dict = hmmer_handler.read_hsr(scan_out_path, is_shred=True)
 
-    btax_scores_dict = _aggregate_queries(queries_scores_dict)
+        for query in scan_result_dict:
+            for profile_name in scan_result_dict[query]:
+                btax_name = _parse_btax_name(profile_name, btax_names)
+                score = float(scan_result_dict[query][profile_name]["score"])
+                if btax_name and score >= min_score:
+                    query_scores_dict[query][btax_name] += score
+
+    btax_scores_dict = _aggregate_queries(query_scores_dict)
     return sorted(btax_scores_dict.items(), key=lambda x: x[1], reverse=True)[0][0]
 
 

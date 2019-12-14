@@ -136,7 +136,8 @@ def _prepare_profile(a_or_p, work_dir, seq_types, protdb_path, nucldb_path, seq_
             "seqdb": seqdb,
             "seq_ids_to_orgs": seq_ids_to_orgs,
             "shred_seqdb": True if p.seq_type.lower() in SeqsDict.nucl_types else False,
-            "read_hsr_shred": True if p.seq_type.lower() in SeqsDict.prot_types else False}
+            "read_hsr_shred": True if p.seq_type.lower() in SeqsDict.prot_types else False,
+            "hit_coords_transform": lambda c: c*3 if p.seq_type.lower() in SeqsDict.prot_types else None}
 
 
 def _prepare_genome_db(genome_dict, fna_id2org, work_dir, seq_prot, seq_nucl, **kwargs):

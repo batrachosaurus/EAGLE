@@ -31,7 +31,7 @@ class TestORFsExplorer(unittest.TestCase):
     db_info_dict = DBInfo().get_json()
     with open(os.path.join(EAGLEDB_TEST_DATA, "eagledb", "db_info.json")) as db_info_f:
         for k, v in json.load(db_info_f).items():
-            if type(v) in (str, unicode):
+            if type(v) is str:
                 db_info_dict[k] = os.path.join(EAGLEDB_TEST_DIR, v)
 
     def test_explore_orfs(self):

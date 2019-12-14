@@ -62,14 +62,14 @@ class TestBactDBCreation(unittest.TestCase):
         result_f_name = os.path.split(result[0])[1].encode()
         shutil.move(result[0], os.path.join(OUTPUT_DIR, result_f_name))
         self.assertEqual(result_f_name, test_16S_fasta_result)
-        self.assertItemsEqual(result[1], exp_seq_id_list)
+        self.assertEqual(frozenset(result[1]), frozenset(exp_seq_id_list))
 
     def test_get_btax_dict(self, use_test_results=True):
         if use_test_results:
             with open(os.path.join(OUTPUT_DIR, BACTERIA_LIST_F_NAME)) as genomes_list_f:
                 genomes_list = json.load(genomes_list_f)
         else:
-            genomes_list = self.test_get_bacteria_from_ncbi(last_bact=100, use_prapared=False)
+            genomes_list = self.test_get_bacteria_from_ncbi(last_bact=100, use_prapared=False)  # IMPORTANT!!!
         btc_profiles = [SeqProfileInfo(name="16S_rRNA", seq_type="nucl").get_json()]
         btax_dict = bactdb_creation.get_btax_dict(genomes_list,
                                                   btax_level=4,
@@ -83,7 +83,7 @@ class TestBactDBCreation(unittest.TestCase):
         self.assertIsInstance(btax_dict, dict)
         return btax_dict
 
-    def test_get_btax_blastdb(self, use_test_results=False):
+    def test_get_btax_blastdb(self, use_test_results=True):
         if use_test_results:
             with open(os.path.join(OUTPUT_DIR, BTAX_JSON_NAME)) as btax_dict_f:
                 btax_dict = json.load(btax_dict_f)
