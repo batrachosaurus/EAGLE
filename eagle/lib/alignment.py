@@ -14,7 +14,8 @@ from Bio.Seq import Seq
 
 from eagledb.scheme import SeqProfileInfo
 from eagle.constants import conf_constants
-from eagle.lib.general import ConfBase, join_files, generate_random_string, send_log_message, fullmatch_regexp_list
+from eagle.lib.general import ConfBase, join_files, generate_random_string, send_log_message, fullmatch_regexp_list, \
+    filter_list
 from eagle.lib.phylo import DistanceMatrix, run_fastme
 from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, SeqsDict, detect_seqs_type, \
     shred_fasta
@@ -972,8 +973,57 @@ class HmmerHandler(ConfBase):
             return out_path
 
     @staticmethod
-    def read_hsr(hsr_path, is_shred=False):###
-        return
+    def read_hsr(hsr_path, read_aln=False, is_shred=False, **kwargs):###
+        hit_coords_transform = kwargs.get("hit_coords_transform", None)
+        hsr_dict = defaultdict(lambda: OrderedDict)
+        subj_info_dict = {
+            "E-value": None,
+            "score": None,
+            "q_start": None,
+            "q_end": None,
+            "s_start:": None,
+            "s_end": None,
+            "aln_CIGAR": None,
+        }
+        with open(hsr_path) as hsr_f:
+            query = None
+            subject = None
+            header_seen = False
+            alns_block = False
+            for line_ in hsr_f:
+                line = None
+                line = line_.strip()
+                if not line:
+                    continue
+                if line[:6] == "Query:":
+                    line_list = filter_list(line.split())
+                    query = line_list[1]
+                elif query is not None:
+                    if line.startswith("Internal pipeline statistics summary:"):
+                        if subject is not None and read_aln:
+                            hsr_dict[query][subject]["aln_CIGAR"] = None  # TODO: write CIGAR creation from an alignment
+                        alns_block = False
+                        query = None
+                        subject = None
+                    elif not header_seen and not alns_block and line[:7] == "E-value":
+                        header_seen = True
+                    elif header_seen and (line.startswith("Domain annotation for each sequence (and alignments):") or
+                            line.startswith("Domain annotation for each model (and alignments):")):  # search or scan
+                        header_seen = False
+                        alns_block = True
+                    elif header_seen and line[:7] != "--------":
+                        try:
+                            line_list = filter_list(line.split())
+                            subject = line_list[8]
+                            hsr_dict[query][subject] = subj_info_dict
+                            hsr_dict[query][subject]["E-value"] = float(line_list[3])
+                            hsr_dict[query][subject]["score"] = float(line_list[4])
+                            subject = None
+                        except:
+                            pass
+                    elif alns_block:
+                        pass
+        return hsr_dict
 
 
 def construct_mult_aln(seq_dict=None,
@@ -1111,7 +1161,9 @@ def search_profile(profile_dict, seqdb, seq_ids_to_orgs, work_dir="./", method="
                                                  shred_seqdb=shred_seqdb)
         if hsr_path is not None:
             search_res = None
-            search_res = hmmer_handler.read_hsr(hsr_path=hsr_path, is_shred=True)
+            search_res = hmmer_handler.read_hsr(hsr_path=hsr_path,
+                                                is_shred=True,
+                                                hit_coords_transform=kwargs.get("hit_coords_transform", None))
 
         pass
     return

@@ -133,7 +133,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     pool.close()
     pool.join()
     prepared_bacteria_f = open(os.path.join(bactdb_dir, PREPARED_BACTERIA_F_NAME), "w")
-    json.dump(dict(prepared_bacteria), prepared_bacteria_f)
+    json.dump(dict(prepared_bacteria), prepared_bacteria_f, indent=2)
     prepared_bacteria_f.close()
     bacteria_list_f = io.open(bacteria_list_f_path, 'a', newline="\n")
     bacteria_list_f.write(u"  {}\n]")
@@ -175,7 +175,7 @@ def get_bacterium(ncbi_db_link, bacterium_name, is_repr, prepared_bacteria, db_d
     bacterium_info.btc_seqs_id = {seq_id: "16S_rRNA" for seq_id in seq_id_list}
     eagle_logger.info("got %s 16S rRNA" % bacterium_info.org_name)
     f = io.open(os.path.join(db_dir, BACTERIA_LIST_F_NAME), 'a', newline="\n")
-    f.write("  "+json.dumps(bacterium_info.get_json()+",\n"))  # TODO: check unicode
+    f.write("  "+json.dumps(bacterium_info.get_json())+",\n")
     f.close()
     prepared_bacteria[bacterium_info.genome_id] = True
 

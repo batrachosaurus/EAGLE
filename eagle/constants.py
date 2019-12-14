@@ -12,7 +12,7 @@ LOG_CONFIG_NAME = 'log_conf.yaml'
 LOGGER_NAME = 'EAGLE_logger'
 
 # inner names (not configurable)
-PROFILES_SCAN_OUT = "profiles_scan.out"
+PROFILES_SCAN_OUT = "profiles_scan.hsr"
 ORF_ALNS_DIR = "orf_alignments"
 ORF_TREES_DIR = "orf_homolog_trees"
 
