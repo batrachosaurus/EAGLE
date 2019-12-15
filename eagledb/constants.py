@@ -13,11 +13,12 @@ BACTERIA_SHORT_TO_FULL_ORG_NAMES = "short_to_full_org_names.json"
 BACT_FAM_F_NAME = "bact_fam.json"
 
 BTAX_JSON_NAME = "btax.json"
-DB_INFO_NAME = "db_info.json"
 
 ORG_TABLES_DIR = os.path.join(CONSTANTS_PATH, "org_tables")
-DEFAULT_REFSEQ_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "refseq_bacteria_table.txt")
-DEFAULT_GENBANK_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "genbank_bacteria_table.txt")
+REFSEQ_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "refseq_bacteria_table.txt")
+BACTERIA_REFSEQ_SUMMARY_LINK = "https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria/assembly_summary.txt"
+GENBANK_BACTERIA_TABLE = os.path.join(ORG_TABLES_DIR, "genbank_bacteria_table.txt")
+BACTERIA_GENBANK_SUMMARY_LINK = "https://ftp.ncbi.nlm.nih.gov/genomes/genbank/bacteria/assembly_summary.txt"
 DEFAULT_BACTDB_DIR = os.path.join("EAGLEdb", "bacteria")
 
 PROFILES_DB_NAME = "db_repr_profiles"  # it is inner name (not configurable)

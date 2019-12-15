@@ -10,18 +10,20 @@ from collections import defaultdict
 import numpy as np
 import pandas
 
-from eagle.constants import eagle_logger, conf_constants
+from eagle.constants import eagle_logger, conf_constants, DB_INFO_NAME
 from eagle.lib.alignment import construct_mult_aln, MultAln
 from eagle.lib.general import worker, get_un_fix, bool_from_str
 from eagle.lib.phylo import build_tree_by_dist, DistanceMatrix
 from eagle.lib.seqs import load_fasta_to_dict, reduce_seq_names
 from eagledb import join_genomes_lists
 from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
-    DEFAULT_REFSEQ_BACTERIA_TABLE, DEFAULT_GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME, \
-    BACTERIA_GLOBAL_DIST_MATRIX, BACTERIA_SHORT_TO_FULL_ORG_NAMES, BTAX_JSON_NAME, DB_INFO_NAME
+    REFSEQ_BACTERIA_TABLE, GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME, \
+    BACTERIA_GLOBAL_DIST_MATRIX, BACTERIA_SHORT_TO_FULL_ORG_NAMES, BTAX_JSON_NAME, BACTERIA_REFSEQ_SUMMARY_LINK, \
+    BACTERIA_GENBANK_SUMMARY_LINK
 from eagledb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, \
     create_btax_blastdb, generate_btax_profiles, create_profiles_db, get_btax_fna
 from eagledb.scheme import GenomeInfo, SeqProfileInfo, BtaxInfo, DBInfo
+from eagledb.files_utils import get_ncbi_table
 
 
 def get_bacteria_from_ncbi(refseq_bacteria_table=None,
@@ -42,8 +44,8 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     else:
         conf_constants.num_threads = num_threads
     if refseq_bacteria_table is None and genbank_bacteria_table is None:
-        refseq_bacteria_table = DEFAULT_REFSEQ_BACTERIA_TABLE
-        genbank_bacteria_table = DEFAULT_GENBANK_BACTERIA_TABLE
+        refseq_bacteria_table = get_ncbi_table(BACTERIA_REFSEQ_SUMMARY_LINK, REFSEQ_BACTERIA_TABLE)
+        genbank_bacteria_table = get_ncbi_table(BACTERIA_GENBANK_SUMMARY_LINK, GENBANK_BACTERIA_TABLE)
     try:
         os.makedirs(bactdb_dir)
     except OSError:
@@ -774,21 +776,27 @@ def create_bactdb(input_table_refseq=None,
                   btax_class_profile=None,
                   btax_rep_profile=None,
                   db_dir=DEFAULT_BACTDB_DIR,
+                  db_root=None,  # TODO: implement this for console
                   num_threads=None,
                   prepared_genomes=PREPARED_BACTERIA_F_NAME,
                   prepared_genomes_info=None,
                   config_path=None,
                   **kwargs):
 
-    if config_path:
+    if config_path is not None:
         conf_constants.update_by_config(config_path=config_path)
         conf_constants_db.update_by_config(config_path=config_path)
     if not btax_level:
         btax_level = conf_constants_db.btax_level
     else:
         conf_constants_db.btax_level = btax_level
-    if not db_dir:
+    if db_dir is None:
         db_dir = DEFAULT_BACTDB_DIR
+    if db_root is not None:
+        from_root = db_dir  # TODO: infer 'from_root' from 'db_root'
+    else:
+        from_root = db_dir
+    # TODO: implement 'from_root' idea in all eagledb json files
     if num_threads:
         int_num_threads = int(num_threads)
         num_threads = None
@@ -813,8 +821,8 @@ def create_bactdb(input_table_refseq=None,
 
     # TODO: this code should not get the btax classification sequence (16S rRNA)
     if input_table_custom is None and input_table_refseq is None and input_table_genbank is None:
-        input_table_refseq = DEFAULT_REFSEQ_BACTERIA_TABLE
-        input_table_genbank = DEFAULT_GENBANK_BACTERIA_TABLE
+        input_table_refseq = REFSEQ_BACTERIA_TABLE
+        input_table_genbank = GENBANK_BACTERIA_TABLE
     bacteria_list = list()
     if input_table_refseq is not None or input_table_genbank is not None:
         bacteria_list = get_bacteria_from_ncbi(refseq_bacteria_table=input_table_refseq,
@@ -857,11 +865,14 @@ def create_bactdb(input_table_refseq=None,
                                             logger=eagle_logger)
     with open(os.path.join(db_dir, BTAX_JSON_NAME), "w") as btax_json_f:
         json.dump(btax_dict, btax_json_f, indent=2)  # maybe btax_dict will be dumped in get_btax_dict
-    db_info = DBInfo(all_genomes=os.path.join(db_dir, BACTERIA_LIST_F_NAME),
-                     btax_json=os.path.join(db_dir, BTAX_JSON_NAME),
-                     repr_profiles=repr_profiles_path,
-                     global_dist_matrix=os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX),
-                     all_org_full_names=os.path.join(db_dir, BACTERIA_SHORT_TO_FULL_ORG_NAMES)).get_json()
+    db_info = DBInfo(
+        all_genomes=os.path.join(db_dir, BACTERIA_LIST_F_NAME),
+        btax_json=os.path.join(db_dir, BTAX_JSON_NAME),
+        repr_profiles=repr_profiles_path,
+        global_dist_matrix=os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX),
+        all_org_full_names=os.path.join(db_dir, BACTERIA_SHORT_TO_FULL_ORG_NAMES),
+        from_root=from_root,
+    ).get_json()
     with open(os.path.join(db_dir, DB_INFO_NAME), "w") as db_info_f:
         json.dump(db_info, db_info_f, indent=2)
     return db_info

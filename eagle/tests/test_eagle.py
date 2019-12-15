@@ -37,7 +37,7 @@ class TestORFsExplorer(unittest.TestCase):
     def test_explore_orfs(self):
         orfs_explorer.explore_orfs(
             in_fasta=os.path.join(INPUT_DIR, "NC_000913.fasta"),  # Escherichia coli K-12 MG1655
-            db_json=self.db_info_dict,
+            db_info=self.db_info_dict,
             out_dir=OUTPUT_DIR,
             btax_name="Enterobacterales_related",
             num_threads=4,
