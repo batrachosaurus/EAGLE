@@ -32,7 +32,7 @@ class ConfConstants(ConfBase):
         self.btax_level = 3
         self.k_max = 30
         self.k_min = 20
-        self.btc_profile_aln_method = "MSAProbs"
+        self.btc_profile_aln_method = "MAFFT"
 
         super(ConfConstants, self).__init__(config_path=config_path)
 

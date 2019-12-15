@@ -82,7 +82,7 @@ def setup_logging(default_path,
 
         with open(path, 'rt') as f:
             string = f.read()
-            config = yaml.load(string)
+            config = yaml.load(string, Loader=yaml.FullLoader)
         logging.config.dictConfig(config)
     else:
         logging.basicConfig(level=default_level)
