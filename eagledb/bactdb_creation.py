@@ -821,8 +821,8 @@ def create_bactdb(input_table_refseq=None,
 
     # TODO: this code should not get the btax classification sequence (16S rRNA)
     if input_table_custom is None and input_table_refseq is None and input_table_genbank is None:
-        input_table_refseq = REFSEQ_BACTERIA_TABLE
-        input_table_genbank = GENBANK_BACTERIA_TABLE
+        input_table_refseq = get_ncbi_table(BACTERIA_REFSEQ_SUMMARY_LINK, REFSEQ_BACTERIA_TABLE)
+        input_table_genbank = get_ncbi_table(BACTERIA_GENBANK_SUMMARY_LINK, GENBANK_BACTERIA_TABLE)
     bacteria_list = list()
     if input_table_refseq is not None or input_table_genbank is not None:
         bacteria_list = get_bacteria_from_ncbi(refseq_bacteria_table=input_table_refseq,
