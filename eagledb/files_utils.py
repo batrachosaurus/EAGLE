@@ -4,6 +4,8 @@ import sys
 
 import pandas
 
+from eagle.lib.general import download_file
+from eagledb.constants import ORG_TABLES_DIR
 from eagledb.scheme import GenomeInfo  # may produce import error
 
 
@@ -27,6 +29,15 @@ def are_bacteria_analyzed(bacteria_list_path=None, analyzed_bacteria_path=None):
     return analyzed_bacteria
 
 
+def get_ncbi_table(ncbi_summary_link, table_path):
+    if os.path.exists(table_path):
+        os.remove(table_path)
+    summary_table_path = download_file(file_link=ncbi_summary_link, download_dir=ORG_TABLES_DIR)
+    ncbi_table_path = prepare_summary_table(summary_table=summary_table_path, out_table_path=table_path)
+    os.remove(summary_table_path)
+    return ncbi_table_path
+
+
 def prepare_summary_table(summary_table=None, out_table_path=None):
     if not summary_table and not out_table_path:
         try:
@@ -43,6 +54,7 @@ def prepare_summary_table(summary_table=None, out_table_path=None):
     prepared_df = pandas.DataFrame(filter(None, lines_list))
     prepared_df = prepared_df[["org_name", "ncbi_link", "repr"]]
     prepared_df.to_csv(out_table_path, sep="\t", index=False)
+    return out_table_path
 
 
 def join_genomes_list_files(genomes_list_1_path=None, genomes_list_2_path=None, joined_genomes_list_path=None):

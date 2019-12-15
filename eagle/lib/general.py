@@ -17,8 +17,10 @@ import sys
 import time
 import string
 import random
+import platform
 
 import yaml
+import wget
 import numpy as np
 
 
@@ -334,3 +336,17 @@ def send_log_message(message, mes_type="info", logger=None):
 
 def fullmatch_regexp_list(pattern, target_list):
     return list(map(lambda x: re.fullmatch(pattern, x), target_list))
+
+
+def download_file(file_link, download_dir="./", logger=None):
+    if platform.system() == 'Windows':
+        try:
+            wget.download(file_link, out=download_dir)
+        except IOError:
+            if logger is not None:
+                logger.warning("'%s' file has not been found" % file_link)
+            else:
+                print("'%s' file has not been found" % file_link)
+    else:
+        subprocess.call("wget " + file_link + " -P " + download_dir + "/", shell=True)
+    return os.path.join(download_dir, os.path.basename(file_link))

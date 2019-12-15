@@ -8,7 +8,7 @@ from Bio.Seq import Seq
 from Bio.Data.CodonTable import TranslationError
 
 from eagle.btax_scanner import get_btax_name
-from eagle.constants import conf_constants, eagle_logger, ORF_ALNS_DIR, ORF_TREES_DIR
+from eagle.constants import conf_constants, eagle_logger, ORF_ALNS_DIR, ORF_TREES_DIR, DB_INFO_NAME
 from eagle.lib.alignment import BlastHandler, construct_mult_aln, get_kaks_gmean
 from eagle.lib.general import worker
 from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out, parse_orf_id
@@ -22,7 +22,7 @@ def explore_orfs_cmd():
 
 
 def explore_orfs(in_fasta,
-                 db_json,
+                 eagle_db,
                  out_dir="",
                  min_orf_l=None,
                  btax_name=None,
@@ -49,13 +49,18 @@ def explore_orfs(in_fasta,
     if kwargs.get("save_trees", False) and not os.path.exists(os.path.join(out_dir, ORF_TREES_DIR)):
         os.makedirs(os.path.join(out_dir, ORF_TREES_DIR))
 
-    if type(db_json) is str:
+    if type(eagle_db) is str:
+        if os.path.isdir(eagle_db):
+            db_json = os.path.join(eagle_db, DB_INFO_NAME)
+        else:
+            db_json = eagle_db
         with open(db_json) as db_json_f:
             db_info = DBInfo.load_from_dict(json.load(db_json_f))
-    elif isinstance(db_json, dict):
-        db_info = DBInfo.load_from_dict(db_json)
+        # TODO: db_info.adjust_paths(os.path.dirname(db_json)) using db_info.from_root
+    elif isinstance(eagle_db, dict):
+        db_info = DBInfo.load_from_dict(eagle_db)
     else:
-        eagle_logger.error("Unsupported type of value for 'db_json' argument")
+        eagle_logger.error("Unsupported type of value for 'eagle_db' argument")
         return
     with open(db_info.btax_json) as btax_dict_f:
         btax_dict = json.load(btax_dict_f)

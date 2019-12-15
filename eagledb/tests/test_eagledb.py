@@ -31,7 +31,7 @@ class TestBactDBCreation(unittest.TestCase):
     conf_constants_db.k_max = 15
     conf_constants_db.k_min = 10
 
-    def test_get_bacteria_from_ncbi(self, last_bact=30, use_prapared=True):
+    def test_get_bacteria_from_ncbi(self, last_bact=20, use_prapared=True):
         if use_prapared:
             prepared_bacteria_f_path = os.path.join(INPUT_DIR, "prepared_bacteria.json")
         else:

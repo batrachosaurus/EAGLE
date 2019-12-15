@@ -214,6 +214,7 @@ class DBInfo(JsonEntry):
     repr_profiles_key = "repr_profiles"
     global_dist_matrix_key = "global_dist_matrix"
     all_org_full_names_key = "all_org_full_names"
+    from_root_key = "from_root"
 
     # default values
     all_genomes_0 = None
@@ -221,19 +222,22 @@ class DBInfo(JsonEntry):
     repr_profiles_0 = None
     global_dist_matrix_0 = None
     all_org_full_names_0 = None
+    from_root_0 = None
 
     def __init__(self,
                  all_genomes=all_genomes_0,
                  btax_json=btax_json_0,
                  repr_profiles=repr_profiles_0,
                  global_dist_matrix=global_dist_matrix_0,
-                 all_org_full_names=all_org_full_names_0):
+                 all_org_full_names=all_org_full_names_0,
+                 from_root=from_root_0):
 
         self.all_genomes = all_genomes
         self.btax_json = btax_json
         self.repr_profiles = repr_profiles
         self.global_dist_matrix = global_dist_matrix
         self.all_org_full_names = all_org_full_names
+        self.from_root = from_root
 
     @classmethod
     def attr_scheme(cls):
@@ -246,4 +250,5 @@ class DBInfo(JsonEntry):
             "repr_profiles": (cls.repr_profiles_key,),
             "global_dist_matrix": (cls.global_dist_matrix_key,),
             "all_org_full_names": (cls.all_org_full_names_key,),
+            "from_root": (cls.from_root_key,),
         }

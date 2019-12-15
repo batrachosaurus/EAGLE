@@ -13,8 +13,8 @@ def _parse_cmd_args(*args):
                         help="Path to input fasta file",
                         required=True)
     parser.add_argument("-db",
-                        "--db-json",
-                        help="Path to json with eagledb to use description",
+                        "--eagle-db",
+                        help="Path to eagledb for analysis or to json with its description",
                         required=True)
     parser.add_argument("-o",
                         "--out-dir",

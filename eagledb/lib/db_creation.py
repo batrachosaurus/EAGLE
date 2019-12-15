@@ -2,7 +2,6 @@
 
 import os
 import io
-import platform
 import subprocess
 import urllib.request
 import gzip
@@ -10,11 +9,9 @@ import shutil
 from functools import reduce
 import operator
 
-import wget
-
 
 from eagle.constants import conf_constants, eagle_logger
-from eagle.lib.general import join_files, gunzip
+from eagle.lib.general import join_files, gunzip, download_file
 from eagle.lib.alignment import BlastHandler, HmmerHandler
 from eagledb.constants import PROFILES_DB_NAME
 from eagledb.scheme import BtaxInfo, GenomeInfo
@@ -44,7 +41,6 @@ def _read_html_file_links(html_file, links, **kwargs):
 
 
 def download_organism_files(org_prefix, suffixes, download_dir="./", logger=None):
-    # TODO: rename and move to eagledb.lib
     if type(suffixes) is str:
         suffixes_list = [suffixes]
     else:
@@ -52,16 +48,7 @@ def download_organism_files(org_prefix, suffixes, download_dir="./", logger=None
     for suffix in suffixes_list:
         file_link = None
         file_link = org_prefix + suffix
-        if platform.system() == 'Windows':
-            try:
-                wget.download(file_link, out=download_dir)
-            except IOError:
-                if logger:
-                    logger.warning("'%s' file has not been found" % file_link)
-                else:
-                    print("'%s' file has not been found" % file_link)
-        else:
-            subprocess.call("wget " + file_link + " -P " + download_dir + "/", shell=True)
+        download_file(file_link=file_link, download_dir=download_dir, logger=logger)
 
 
 def get_tree_from_dict(input_dict, stop_level=2, special_keys=tuple()):
