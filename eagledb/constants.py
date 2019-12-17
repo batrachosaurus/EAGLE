@@ -29,7 +29,7 @@ class ConfConstants(ConfBase):
     def __init__(self, config_path=DEFAULT_CONFIG):
         # Bacteria db
         self.only_repr = False
-        self.btax_level = 3
+        self.btax_level = 4
         self.k_max = 30
         self.k_min = 20
         self.btc_profile_aln_method = "MAFFT"

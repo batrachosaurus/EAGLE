@@ -240,11 +240,16 @@ class DistanceMatrix(object):
         return len(self.seq_names)
 
     @classmethod
-    def calculate(cls, mult_aln, method="FastME", emboss_inst_dir=None, fastme_exec_path=None, **kwargs):
+    def calculate(cls, mult_aln, method="FastME", options=None, emboss_inst_dir=None, fastme_exec_path=None, **kwargs):
+        # if method == "FastME":
+        #     only '--dna' or '--protein' (full parameter names) can be used as keys in "options" dict to set the model
         if emboss_inst_dir is None:
             emboss_inst_dir = conf_constants.emboss_inst_dir
         if fastme_exec_path is None:
             fastme_exec_path = conf_constants.fastme_exec_path
+        if options is None:
+            options = dict()
+
         from eagle.lib.alignment import MultAln
         assert isinstance(mult_aln, MultAln), \
             "Error: the value for mult_aln argument is not eagle.lib.alignment.MultAln object"
@@ -292,11 +297,13 @@ class DistanceMatrix(object):
                 send_log_message(message="no sequences in alignment", mes_type="e", logger=mult_aln.logger)
                 return
             mult_aln.dump_alignment(aln_path=aln_phylip_path, aln_format="phylip")
+            for option in ("-O", "--output_matrix"):
+                options.pop(option, None)
             if mult_aln.aln_type.lower() in mult_aln.prot_types:
-                fastme_options = {"-p": True, "-O": phylip_matrix_path}
+                fastme_options = {"--protein": "L", "-O": phylip_matrix_path}
             else:
-                fastme_options = {"-d": True, "-O": phylip_matrix_path}
-
+                fastme_options = {"--dna": 4, "-O": phylip_matrix_path}
+            fastme_options.update(options)
             send_log_message(message="distances calculation started", mes_type="i", logger=mult_aln.logger)
             run_fastme(input_data=aln_phylip_path, options=fastme_options, fastme_exec_path=fastme_exec_path)
             send_log_message(message="distances calculation finished", mes_type="i", logger=mult_aln.logger)

@@ -386,6 +386,8 @@ def get_btax_dict(genomes_list,
         else:
             btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
 
+        if btc_mult_aln.aln_type.lower() in MultAln.nucl_types:
+            btc_mult_aln.dist_matr_options.update({"--dna": "p"})
         btc_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, inplace=True)
         btc_mult_aln.improve_aln(inplace=True)
         btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()  # TODO: implement specific positions method
