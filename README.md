@@ -56,7 +56,7 @@ pip install git+https://github.com/loven-doo/EAGLE.git@dev --upgrade
 ```
 
 ### Prepare the database
-You can (recommended way) download the default database from [here](http://ma.fbb.msu.ru/loven-doo/EAGLE/EAGLEdb.tar.gz). The downloaded database should be placed into the workdir (This is not usable at all - will be uprades for it. To save the diskspace, a symlink to EAGLEdb directory can be created in each workdir with 'ln -s </path/to/extracted/EAGLEdb> </path/to/workdir/EAGLEdb>' command). Each database scheme placed in <db_name>_info.json files that are located in the archive root directory ('EAGLEdb').  
+You can (recommended way) download the default database from [here](http://ma.fbb.msu.ru/loven-doo/EAGLE/EAGLEdb.tar.gz). The downloaded database should be placed into the workdir (to save the diskspace, a symlink to EAGLEdb directory can be created in each workdir with 'ln -s </path/to/extracted/EAGLEdb> </path/to/workdir/EAGLEdb>' command). Each database scheme placed in <db_name>_info.json files that are located in the archive root directory ('EAGLEdb').  
 Other option is to build it from prepared lists of NCBI genomes:
 ```
 eagle_db -dbt bacteria
