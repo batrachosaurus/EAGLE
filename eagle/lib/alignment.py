@@ -30,6 +30,7 @@ class MultAln(ConfBase):
     nucl_types = SeqsDict.nucl_types
 
     dist_matr_method = "FastME"
+    dist_matr_options = dict()
     low_memory = False
 
     def __init__(self,
@@ -426,17 +427,22 @@ class MultAln(ConfBase):
         if self._distance_matrix is None:
             self._distance_matrix = DistanceMatrix.calculate(mult_aln=self,
                                                              method=self.dist_matr_method,
+                                                             options=self.dist_matr_options,
                                                              emboss_inst_dir=self.emboss_inst_dir,
                                                              fastme_exec_path=self.fastme_exec_path,
                                                              logger=self.logger,
                                                              config_path=self.config_path)
         return self._distance_matrix
 
-    def get_distance_matrix(self, method=None):
+    def get_distance_matrix(self, method=None, options=None):
         if method is None:
             method = self.dist_matr_method
+        if options is None:
+            options = self.dist_matr_options
+
         self._distance_matrix = DistanceMatrix.calculate(mult_aln=self,
                                                          method=method,
+                                                         options=options,
                                                          emboss_inst_dir=self.emboss_inst_dir,
                                                          fastme_exec_path=self.fastme_exec_path,
                                                          logger=self.logger,
