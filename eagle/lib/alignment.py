@@ -1062,9 +1062,9 @@ def construct_mult_aln(seq_dict=None,
     if tmp_dir is None:
         tmp_dir = generate_random_string(10) + "_mult_aln_tmp"
 
+    if not os.path.exists(tmp_dir):
+        os.makedirs(tmp_dir)
     if not fasta_path and seq_dict:
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
         fasta_path = os.path.join(tmp_dir, "seqs_to_aln.fasta")
         dump_fasta_dict(fasta_dict=seq_dict, fasta_path=fasta_path, replace_stops="X")  # maybe it is not good (* > X)
     if not fasta_path:
