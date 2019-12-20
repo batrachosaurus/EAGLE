@@ -374,8 +374,8 @@ def get_btax_dict(genomes_list,
                                           method=conf_constants_db.btc_profile_aln_method,
                                           num_threads=num_threads,
                                           logger=eagle_logger,
-                                          op=5.0,
-                                          ep=0.5,
+                                          op=15.0,
+                                          ep=0.1,
                                           **kwargs)  # low_memory can be set through kwargs
 
         # TODO: only the code from else block should be remained after moving 16S rRNA obtaining out from get_bacteria_from_ncbi
@@ -387,7 +387,7 @@ def get_btax_dict(genomes_list,
             btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
 
         if btc_mult_aln.aln_type.lower() in MultAln.nucl_types:
-            btc_mult_aln.dist_matr_options.update({"--dna": "p", "-T": num_threads if num_threads < 4 else 4})  # To avoid segfaults in FastME
+            btc_mult_aln.dist_matr_options.update({"--dna": "p", "-T": num_threads})  # TODO: avoid segfaults in FastME
         btc_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, inplace=True)
         btc_mult_aln.improve_aln(inplace=True)
         btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()  # TODO: implement specific positions method
