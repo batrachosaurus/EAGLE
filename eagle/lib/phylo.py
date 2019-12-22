@@ -160,7 +160,7 @@ class DistanceMatrix(object):
     # implement _sub_distance_matrx method
 
     default_format = "phylip"
-    default_method = "phylip"
+    default_method = "FastME"
 
     def __init__(self, seqs_order, matr, short_to_full_seq_names=None, **kwargs):
         self.seqs_order = seqs_order
@@ -240,7 +240,7 @@ class DistanceMatrix(object):
         return len(self.seq_names)
 
     @classmethod
-    def calculate(cls, mult_aln, method="FastME", options=None, emboss_inst_dir=None, fastme_exec_path=None, **kwargs):
+    def calculate(cls, mult_aln, method=default_method, options=None, emboss_inst_dir=None, fastme_exec_path=None, **kwargs):
         # if method == "FastME":
         #     only '--dna' or '--protein' (full parameter names) can be used as keys in "options" dict to set the model
         if emboss_inst_dir is None:
@@ -323,7 +323,7 @@ class DistanceMatrix(object):
     @classmethod
     def load(cls,
              matrix_path,
-             matr_format="phylip",
+             matr_format=default_format,
              short_to_full_seq_names=None,
              **kwargs):
 
@@ -377,7 +377,7 @@ class DistanceMatrix(object):
 
         return distance_matrix
 
-    def dump(self, matrix_path, matr_format="phylip"):
+    def dump(self, matrix_path, matr_format=default_format):
         float_to_str = lambda x: "%f" % x if isinstance(x, numbers.Number) else str(x)
         if matr_format == "phylip":
             matr_f = open(matrix_path, 'w')
