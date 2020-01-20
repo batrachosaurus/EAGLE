@@ -335,13 +335,6 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
     if num_words < 1:
         print("Number of words must be at least 1")
         return
-    all_less = True
-    for seq_id in fasta_dict:
-        if len(seq_id) > num_letters:
-            all_less = False
-            break
-    if all_less:
-        return fasta_dict, dict((seq_id, seq_id) for seq_id in fasta_dict)
     splitters_repl = {"_": " ",
                       "\t": " ",
                       ",": " ",
@@ -363,27 +356,31 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
     parts_size_list = _get_part_size_list(num_letters, num_words)
     reduced_fasta_dict = dict()
     seq_names_dict = dict()
-    for seq_name in fasta_dict.keys():
-        reduced_seq_name = None
-        seq_name_list = filter_list("".join([splitters_repl.get(s, s) for s in seq_name]).split())
-        parts = list()
-        for i in range(num_words):
-            try:
-                parts.append(seq_name_list[i][:parts_size_list[i]])
-            except IndexError:
-                break
-        reduced_seq_name = "".join(parts)
-        res_len = num_letters - len(reduced_seq_name)
-        un_num = 0
-        un_fix = get_un_fix(un_num, res_len)
-        while seq_names_dict.get((reduced_seq_name+un_fix).upper(), None):
-            un_fix = None
-            un_num += 1
+    for seq_name in fasta_dict:
+        if len(seq_name) <= num_letters:
+            reduced_fasta_dict[seq_name] = fasta_dict[seq_name]
+            seq_names_dict[seq_name] = seq_name
+        else:
+            reduced_seq_name = None
+            seq_name_list = filter_list("".join([splitters_repl.get(s, s) for s in seq_name]).split())
+            parts = list()
+            for i in range(num_words):
+                try:
+                    parts.append(seq_name_list[i][:parts_size_list[i]])
+                except IndexError:
+                    break
+            reduced_seq_name = "".join(parts)
+            res_len = num_letters - len(reduced_seq_name)
+            un_num = 0
             un_fix = get_un_fix(un_num, res_len)
-            if un_fix[-1] == "N":
-                break
-        reduced_fasta_dict[(reduced_seq_name+un_fix).upper()] = fasta_dict[seq_name]
-        seq_names_dict[(reduced_seq_name+un_fix).upper()] = seq_name
+            while seq_names_dict.get((reduced_seq_name+un_fix).upper(), None):
+                un_fix = None
+                un_num += 1
+                un_fix = get_un_fix(un_num, res_len)
+                if un_fix[-1] == "N":
+                    break
+            reduced_fasta_dict[(reduced_seq_name+un_fix).upper()] = fasta_dict[seq_name]
+            seq_names_dict[(reduced_seq_name+un_fix).upper()] = seq_name
     return reduced_fasta_dict, seq_names_dict
 
 
