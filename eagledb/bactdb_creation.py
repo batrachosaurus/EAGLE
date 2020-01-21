@@ -387,10 +387,11 @@ def get_btax_dict(genomes_list,
             btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
 
         if btc_mult_aln.aln_type.lower() in MultAln.nucl_types:
-            btc_mult_aln.dist_matr_options.update({"--dna": "p", "-T": num_threads, "-f": 6})  # TODO: avoid segfaults in FastME
-        btc_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, inplace=True)
+            btc_mult_aln.dist_matr_options.update({"--dna": "p", "-T": num_threads, "-f": 6})
         btc_mult_aln.improve_aln(inplace=True)
-        btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()  # TODO: implement specific positions method
+        btc_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, inplace=True)  # TODO: implement specific positions method
+        btc_mult_aln.improve_aln(inplace=True)
+        btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()
         short_to_full_seq_names.update(btc_mult_aln.short_to_full_seq_names)
         if kwargs.get("save_alignments", False):
             btc_mult_aln.dump_alignment(aln_path=os.path.join(db_dir, btc_mult_aln.aln_name + ".fasta"))
@@ -463,6 +464,7 @@ def get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs):
 
 
 def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
+    # TODO: make it parallel
     if k_max is None:
         k_max = conf_constants_db.k_max
     if k_min is None:
