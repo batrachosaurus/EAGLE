@@ -348,6 +348,8 @@ class MultAln(ConfBase):
         if dist_filt:
             # Constructs a list of rarefied by different distance thresholds alignments and runs improve_aln on it with dist_filt=False
             pass
+
+        # TODO: speed up that
         coords = list()
         seq_id_list = list(self.mult_aln_dict.keys())
         for i in range(self.length):
@@ -365,6 +367,7 @@ class MultAln(ConfBase):
             elif remove_seq:
                 # TODO: write detection of seqs to remove
                 pass
+
         if len(coords[-1]) == 1:
             coords[-1] = (coords[-1][0], coords[-1][0])
         if not remove_seq and len(coords) >= 1:

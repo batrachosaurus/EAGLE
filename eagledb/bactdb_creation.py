@@ -419,7 +419,8 @@ def get_btax_dict(genomes_list,
             btax_dict[btax_name].median_d = global_dist_matr[btax_orgs].median_dist
             if len(btax_orgs) > 2:
                 btax_dict[btax_name].ref_tree_newick = build_tree_by_dist(global_dist_matr[btax_orgs],
-                                                                          tree_name=btax_name+"_tree").newick
+                                                                          tree_name=btax_name+"_tree",
+                                                                          options={"-T": num_threads}).newick
                 btax_btc_aln_dict = dict()
                 for btc_profile_name, btc_aln in btc_aln_dict.items():
                     btax_btc_aln = btc_aln[btax_orgs].improve_aln(inplace=False)
