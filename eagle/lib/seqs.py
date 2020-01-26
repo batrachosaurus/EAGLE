@@ -191,8 +191,8 @@ class SeqsDict(object):
                             seqs_order[title] = range(i, len(new_seq)//chunk_size + 1)
                             for n, j in enumerate(seqs_order[title]):
                                 seqs_array[j] = new_seq[n*chunk_size: (n+1)*chunk_size]
-                            title = None
                             i = seqs_order[title].stop
+                            title = None
                         title = line[1:]
                         seq_list = list()
                     else:
