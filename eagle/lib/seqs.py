@@ -18,8 +18,10 @@ class SeqsDict(object):
     nucl_type = "nucl"
     prot_types = ("protein", prot_type, "p")
     nucl_types = ("nucleotide", nucl_type, "n")
+    _chunk_size0 = 100
 
-    def __init__(self, seqs_order, seqs_array, seq_info_dict=None, seqs_type=None, low_memory=False):
+    def __init__(self, seqs_order, seqs_array, seq_info_dict=None, seqs_type=None, low_memory=False,
+                 chunk_size=_chunk_size0):
         if seq_info_dict is None:
             seq_info_dict = defaultdict(lambda: defaultdict(lambda: None))
 
@@ -28,11 +30,12 @@ class SeqsDict(object):
         self.seq_info_dict = seq_info_dict
         self.seqs_type = seqs_type
         self.low_memory = low_memory
+        self._chunk_size = chunk_size
 
-        self._empty_rows = list()
+        self._empty_rows = list()  # TODO: implement special object
 
     def __getitem__(self, item):
-        return self.seqs_array[self.seqs_order[item]].decode()
+        return "".join(self.seqs_array[i].decode() for i in self.seqs_order[item])
 
     def get_sample(self, seqs, low_memory='auto', **kwargs):
         if low_memory == "auto":
@@ -40,42 +43,51 @@ class SeqsDict(object):
                 low_memory = True
             else:
                 low_memory = False
+        seqs_array_l = sum(len(self.seqs_order[seq]) for seq in seqs)
         if low_memory:
             dat_path = kwargs.get("dat_path", "." + generate_random_string(10) + "_seqs_dict.dat")
-            seqs_array = np.memmap(dat_path, dtype=self.seqs_array.dtype, mode='w+', shape=len(seqs))
+            seqs_array = np.memmap(dat_path, dtype=self.seqs_array.dtype, mode='w+', shape=(seqs_array_l,))
         else:
-            seqs_array = np.zeros(len(seqs), dtype=self.seqs_array.dtype)
+            seqs_array = np.zeros(seqs_array_l, dtype=self.seqs_array.dtype)
         seqs_order = dict()
-        for i, seq in enumerate(seqs):
-            seqs_order[seq] = i
-            seqs_array[i] = self[seq]
-        return SeqsDict(seqs_order=seqs_order, seqs_array=seqs_array, low_memory=low_memory)
+        i = 0
+        for seq in seqs:
+            r = self.seqs_order[seq]
+            seqs_order[seq] = range(i, i+len(r))
+            for n, j in enumerate(seqs_order[seq]):
+                seqs_array[j] = self.seqs_array[r.start+n]
+            i += len(r)
+        return SeqsDict(seqs_order=seqs_order, seqs_array=seqs_array, low_memory=low_memory,
+                        chunk_size=self._chunk_size)
 
     def __setitem__(self, key, value):
-        if len(value) > self.seqs_array.itemsize:
-            if self.low_memory:
-                self.seqs_array = np_memmap_astype(dat_path=self.seqs_array.filename,
-                                                   old_dtype=self.seqs_array.dtype,
-                                                   new_dtype=np.dtype("S%s" % len(value)),
-                                                   shape=self.seqs_array.shape)
-            else:
-                self.seqs_array = self.seqs_array.astype(np.dtype("S%s" % len(value)))
+        # TODO: implement self._empty_rows
+        """
         if self._empty_rows:
             self.seqs_order[key] = self._empty_rows.pop(0)
             self.seqs_array[self.seqs_order[key]] = value
-        elif key in self.seqs_order:
-            self.seqs_array[self.seqs_order[key]] = value
+        """
+        # elif key in self.seqs_order:
+        if key in self.seqs_order:
+            del self[key]
+            self[key] = value
         else:
-            self.seqs_order[key] = self.seqs_array.shape[0]
+            self.seqs_order[key] = range(self.seqs_array.shape[0],
+                                         self.seqs_array.shape[0]+len(value)//self._chunk_size+1)
             if self.low_memory:
                 self.seqs_array = np.memmap(self.seqs_array.filename,
                                             dtype=self.seqs_array.dtype,
                                             mode='r+',
-                                            shape=self.seqs_array.shape[0]+1,
+                                            shape=(self.seqs_order[key].stop,),
                                             order='C')
-                self.seqs_array[-1] = value
+                for n, i in enumerate(self.seqs_order[key]):
+                    self.seqs_array[i] = value[n*self._chunk_size: (n+1)*self._chunk_size]
             else:
-                self.seqs_array = np.concatenate((self.seqs_array, np.array([value], dtype=self.seqs_array.dtype)))
+                self.seqs_array = np.concatenate(
+                    (self.seqs_array,
+                     np.array([value[n*self._chunk_size: (n+1)*self._chunk_size] for n, i in enumerate(self.seqs_order[key])],
+                              dtype=self.seqs_array.dtype))
+                )
 
     def __len__(self):
         return len(self.seqs_order)
@@ -91,11 +103,10 @@ class SeqsDict(object):
 
     def __delitem__(self, key):
         if self.low_memory:
-            self.seqs_array[self.seqs_order[key]] = ""
             self._empty_rows.append(self.seqs_order.pop(key))
         else:
-            self.seqs_array = np.concatenate((self.seqs_array[:self.seqs_order[key]],
-                                              self.seqs_array[self.seqs_order[key]+1:]))
+            self.seqs_array = np.concatenate((self.seqs_array[:self.seqs_order[key].start],
+                                              self.seqs_array[self.seqs_order[key].stop:]))
             i = 0
             for seq_id in self.keys():
                 if seq_id == key:
@@ -114,10 +125,11 @@ class SeqsDict(object):
         return item is self.seqs_order
 
     def keys(self):
-        return map(lambda si: si[0], sorted(self.seqs_order.items(), key=lambda si: si[1]))
+        return map(lambda si: si[0], sorted(self.seqs_order.items(), key=lambda si: si[1].start))
 
     def values(self):
-        return self.seqs_array
+        for seq_name in self:
+            yield self[seq_name]
 
     def items(self):
         return map(lambda seq_id: (seq_id, self[seq_id]), self.keys())
@@ -133,92 +145,93 @@ class SeqsDict(object):
 
     @classmethod
     def load_from_file(cls, seqs_path, seqs_format="fasta", low_memory='auto', **kwargs):
-        read_chunk_size = kwargs.get("read_chink_size", 100)
-        exp_seq_len = kwargs.get("exp_seq_len", 1000)
+        chunk_size = kwargs.get("chunk_size", cls._chunk_size0)
         if low_memory == 'auto':
             low_memory = cls._check_low_memory(seqs_path=seqs_path)
-        seq_i = 0
-        seqs_order = dict()
+
+        n_chunks = 0
+        if seqs_format.lower() == "fasta":
+            with open(seqs_path) as fasta_f:
+                seq_l = 0
+                for line_ in fasta_f:
+                    line = None
+                    line = line_.strip()
+                    if not line:
+                        continue
+                    if line[0] == ">" and seq_l > 0:
+                        n_chunks += seq_l//chunk_size + 1
+                        seq_l = 0
+                    else:
+                        seq_l += len(line)
+
         if low_memory:
             dat_path = kwargs.get("dat_path", "." + generate_random_string(10) + "_seqs_dict.dat")
-            seqs_array = np.memmap(dat_path, dtype=np.dtype("S%s" % exp_seq_len), mode='w+', shape=read_chunk_size)
+            seqs_array = np.memmap(dat_path, dtype=np.dtype("S%s" % chunk_size), mode='w+', shape=(n_chunks,))
         else:
-            seqs_array = np.zeros(read_chunk_size, dtype=np.dtype("S%s" % exp_seq_len))
+            seqs_array = np.zeros(n_chunks, dtype=np.dtype("S%s" % chunk_size))
+
+        i = 0
+        seqs_order = dict()
         if seqs_format.lower() == "fasta":
-            seq_list = list()
-            title = None
-            fasta_f = open(seqs_path)
-            for line_ in fasta_f:
-                line = None
-                line = line_.strip()
-                if not line:
-                    continue
-                if line[0] == ">":
-                    if title:
-                        seqs_order[title] = seq_i
-                        new_seq = None
-                        if kwargs.get("restore_stops", False):
-                            new_seq = "".join(seq_list).replace("X", "*")
-                        else:
-                            new_seq = "".join(seq_list)
-                        if len(new_seq) > seqs_array.itemsize:
-                            if low_memory:
-                                # TODO: try "np.astype(... , copy=False)" instead of next line
-                                seqs_array = np_memmap_astype(dat_path=seqs_array.filename,
-                                                              old_dtype=seqs_array.dtype,
-                                                              new_dtype=np.dtype("S%s" % len(new_seq)),
-                                                              shape=seqs_array.shape)
-                            else:
-                                seqs_array = seqs_array.astype(np.dtype("S%s" % len(new_seq)))
-                        seqs_array[seq_i] = new_seq
-                        title = None
-                        seq_i += 1
-                    if seq_i > 0 and float(seq_i) % float(read_chunk_size) == 0:
-                        if low_memory:
-                            seqs_array = np.memmap(seqs_array.filename,
-                                                   dtype=seqs_array.dtype,
-                                                   mode='r+',
-                                                   shape=seqs_array.shape[0]+read_chunk_size,
-                                                   order='C')
-                        else:
-                            seqs_array = np.concatenate((seqs_array, np.zeros(read_chunk_size, dtype=seqs_array.dtype)))
-                    title = line[1:]
-                    seq_list = list()
-                else:
-                    seq_list.append(line)
-            if title:
-                seqs_order[title] = seq_i
-                new_seq = None
-                new_seq = None
-                if kwargs.get("restore_stops", False):
-                    new_seq = "".join(seq_list).replace("X", "*")
-                else:
-                    new_seq = "".join(seq_list)
-                if len(new_seq) > seqs_array.itemsize:
-                    seqs_array = seqs_array.astype(np.dtype("S%s" % len(new_seq)))
-                seqs_array[seq_i] = new_seq
+            with open(seqs_path) as fasta_f:
                 seq_list = list()
                 title = None
-                seq_i += 1
-            fasta_f.close()
-        if seqs_array.shape[0] > seq_i:
-            seqs_array = seqs_array[:seq_i]
-        return cls(seqs_order=seqs_order, seqs_array=seqs_array, low_memory=low_memory)
+                for line_ in fasta_f:
+                    line = None
+                    line = line_.strip()
+                    if not line:
+                        continue
+                    if line[0] == ">":
+                        if title is not None:
+                            new_seq = None
+                            if kwargs.get("restore_stops", False):
+                                new_seq = "".join(seq_list).replace("X", "*")
+                            else:
+                                new_seq = "".join(seq_list)
+                            seqs_order[title] = range(i, len(new_seq)//chunk_size + 1)
+                            for n, j in enumerate(seqs_order[title]):
+                                seqs_array[j] = new_seq[n*chunk_size: (n+1)*chunk_size]
+                            title = None
+                            i = seqs_order[title].stop
+                        title = line[1:]
+                        seq_list = list()
+                    else:
+                        seq_list.append(line)
+                if title is not None:
+                    new_seq = None
+                    if kwargs.get("restore_stops", False):
+                        new_seq = "".join(seq_list).replace("X", "*")
+                    else:
+                        new_seq = "".join(seq_list)
+                    seqs_order[title] = range(i, len(new_seq) // chunk_size + 1)
+                    for n, j in enumerate(seqs_order[title]):
+                        seqs_array[j] = new_seq[n * chunk_size: (n + 1) * chunk_size]
+                    i = seqs_order[title].stop
+                    seq_list = list()
+                    title = None
+        return cls(seqs_order=seqs_order, seqs_array=seqs_array, low_memory=low_memory, chunk_size=chunk_size)
 
     @classmethod
     def load_from_dict(cls, in_dict, low_memory=False, **kwargs):
+        chunk_size = kwargs.get("chunk_size", cls._chunk_size0)
+        n_chunks = 0
+        for seq in in_dict.values():
+            if seq:
+                n_chunks += len(seq)//chunk_size + 1
+
         if low_memory:
             dat_path = kwargs.get("dat_path", "." + generate_random_string(10) + "_seqs_dict.dat")
-            seqs_array = np.memmap(dat_path, dtype=np.dtype("S1000"), mode='w+', shape=len(in_dict))
+            seqs_array = np.memmap(dat_path, dtype=np.dtype("S%s" % chunk_size), mode='w+', shape=(n_chunks,))
         else:
-            seqs_array = np.zeros(len(in_dict), dtype=np.dtype("S1000"))
+            seqs_array = np.zeros(n_chunks, dtype=np.dtype("S%s" % chunk_size))
+
+        i = 0
         seqs_order = dict()
-        for seq_i, seq_id in enumerate(in_dict):
-            seqs_order[seq_id] = seq_i
-            if len(in_dict[seq_id]) > seqs_array.itemsize:
-                seqs_array = seqs_array.astype(dtype=np.dtype("S%s" % len(in_dict[seq_id])))
-            seqs_array[seq_i] = in_dict[seq_id]
-        return cls(seqs_order=seqs_order, seqs_array=seqs_array, low_memory=low_memory)
+        for seq_id, seq in in_dict.items():
+            seqs_order[seq_id] = range(i, len(seq) // chunk_size + 1)
+            for n, j in enumerate(seqs_order[seq_id]):
+                seqs_array[j] = seq[n * chunk_size: (n + 1) * chunk_size]
+        return cls(seqs_order=seqs_order, seqs_array=seqs_array, low_memory=low_memory, chunk_size=chunk_size)
 
     @staticmethod
     def _check_low_memory(seqs_path):
@@ -250,17 +263,18 @@ class SeqsDict(object):
         return seqs_path
 
     def detect_seqs_type(self, nuc_freq_thr=0.75):
-        seqs_list = list()
         summ_l = 0
-        for seq in self.seqs_array:
-            seqs_list.append(seq.lower().replace("-", ""))
-            summ_l += len(seqs_list[-1])
-        let_counts = Counter("".join(seqs_list))
+        let_counts = Counter()
+        for seq_ in self.values():
+            seq = None
+            seq = seq_.lower().replace("-", "")
+            summ_l += len(seq)
+            let_counts += Counter(seq)
         if float(let_counts.get("a", 0) + let_counts.get("c", 0) + let_counts.get("g", 0) +
                  let_counts.get("t", 0)) / float(summ_l) >= nuc_freq_thr:
-            return "nucl"
+            return self.nucl_type
         else:
-            return "prot"
+            return self.prot_type
 
 
 def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
@@ -545,7 +559,7 @@ def detect_seqs_type(seqs_dict=None, nuc_freq_thr=0.75, **kwargs):
 
     summ_l = 0
     let_counts = Counter()
-    for seq_key in seqs_dict.keys():
+    for seq_key in seqs_dict:
         seq = None
         seq = seqs_dict[seq_key].lower().replace("-", "")
         let_counts += Counter(seq)
