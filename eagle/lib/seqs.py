@@ -163,6 +163,9 @@ class SeqsDict(object):
                         seq_l = 0
                     else:
                         seq_l += len(line)
+                if seq_l > 0:
+                    n_chunks += (seq_l - 1) // chunk_size + 1
+                    seq_l = 0
 
         if low_memory:
             dat_path = kwargs.get("dat_path", "." + generate_random_string(10) + "_seqs_dict.dat")
