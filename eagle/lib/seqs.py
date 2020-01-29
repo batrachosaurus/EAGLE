@@ -188,7 +188,7 @@ class SeqsDict(object):
                                 new_seq = "".join(seq_list).replace("X", "*")
                             else:
                                 new_seq = "".join(seq_list)
-                            seqs_order[title] = range(i, (len(new_seq)-1)//chunk_size + 1)
+                            seqs_order[title] = range(i, i + (len(new_seq)-1)//chunk_size + 1)
                             for n, j in enumerate(seqs_order[title]):
                                 seqs_array[j] = new_seq[n*chunk_size: (n+1)*chunk_size]
                             i = seqs_order[title].stop
@@ -203,7 +203,7 @@ class SeqsDict(object):
                         new_seq = "".join(seq_list).replace("X", "*")
                     else:
                         new_seq = "".join(seq_list)
-                    seqs_order[title] = range(i, (len(new_seq)-1) // chunk_size + 1)
+                    seqs_order[title] = range(i, i + (len(new_seq)-1) // chunk_size + 1)
                     for n, j in enumerate(seqs_order[title]):
                         seqs_array[j] = new_seq[n * chunk_size: (n + 1) * chunk_size]
                     i = seqs_order[title].stop
@@ -228,7 +228,7 @@ class SeqsDict(object):
         i = 0
         seqs_order = dict()
         for seq_id, seq in in_dict.items():
-            seqs_order[seq_id] = range(i, (len(seq)-1) // chunk_size + 1)
+            seqs_order[seq_id] = range(i, i + (len(seq)-1) // chunk_size + 1)
             for n, j in enumerate(seqs_order[seq_id]):
                 seqs_array[j] = seq[n * chunk_size: (n + 1) * chunk_size]
             i = seqs_order[seq_id].stop
