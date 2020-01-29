@@ -159,7 +159,7 @@ class SeqsDict(object):
                     if not line:
                         continue
                     if line[0] == ">" and seq_l > 0:
-                        n_chunks += seq_l//chunk_size + 1
+                        n_chunks += (seq_l-1)//chunk_size + 1
                         seq_l = 0
                     else:
                         seq_l += len(line)
@@ -188,7 +188,7 @@ class SeqsDict(object):
                                 new_seq = "".join(seq_list).replace("X", "*")
                             else:
                                 new_seq = "".join(seq_list)
-                            seqs_order[title] = range(i, len(new_seq)//chunk_size + 1)
+                            seqs_order[title] = range(i, (len(new_seq)-1)//chunk_size + 1)
                             for n, j in enumerate(seqs_order[title]):
                                 seqs_array[j] = new_seq[n*chunk_size: (n+1)*chunk_size]
                             i = seqs_order[title].stop
@@ -203,7 +203,7 @@ class SeqsDict(object):
                         new_seq = "".join(seq_list).replace("X", "*")
                     else:
                         new_seq = "".join(seq_list)
-                    seqs_order[title] = range(i, len(new_seq) // chunk_size + 1)
+                    seqs_order[title] = range(i, (len(new_seq)-1) // chunk_size + 1)
                     for n, j in enumerate(seqs_order[title]):
                         seqs_array[j] = new_seq[n * chunk_size: (n + 1) * chunk_size]
                     i = seqs_order[title].stop
@@ -217,7 +217,7 @@ class SeqsDict(object):
         n_chunks = 0
         for seq in in_dict.values():
             if seq:
-                n_chunks += len(seq)//chunk_size + 1
+                n_chunks += (len(seq)-1)//chunk_size + 1
 
         if low_memory:
             dat_path = kwargs.get("dat_path", "." + generate_random_string(10) + "_seqs_dict.dat")
@@ -228,9 +228,10 @@ class SeqsDict(object):
         i = 0
         seqs_order = dict()
         for seq_id, seq in in_dict.items():
-            seqs_order[seq_id] = range(i, len(seq) // chunk_size + 1)
+            seqs_order[seq_id] = range(i, (len(seq)-1) // chunk_size + 1)
             for n, j in enumerate(seqs_order[seq_id]):
                 seqs_array[j] = seq[n * chunk_size: (n + 1) * chunk_size]
+            i = seqs_order[seq_id].stop
         return cls(seqs_order=seqs_order, seqs_array=seqs_array, low_memory=low_memory, chunk_size=chunk_size)
 
     @staticmethod
