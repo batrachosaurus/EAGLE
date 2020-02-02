@@ -927,7 +927,7 @@ class HmmerHandler(ConfBase):
         hmmpress_cmd = os.path.join(self.inst_dir, "hmmpress") + " " + profiles_db_path
         subprocess.call(hmmpress_cmd, shell=True)
 
-    def run_hmmsearch(self, in_profile_path, seqdb, out_path=None, shred_seqdb=False):
+    def run_hmmsearch(self, in_profile_path, seqdb, out_path=None, cpu=1, shred_seqdb=False):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
         if shred_seqdb:
@@ -944,7 +944,10 @@ class HmmerHandler(ConfBase):
             out_path = os.path.splitext(in_profile_path) + ".hsr"
         else:
             read_hsr = False
-        hmmsearch_cmd = os.path.join(self.inst_dir, "hmmsearch") + " " + in_profile_path + " " + seqdb_path
+        hmmsearch_cmd = os.path.join(self.inst_dir, "hmmsearch") + \
+                        " " + in_profile_path + \
+                        " " + seqdb_path + \
+                        " --cpu " + str(cpu)
         subprocess.call(hmmsearch_cmd, shell=True)
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
         if read_hsr:
@@ -1152,8 +1155,8 @@ def nucl_accord_prot(prot_seq, nucl_seq):
     return "".join(nucl_seq_list)
 
 
-def search_profile(profile_dict, seqdb, seq_ids_to_orgs, work_dir="./", method="hmmer", hmmer_inst_dir=None,
-                   shred_seqdb=False, config_path=None, logger=None, **kwargs):###
+def search_profile(profile_dict, seqdb, seqdb_id2org, work_dir="./", method="hmmer", hmmer_inst_dir=None,
+                   shred_seqdb=False, config_path=None, logger=None, cpu=1, **kwargs):###
     p = SeqProfileInfo.load_from_dict(in_dict=profile_dict)
     if method.lower() == "hmmer":
         if kwargs.get("read_hsr_shred", False):
@@ -1167,13 +1170,14 @@ def search_profile(profile_dict, seqdb, seq_ids_to_orgs, work_dir="./", method="
         search_res = hmmer_handler.run_hmmsearch(in_profile_path=p.path,
                                                  seqdb=seqdb,
                                                  out_path=hsr_path,
+                                                 cpu=cpu,
                                                  shred_seqdb=shred_seqdb)
         if hsr_path is not None:
             search_res = None
             search_res = hmmer_handler.read_hsr(hsr_path=hsr_path,
                                                 is_shred=True,
                                                 hit_coords_transform=kwargs.get("hit_coords_transform", None))
-
+        # E-value filter + seqdb_id2org -> seq_ids_to_orgs
         pass
     return
 

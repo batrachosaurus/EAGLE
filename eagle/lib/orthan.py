@@ -55,11 +55,15 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
                        num_threads=None, autoremove=True):
     if num_threads is None:
         num_threads = conf_constants.num_threads
+    try:
+        cpu = max(num_threads//len(genomes_list), 1)
+    except TypeError:
+        cpu = 1
 
     seq_types = mp.Manager().dict()
     seq_types["prot"] = False
     seq_types["nucl"] = False
-    seq_ids_to_orgs = mp.Manager().dict()
+    fna_id2org = mp.Manager().dict()
     protdb_path = os.path.join(work_dir, "protdb.fasta")
     nucldb_path = os.path.join(work_dir, "nucldb.fasta")
 
@@ -70,12 +74,12 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
                                                          "seq_types": seq_types,
                                                          "protdb_path": protdb_path,
                                                          "nucldb_path": nucldb_path,
-                                                         "seq_ids_to_orgs": seq_ids_to_orgs},
+                                                         "fna_id2org": fna_id2org,
+                                                         "cpu": cpu},
                                          alns_or_profiles))
     pool.close()
     pool.join()
 
-    fna_id2org = mp.Manager().dict()
     pool = mp.Pool(num_threads)
     db_part_paths = pool.map(worker, map(lambda genome_dict: {
                                              "function": _prepare_genome_db,
@@ -117,7 +121,7 @@ def _link_fna_id2org(genome_info):
         }    
 
 
-def _prepare_profile(a_or_p, work_dir, seq_types, protdb_path, nucldb_path, seq_ids_to_orgs):
+def _prepare_profile(a_or_p, work_dir, seq_types, protdb_path, nucldb_path, fna_id2org, cpu):
     if isinstance(a_or_p, MultAln):
         profile_path = None
         profile_path = os.path.join(work_dir, a_or_p.aln_name, "profile.hmm")
@@ -134,10 +138,11 @@ def _prepare_profile(a_or_p, work_dir, seq_types, protdb_path, nucldb_path, seq_
     return {"function": search_profile,
             "profile_dict": p.get_json(),
             "seqdb": seqdb,
-            "seq_ids_to_orgs": seq_ids_to_orgs,
+            "seqdb_id2org": fna_id2org,
             "shred_seqdb": True if p.seq_type.lower() in SeqsDict.nucl_types else False,
             "read_hsr_shred": True if p.seq_type.lower() in SeqsDict.prot_types else False,
-            "hit_coords_transform": lambda c: c*3 if p.seq_type.lower() in SeqsDict.prot_types else None}
+            "hit_coords_transform": lambda c: c*3 if p.seq_type.lower() in SeqsDict.prot_types else None,
+            "cpu": cpu}
 
 
 def _prepare_genome_db(genome_dict, fna_id2org, work_dir, seq_prot, seq_nucl, **kwargs):
