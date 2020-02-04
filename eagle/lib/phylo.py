@@ -84,7 +84,7 @@ class PhyloTree(ConfBase):
     def dump_tree(self, tree_path, tree_format="newick"):
         tree_str = self.tree.as_string(schema=tree_format).replace(" ", "_")
         if tree_format == "newick":
-            dump_tree_newick(tree_newick=tree_str, newick_f_path=tree_path)
+            return dump_tree_newick(tree_newick=tree_str, newick_f_path=tree_path)
 
     @classmethod
     def load_tree(cls,
@@ -615,3 +615,4 @@ def dump_tree_newick(tree_newick, newick_f_path):
     newick_f = open(newick_f_path, "w")
     newick_f.write(tree_newick)
     newick_f.close()
+    return newick_f_path

@@ -102,18 +102,8 @@ class SeqsDict(object):
         return seq
 
     def __delitem__(self, key):
-        if self.low_memory:
-            self._empty_rows.append(self.seqs_order.pop(key))
-        else:
-            self.seqs_array = np.concatenate((self.seqs_array[:self.seqs_order[key].start],
-                                              self.seqs_array[self.seqs_order[key].stop:]))
-            i = 0
-            for seq_id in self.keys():
-                if seq_id == key:
-                    del self.seqs_order[seq_id]
-                else:
-                    self.seqs_order[seq_id] = i
-                    i += 1
+        # TODO: implement real delete with elements shift up
+        self._empty_rows.append(self.seqs_order.pop(key))
 
     def __del__(self):
         if self.low_memory:
@@ -122,7 +112,7 @@ class SeqsDict(object):
             os.remove(dat_path)
 
     def __contains__(self, item):
-        return item is self.seqs_order
+        return item in self.seqs_order
 
     def keys(self):
         return map(lambda si: si[0], sorted(self.seqs_order.items(), key=lambda si: si[1].start))
