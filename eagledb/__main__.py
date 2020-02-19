@@ -34,8 +34,9 @@ def _parse_cmd_args(*args):
                         "--btax-level",
                         help="The taxonomic level to split input genomes into basic taxons "
                              "(1 - species, 2 - genus, 3 - family, etc)",
+                        type=int,
                         required=False,
-                        default=int())
+                        default=None)
     parser.add_argument("-btcp",
                         "--btax-class-profile",
                         help="The path to HMM profile of sequences that should be used for basic taxons classification "
@@ -56,8 +57,9 @@ def _parse_cmd_args(*args):
     parser.add_argument("-nt",
                         "--num-threads",
                         help="Threads number (can be set in config file)",
+                        type=int,
                         required=False,
-                        default=conf_constants.num_threads)
+                        default=None)
     parser.add_argument("-po",
                         "--prepared-organisms",
                         help='Path to a json with organisms not to prepare listed. '

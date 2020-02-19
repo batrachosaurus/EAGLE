@@ -23,24 +23,24 @@ def explore_orfs_cmd():
 
 def explore_orfs(in_fasta,
                  eagle_db,
+                 annotation=None,
+                 cu_table='default',
                  out_dir="",
                  min_orf_l=None,
                  btax_name=None,
                  num_threads=None,
-                 btax_det_method="hmmer",
+                 btax_det_method=None,
                  config_path=None,
                  **kwargs):
 
     if config_path:
         conf_constants.update_by_config(config_path)
-    if num_threads:
+    if num_threads is not None:
         conf_constants.num_threads = int(num_threads)
-        num_threads = None
-    num_threads = conf_constants.num_threads
-    if min_orf_l:
+    if min_orf_l is not None:
         conf_constants.min_orf_l = min_orf_l
-        min_orf_l = None
-    min_orf_l = conf_constants.min_orf_l
+    if btax_det_method is not None:
+        conf_constants.btax_det_method = btax_det_method
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -70,14 +70,14 @@ def explore_orfs(in_fasta,
                                   btax_names=btax_dict.keys(),
                                   work_dir=out_dir,
                                   num_threads=conf_constants.num_threads,
-                                  method=btax_det_method,
+                                  method=conf_constants.btax_det_method,
                                   hmmer_inst_dir=conf_constants.hmmer_inst_dir,
                                   config_path=config_path)
 
     orfs_fasta_path = os.path.join(out_dir, os.path.basename(in_fasta)+".orfs")
     res_gtf_json = get_orfs(in_fasta_path=in_fasta,
                             out_fasta_path=orfs_fasta_path,
-                            minsize=min_orf_l)
+                            minsize=conf_constants.min_orf_l)
     blast_handler = BlastHandler(inst_dir=conf_constants.blast_inst_dir,
                                  config_path=config_path,
                                  logger=eagle_logger)
@@ -94,7 +94,7 @@ def explore_orfs(in_fasta,
                                            query=orfs_fasta_path,
                                            db=btax_info.blastdb,
                                            out=tblastn_out_path,
-                                           num_threads=num_threads)
+                                           num_threads=conf_constants.num_threads)
         res_gtf_json = analyze_tblastn_out(tblastn_out_path=tblastn_out_path,
                                            orfs_fasta_path=orfs_fasta_path,
                                            in_fasta=in_fasta,
