@@ -39,9 +39,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
         conf_constants_db.update_by_config(config_path=config_path)
-    if not num_threads:
-        num_threads = conf_constants.num_threads
-    else:
+    if num_threads is not None:
         conf_constants.num_threads = num_threads
     if refseq_bacteria_table is None and genbank_bacteria_table is None:
         refseq_bacteria_table = get_ncbi_table(BACTERIA_REFSEQ_SUMMARY_LINK, REFSEQ_BACTERIA_TABLE)
@@ -130,7 +128,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
                 j += 1
         n += 1
     eagle_logger.info("got download links for %s bacteria" % len(params_list))
-    pool = mp.Pool(num_threads)
+    pool = mp.Pool(conf_constants.num_threads)
     pool.map(worker, params_list)
     pool.close()
     pool.join()
@@ -774,10 +772,14 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
     eagle_logger.info("%s prepared" % family_name)
 
 
+def create_bactdb_cmd():
+    pass
+
+
 def create_bactdb(input_table_refseq=None,
                   input_table_genbank=None,
                   input_table_custom=None,
-                  btax_level=int(),
+                  btax_level=None,
                   btax_class_profile=None,
                   btax_rep_profile=None,
                   db_dir=DEFAULT_BACTDB_DIR,
@@ -791,9 +793,7 @@ def create_bactdb(input_table_refseq=None,
     if config_path is not None:
         conf_constants.update_by_config(config_path=config_path)
         conf_constants_db.update_by_config(config_path=config_path)
-    if not btax_level:
-        btax_level = conf_constants_db.btax_level
-    else:
+    if btax_level is not None:
         conf_constants_db.btax_level = btax_level
     if db_dir is None:
         db_dir = DEFAULT_BACTDB_DIR
@@ -802,13 +802,8 @@ def create_bactdb(input_table_refseq=None,
     else:
         from_root = db_dir
     # TODO: implement 'from_root' idea in all eagledb json files
-    if num_threads:
-        int_num_threads = int(num_threads)
-        num_threads = None
-        num_threads = int_num_threads
+    if num_threads is not None:
         conf_constants.num_threads = num_threads
-    else:
-        num_threads = conf_constants.num_threads
     if not prepared_genomes:
         prepared_genomes = PREPARED_BACTERIA_F_NAME
 
@@ -833,7 +828,7 @@ def create_bactdb(input_table_refseq=None,
         bacteria_list = get_bacteria_from_ncbi(refseq_bacteria_table=input_table_refseq,
                                                genbank_bacteria_table=input_table_genbank,
                                                bactdb_dir=db_dir,
-                                               num_threads=num_threads,
+                                               num_threads=conf_constants.num_threads,
                                                prepared_bacteria_f_path=prepared_genomes)
     if input_table_custom is not None:
         eagle_logger.warning("custom genomes input is not implemented yet")
@@ -850,16 +845,16 @@ def create_bactdb(input_table_refseq=None,
     # currently it is filled during get_bacteria_from_ncbi run - not good
 
     btax_dict = get_btax_dict(genomes_list=bacteria_list,
-                              btax_level=btax_level,
+                              btax_level=conf_constants_db.btax_level,
                               btc_profiles=btc_profiles,
                               btr_profiles=btr_profiles,
                               db_dir=db_dir,
-                              num_threads=num_threads)
+                              num_threads=conf_constants.num_threads)
 
     btax_dict = get_btax_blastdb(btax_dict,
                                  db_dir=db_dir,
                                  btr_profiles=btr_profiles,
-                                 num_threads=num_threads)
+                                 num_threads=conf_constants.num_threads)
 
     repr_profiles_path = create_profiles_db(btax_dict,
                                             db_dir=db_dir,

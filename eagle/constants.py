@@ -47,6 +47,7 @@ class ConfConstants(ConfBase):
         self.fastme_exec_path = "fastme"
         # eagle
         self.mode = "genome"
+        self.btax_det_method = "hmmer"
         self.min_orf_l = 300  # 100 amino acids
 
         super(ConfConstants, self).__init__(config_path=config_path)
