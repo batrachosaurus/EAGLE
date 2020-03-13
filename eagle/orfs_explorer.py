@@ -78,6 +78,7 @@ def explore_orfs(in_fasta,
     res_gtf_json = get_orfs(in_fasta_path=in_fasta,
                             out_fasta_path=orfs_fasta_path,
                             minsize=conf_constants.min_orf_l)
+    ovorfs_json = explore_ovorfs(res_gtf_json, btax_name, annotation=annotation, cu_table=cu_table)
     blast_handler = BlastHandler(inst_dir=conf_constants.blast_inst_dir,
                                  config_path=config_path,
                                  logger=eagle_logger)
@@ -109,6 +110,8 @@ def explore_orfs(in_fasta,
     res_gtf_df = res_gtf_df[["seqid", "source", "type", "start", "end", "score", "strand", "frame", "attribute"]]
     res_gtf_df.to_csv(os.path.join(out_dir, os.path.basename(in_fasta)+".orfs.gtf"),
                       sep="\t", index=False, quotechar="'")
+    with open(os.path.join(out_dir, os.path.basename(in_fasta)+".ovorfs.json"), "w") as ovorfs_f:
+        json.dump(ovorfs_json, ovorfs_f, indent=2)
 
 
 def _get_queries_btax(queries_scores_dict):
@@ -263,3 +266,7 @@ def get_orf_stats(orf_id,
         orf_mult_aln.dump_alignment(os.path.join(work_dir, ORF_ALNS_DIR, orf_mult_aln.aln_name+".fasta"))
     if kwargs.get("save_tree", False):
         orf_homs_tree.dump_tree(tree_path=os.path.join(work_dir, ORF_TREES_DIR, orf_homs_tree.tree_name+".nwk"))
+
+
+def explore_ovorfs(gtf_json, btax_name, annotation=None, cu_table='default'):###
+    return dict()
