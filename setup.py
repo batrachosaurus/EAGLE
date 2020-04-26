@@ -26,6 +26,7 @@ setup(name='EAGLE',
           'redis >= 2.10.6',
           'psutil >= 5.6.1',
           'jsondler >= 0.0.4',
+          'Deprecated >= 1.2.9',
       ],
       entry_points={
           'console_scripts': [

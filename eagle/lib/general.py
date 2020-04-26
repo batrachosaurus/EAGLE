@@ -220,7 +220,7 @@ def filter_list(in_list):
     return filtered_list
 
 
-def reverse_dict(in_dict):
+def revert_dict(in_dict):
     out_dict = OrderedDict()
     for key in in_dict:
         out_dict[in_dict[key]] = key

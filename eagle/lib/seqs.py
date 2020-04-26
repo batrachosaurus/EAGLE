@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 from copy import deepcopy
 from collections import defaultdict, Counter, OrderedDict
@@ -9,7 +10,8 @@ import numpy as np
 from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
-from eagle.lib.general import generate_random_string, np_memmap_astype, filter_list, get_un_fix
+from eagle.lib.general import generate_random_string, np_memmap_astype, filter_list, get_un_fix, send_log_message, \
+    revert_dict
 
 
 class SeqsDict(object):
@@ -18,21 +20,160 @@ class SeqsDict(object):
     nucl_type = "nucl"
     prot_types = ("protein", prot_type, "p")
     nucl_types = ("nucleotide", nucl_type, "n")
+
+    low_memory0 = False
     _chunk_size0 = 100
 
-    def __init__(self, seqs_order, seqs_array, seq_info_dict=None, seqs_type=None, low_memory=False,
-                 chunk_size=_chunk_size0):
+    def __init__(self, seqs_order, seqs_array,
+                 seq_info_dict=None,
+                 seqs_type=None,
+                 low_memory=None,
+                 chunk_size=None,
+                 **kwargs):
+
+        self._seqs_type = None
+
         if seq_info_dict is None:
             seq_info_dict = defaultdict(lambda: defaultdict(lambda: None))
+        if low_memory is None:
+            low_memory = self.low_memory0
+        if chunk_size is None:
+            chunk_size = self._chunk_size0
 
         self.seqs_order = seqs_order
         self.seqs_array = seqs_array
         self.seq_info_dict = seq_info_dict
-        self.seqs_type = seqs_type
+        if seqs_type.lower() in self.prot_types + self.nucl_types:
+            self.seqs_type = seqs_type.lower()
         self.low_memory = low_memory
         self._chunk_size = chunk_size
+        self.logger = kwargs.get("logger", None)
+
+        self._nucl_seqs_dict = dict()
+        self._full_to_short_seq_names = dict()
+        self._short_to_full_seq_names = dict()
+        self._seq_ids_to_orgs = dict()
 
         self._empty_rows = list()  # TODO: implement special object
+
+    def _init_subset(self, seqs_order, seqs_array,
+                     seq_info_dict=None,
+                     seqs_type=None,
+                     low_memory=None,
+                     chunk_size=None,
+                     **kwargs):
+
+        if seq_info_dict is None:
+            seq_info_dict = defaultdict(lambda: defaultdict(lambda: None))
+            for seq_name in seqs_order:
+                seq_info_dict[seq_name] = deepcopy(self.seq_info_dict[seq_name])
+        if seqs_type is None:
+            seqs_type = self.seqs_type
+        if low_memory is None:
+            low_memory = self.low_memory
+        if chunk_size is None:
+            chunk_size = self._chunk_size
+
+        seqs_dict = self.__class__(seqs_order, seqs_array,
+                                   seq_info_dict=seq_info_dict,
+                                   seqs_type=seqs_type,
+                                   low_memory=low_memory,
+                                   chunk_size=chunk_size,
+                                   logger=kwargs.pop("logger", self.logger),
+                                   **kwargs)
+
+        prev_end = 0
+        for rows_range in seqs_order.values():
+            d = rows_range.start - prev_end
+            if d > 0:
+                seqs_dict._empty_rows.append(range(prev_end, prev_end+d))
+            prev_end = rows_range.stop
+
+        seqs_dict.full_to_short_seq_names = self.filter_seq_ids(target_dict=self.full_to_short_seq_names,
+                                                                seq_ids_to_remain=seqs_order)
+
+        seqs_dict.seq_ids_to_orgs = self.filter_seq_ids(target_dict=self.seq_ids_to_orgs, seq_ids_to_remain=seqs_order)
+        seqs_dict.nucl_seqs_dict = self.filter_seq_ids(target_dict=self.nucl_seqs_dict, seq_ids_to_remain=seqs_order)
+        return seqs_dict
+
+    @staticmethod
+    def filter_seq_ids(target_dict, seq_ids_to_remain):
+        return dict(filter(lambda kv: kv[0] in seq_ids_to_remain, target_dict.items()))
+
+    @property
+    def seqs_type(self):
+        if self._seqs_type is not None:
+            return self._seqs_type
+        else:
+            return self.detect_seqs_type()
+
+    @seqs_type.setter
+    def seqs_type(self, seqs_type):
+        self._seqs_type = seqs_type
+
+    @property
+    def nucl_seqs_dict(self):
+        return self._nucl_seqs_dict
+
+    @nucl_seqs_dict.setter
+    def nucl_seqs_dict(self, nucl_seqs_dict):
+        if self.seqs_type.lower() not in self.prot_types:
+            send_log_message(message="The alignment seems to be nucleotide - not applicable",
+                             mes_type="w", logger=self.logger)
+        else:
+            if isinstance(nucl_seqs_dict, dict):
+                nucl_seqs_dict = SeqsDict.load_from_dict(nucl_seqs_dict)
+            assert isinstance(nucl_seqs_dict, SeqsDict), "ERROR: the value for argument 'nucl_seqs_dict' should be " \
+                                                         "an instance of eagle.lib.seqs.SeqsDict"
+            self._nucl_seqs_dict = nucl_seqs_dict
+
+    @property
+    def full_to_short_seq_names(self):
+        if not self._full_to_short_seq_names:
+            mult_aln_dict_short_ids, self.short_to_full_seq_names = reduce_seq_names(fasta_dict=self, num_letters=10)
+        return self._full_to_short_seq_names
+
+    @full_to_short_seq_names.setter
+    def full_to_short_seq_names(self, full2short_dict):
+        if isinstance(full2short_dict, dict):  # not exhaustive condition
+            self._full_to_short_seq_names = full2short_dict
+            self._short_to_full_seq_names = revert_dict(full2short_dict)
+        else:
+            send_log_message(message="the value to assign should be a dict", mes_type="e", logger=self.logger)
+
+    @property
+    def short_to_full_seq_names(self):
+        if not self._short_to_full_seq_names:
+            mult_aln_dict_short_ids, self.short_to_full_seq_names = reduce_seq_names(fasta_dict=self, num_letters=10)
+        return self._short_to_full_seq_names
+
+    @short_to_full_seq_names.setter
+    def short_to_full_seq_names(self, short2full_dict):
+        if isinstance(short2full_dict, dict):  # not exhaustive condition
+            self._full_to_short_seq_names = revert_dict(short2full_dict)
+            self._short_to_full_seq_names = short2full_dict
+        else:
+            send_log_message(message="the value to assign should be a dict", mes_type="e", logger=self.logger)
+
+    @property
+    def seq_ids_to_orgs(self):
+        return self._seq_ids_to_orgs
+
+    @seq_ids_to_orgs.setter
+    def seq_ids_to_orgs(self, sito_dict):
+        if isinstance(sito_dict, dict):  # not exhaustive condition
+            self._seq_ids_to_orgs = sito_dict
+        else:
+            send_log_message(message="the value to assign should be a dict", mes_type="e", logger=self.logger)
+
+    @property
+    def short_id(self):
+        if self.seqs_order:
+            self_short_ids = deepcopy(self)
+            self_short_ids.rename_seqs(self.full_to_short_seq_names)
+            return self_short_ids
+        else:
+            return dict()
 
     def __getitem__(self, item):
         return "".join(self.seqs_array[i].decode() for i in self.seqs_order[item])
@@ -57,8 +198,7 @@ class SeqsDict(object):
             for n, j in enumerate(seqs_order[seq]):
                 seqs_array[j] = self.seqs_array[r.start+n]
             i += len(r)
-        return SeqsDict(seqs_order=seqs_order, seqs_array=seqs_array, low_memory=low_memory,
-                        chunk_size=self._chunk_size)
+        return self._init_subset(seqs_order, seqs_array, low_memory=low_memory)
 
     def __setitem__(self, key, value):
         # TODO: implement self._empty_rows
@@ -124,24 +264,52 @@ class SeqsDict(object):
     def items(self):
         return map(lambda seq_id: (seq_id, self[seq_id]), self.keys())
 
+    @property
+    def seq_names(self):
+        if self.seqs_order:
+            return list(self.keys())
+        else:
+            return list()
+
     def rename_seqs(self, old_to_new_dict):
         for old_seq in old_to_new_dict:
             if old_seq in self.seqs_order:
                 self.seqs_order[old_to_new_dict[old_seq]] = self.seqs_order.pop(old_seq)
 
+        for short_name in list(self.short_to_full_seq_names.keys()):  # TODO: rename seq in all 'dicts'
+            self.short_to_full_seq_names[short_name] = old_to_new_dict.get(self.short_to_full_seq_names[short_name],
+                                                                           self.short_to_full_seq_names[short_name])
+
+    @property
+    def num_seqs(self):
+        return len(self)
+
     def copy(self):
-        # TODO: implement _sub_seqs_dict method
-        return deepcopy(self)
+        return self._init_subset(self.seqs_order, self.seqs_array)
+
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memodict={}):
+        return self._init_subset(deepcopy(self.seqs_order), deepcopy(self.seqs_array))
 
     @classmethod
-    def load_from_file(cls, seqs_path, seqs_format="fasta", low_memory='auto', **kwargs):
+    def load_from_file(cls, fname=None, format="fasta", seqs_type=None, low_memory='auto', **kwargs):
+        if "seqs_path" in kwargs:
+            fname = None
+            fname = kwargs["seqs_path"]
+        if "seqs_format" in kwargs:
+            format = None
+            format = kwargs["seqs_format"]
+        assert fname is not None, "ERROR: no value passed for argument 'fname'"
+
         chunk_size = kwargs.get("chunk_size", cls._chunk_size0)
         if low_memory == 'auto':
-            low_memory = cls._check_low_memory(seqs_path=seqs_path)
+            low_memory = cls._check_low_memory(seqs_path=fname)
 
         n_chunks = 0
-        if seqs_format.lower() == "fasta":
-            with open(seqs_path) as fasta_f:
+        if format.lower() in ("fasta", "fas", "fa"):
+            with open(fname) as fasta_f:
                 seq_l = 0
                 for line_ in fasta_f:
                     line = None
@@ -156,6 +324,7 @@ class SeqsDict(object):
                 if seq_l > 0:
                     n_chunks += (seq_l - 1) // chunk_size + 1
                     seq_l = 0
+        # TODO: implement phylip format reading
 
         if low_memory:
             dat_path = kwargs.get("dat_path", "." + generate_random_string(10) + "_seqs_dict.dat")
@@ -165,8 +334,8 @@ class SeqsDict(object):
 
         i = 0
         seqs_order = dict()
-        if seqs_format.lower() == "fasta":
-            with open(seqs_path) as fasta_f:
+        if format.lower() in ("fasta", "fas", "fa"):
+            with open(fname) as fasta_f:
                 seq_list = list()
                 title = None
                 for line_ in fasta_f:
@@ -202,10 +371,14 @@ class SeqsDict(object):
                     i = seqs_order[title].stop
                     seq_list = list()
                     title = None
-        return cls(seqs_order=seqs_order, seqs_array=seqs_array, low_memory=low_memory, chunk_size=chunk_size)
+        return cls(seqs_order, seqs_array,
+                   seqs_type=seqs_type,
+                   low_memory=low_memory,
+                   chunk_size=chunk_size,
+                   **kwargs)
 
     @classmethod
-    def load_from_dict(cls, in_dict, low_memory=False, **kwargs):
+    def load_from_dict(cls, in_dict, seqs_type=None, low_memory=low_memory0, **kwargs):
         chunk_size = kwargs.get("chunk_size", cls._chunk_size0)
         n_chunks = 0
         for seq in in_dict.values():
@@ -225,7 +398,12 @@ class SeqsDict(object):
             for n, j in enumerate(seqs_order[seq_id]):
                 seqs_array[j] = seq[n * chunk_size: (n + 1) * chunk_size]
             i = seqs_order[seq_id].stop
-        return cls(seqs_order=seqs_order, seqs_array=seqs_array, low_memory=low_memory, chunk_size=chunk_size)
+        return cls(seqs_order=seqs_order,
+                   seqs_array=seqs_array,
+                   seqs_type=seqs_type,
+                   low_memory=low_memory,
+                   chunk_size=chunk_size,
+                   **kwargs)
 
     @staticmethod
     def _check_low_memory(seqs_path):
@@ -239,12 +417,20 @@ class SeqsDict(object):
             low_memory = False
         return low_memory
 
-    def dump(self, seqs_path, seqs_format="fasta", overwrite=True, **kwargs):
-        if seqs_format.lower() == "fasta":
+    def dump(self, fname=None, format="fasta", overwrite=True, **kwargs):
+        if "seqs_path" in kwargs:
+            fname = None
+            fname = kwargs["seqs_path"]
+        if "seqs_format" in kwargs:
+            format = None
+            format = kwargs["seqs_format"]
+        assert fname is not None, "ERROR: no value passed for argument 'fname'"
+
+        if format.lower() == "fasta":
             if overwrite:
-                fasta_f = open(seqs_path, 'w')
+                fasta_f = open(fname, 'w')
             else:
-                fasta_f = open(seqs_path, 'a')
+                fasta_f = open(fname, 'a')
             if kwargs.get("replace_stops", False):
                 for seq_id in self.seqs_order:
                     fasta_f.write(">" + seq_id + "\n")
@@ -254,7 +440,18 @@ class SeqsDict(object):
                     fasta_f.write(">" + seq_id + "\n")
                     fasta_f.write(self[seq_id] + "\n")
             fasta_f.close()
-        return seqs_path
+
+        if format.lower() == "phylip":
+            self_short_id = self.short_id
+            with open(fname, "w") as phylip_f:
+                phylip_f.write("    %s    %s\n" %
+                               kwargs.get("shape", (len(self), 100 * len(self.seqs_array) / len(self))))
+                for seq_name in self_short_id:
+                    num_spaces_to_add = 10 - len(seq_name)
+                    spaces_to_add = [" " for i in range(num_spaces_to_add)]
+                    phylip_f.write("%s %s\n" % (seq_name + "".join(spaces_to_add), self_short_id[seq_name]))
+
+        return fname
 
     def detect_seqs_type(self, nuc_freq_thr=0.75):
         summ_l = 0
@@ -269,6 +466,50 @@ class SeqsDict(object):
             return self.nucl_type
         else:
             return self.prot_type
+
+    def generate_seqs_pairs(self, only_first_seq=False, raref_base=None):
+        """
+        Generates pars of aligned sequences from multiple alignment (n(n-1)/2 by deafault)
+        :param only_first_seq: set it True to get only pairs containig first sequence (default False)
+        :param raref_base: randomly rarefies pairs: n(n-1)/2 -> n*raref_base/2 (10.0 makes sense to use)
+        :return:
+        """
+        seqs_pairs = dict()
+        seq_names_list = list(self.seq_names)
+        for i, seqi_name in enumerate(seq_names_list[:-1]):
+            for seqj_name in seq_names_list[i + 1:]:
+                seqs_pairs[frozenset({seqi_name, seqj_name})] = [self[seqi_name], self[seqj_name]]
+            if only_first_seq:
+                break
+        if raref_base is not None and int(raref_base) < len(seq_names_list) and not only_first_seq:
+            for seqs_pair in np.random.permutation(list(seqs_pairs.keys()))[
+                             (len(seq_names_list) - 1) * int(raref_base / 2.0):]:
+                del seqs_pairs[seqs_pair]
+        return seqs_pairs
+
+    def stop_codons_stats(self, **kwargs):
+        stops_per_seq = list()
+        if self.seqs_type in self.prot_types:
+            for seq_name in self:
+                stops_per_seq.append(self[seq_name].count("*"))
+        else:
+            for seq_name in self:
+                stops_per_seq.append(re.sub("(tag|taa|tga)", "*", self[seq_name].lower()).count("*"))
+        stops_per_seq.sort()
+        return {"stops_per_seq_median": np.median(stops_per_seq),
+                "seqs_with_stops_fract": float(len(list(filter(lambda x: x > 0, stops_per_seq)))) / float(len(self))}
+
+    def rarefy(self, seqs_to_remain=100, **kwargs):
+        seqs_ids = self.seq_names
+        if len(seqs_ids) <= seqs_to_remain:
+            return self
+        rarefied_aln_dict = dict()
+        for i in range(seqs_to_remain):
+            seq_id = None
+            seq_id = seqs_ids.pop(np.random.randint(len(seqs_ids)))
+            rarefied_aln_dict[seq_id] = self[seq_id]
+        rarefied_aln_seqs = SeqsDict.load_from_dict(rarefied_aln_dict)
+        return self._init_subset(rarefied_aln_seqs.seqs_order, rarefied_aln_seqs.seqs_array, **kwargs)
 
 
 def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
@@ -327,7 +568,7 @@ def shred_seqs(seqs_dict, part_l=50000, parts_ov=5000):
 
 
 def load_fasta_to_dict(fasta_path, low_memory="auto", **kwargs):
-    return SeqsDict.load_from_file(seqs_path=fasta_path, seqs_format="fasta", low_memory=low_memory, **kwargs)
+    return SeqsDict.load_from_file(fname=fasta_path, format="fasta", low_memory=low_memory, **kwargs)
 
 
 def dump_fasta_dict(fasta_dict, fasta_path, overwrite=True, **kwargs):
@@ -563,3 +804,17 @@ def detect_seqs_type(seqs_dict=None, nuc_freq_thr=0.75, **kwargs):
         return SeqsDict.nucl_type
     else:
         return SeqsDict.prot_type
+
+
+def nucl_accord_prot(prot_seq, nucl_seq):
+    nucl_seq_list = list()
+    i = 0
+    for aa in prot_seq:
+        if aa == "-":
+            nucl_seq_list.append("---")
+        elif aa == ".":
+            nucl_seq_list.append("...")
+        else:
+            nucl_seq_list.append(nucl_seq[i*3:(i+1)*3])
+            i += 1
+    return "".join(nucl_seq_list)
