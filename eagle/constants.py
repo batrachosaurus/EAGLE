@@ -35,6 +35,7 @@ class ConfConstants(ConfBase):
         self.msaprobs_exec_path = "msaprobs"
         self.emboss_inst_dir = ""
         self.hmmer_inst_dir = ""
+        self.infernal_inst_dir = ""
         self.blast_inst_dir = ""
         self.cons_thr = 0.98
         self.unif_window_l= 10

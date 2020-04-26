@@ -14,14 +14,13 @@ from eagle.lib.general import ConfBase, filter_list, generate_random_string, sen
 from eagle.lib.seqs import reduce_seq_names, dump_fasta_dict
 
 
-class PhyloTree(ConfBase):
+class PhyloTree(object):
 
     def __init__(self,
                  tree,
                  full_seq_names=None,
                  tree_name="phylo_tree",
                  tmp_dir=None,
-                 config_path=None,
                  logger=None):
 
         if tmp_dir is None:
@@ -34,8 +33,6 @@ class PhyloTree(ConfBase):
         self.tree_name = tree_name
         self.tmp_dir = tmp_dir
         self.logger = logger
-
-        super(PhyloTree, self).__init__(config_path=config_path)
 
     def copy(self):
         return self._sub_phylo_tree(tree=self.tree,
@@ -54,15 +51,12 @@ class PhyloTree(ConfBase):
                         full_seq_names=None,
                         tree_name="phylo_tree",
                         tmp_dir=None,
-                        config_path=None,
                         logger=None):
 
         if full_seq_names is None:
             full_seq_names = self.full_seq_names
         if tmp_dir is None:
             tmp_dir = generate_random_string(10) + "_phylo_tree_tmp"
-        if config_path is None:
-            config_path = self.config_path
         if logger is None:
             logger = self.logger
 
@@ -70,7 +64,6 @@ class PhyloTree(ConfBase):
                          full_seq_names=full_seq_names,
                          tree_name=tree_name,
                          tmp_dir=tmp_dir,
-                         config_path=config_path,
                          logger=logger)
 
     @property
@@ -93,7 +86,6 @@ class PhyloTree(ConfBase):
                   tmp_dir="tmp",
                   tree_format="newick",
                   full_seq_names=None,
-                  config_path=None,
                   logger=None):
 
         if tree_format == "newick":
@@ -106,7 +98,6 @@ class PhyloTree(ConfBase):
                    full_seq_names=full_seq_names,
                    tree_name=tree_name,
                    tmp_dir=tmp_dir,
-                   config_path=config_path,
                    logger=logger)
 
     @classmethod
@@ -116,14 +107,12 @@ class PhyloTree(ConfBase):
                            tmp_dir="tmp",
                            tree_format="newick",
                            full_seq_names=None,
-                           config_path=None,
                            logger=None):
 
         return cls(tree=dendropy.Tree.get_from_string(tree_str, schema=tree_format),
                    full_seq_names=full_seq_names,
                    tree_name=tree_name,
                    tmp_dir=tmp_dir,
-                   config_path=config_path,
                    logger=logger)
 
     def set_full_names(self, inplace=False):
@@ -178,7 +167,6 @@ class DistanceMatrix(object):
         self.fastme_exec_path = kwargs.get("fastme_exec_path", conf_constants.fastme_exec_path)
         self.tmp_dir = kwargs.get("tmp_dir", generate_random_string(10) + "_dm_tmp")
         self.logger = kwargs.get("logger", None)
-        self.config_path = kwargs.get("config_path", None)
 
     @property
     def seq_names(self):
@@ -208,8 +196,7 @@ class DistanceMatrix(object):
                                   calc_method=self.calc_method,
                                   emboss_inst_dir=self.emboss_inst_dir,
                                   fastme_exec_path=self.fastme_exec_path,
-                                  logger=self.logger,
-                                  config_path=self.config_path)
+                                  logger=self.logger)
         else:
             return pandas.Series(self.matr[self.seqs_order[item]], index=self.seq_names)
 
@@ -414,8 +401,7 @@ class DistanceMatrix(object):
                                   aln_type=self.aln_type,
                                   calc_method=self.calc_method,
                                   emboss_inst_dir=self.emboss_inst_dir,
-                                  logger=self.logger,
-                                  config_path=self.config_path)
+                                  logger=self.logger)
 
     def build_tree(self,
                    tree_name="phylo_tree",
@@ -441,7 +427,6 @@ class DistanceMatrix(object):
             phylo_tree.tree_name = tree_name
             phylo_tree.full_seq_names = self.short_to_full_seq_names
             phylo_tree.tmp_dir = tmp_dir
-            phylo_tree.config_path = self.config_path
             phylo_tree.logger = self.logger
             send_log_message(message="phylogenetic tree built with FastME", mes_type="i", logger=self.logger)
         else:

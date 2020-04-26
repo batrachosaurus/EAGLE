@@ -18,7 +18,7 @@ from eagle.lib.general import ConfBase, join_files, generate_random_string, send
     filter_list
 from eagle.lib.phylo import DistanceMatrix, run_fastme
 from eagle.lib.seqs import load_fasta_to_dict, dump_fasta_dict, reduce_seq_names, SeqsDict, detect_seqs_type, \
-    shred_fasta
+    shred_fasta, nucl_accord_prot
 
 
 class MultAln(ConfBase):
@@ -1139,20 +1139,6 @@ def construct_mult_aln(seq_dict=None,
     if remove_tmp:
         shutil.rmtree(tmp_dir)
     return mult_aln
-
-
-def nucl_accord_prot(prot_seq, nucl_seq):
-    nucl_seq_list = list()
-    i = 0
-    for aa in prot_seq:
-        if aa == "-":
-            nucl_seq_list.append("---")
-        elif aa == ".":
-            nucl_seq_list.append("...")
-        else:
-            nucl_seq_list.append(nucl_seq[i*3:(i+1)*3])
-            i += 1
-    return "".join(nucl_seq_list)
 
 
 def search_profile(profile_dict, seqdb, seqdb_id2org, work_dir="./", method="hmmer", hmmer_inst_dir=None,

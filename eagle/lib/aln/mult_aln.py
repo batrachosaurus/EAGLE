@@ -1,0 +1,604 @@
+import os
+import re
+import shutil
+import subprocess
+from copy import deepcopy
+from collections import defaultdict
+
+from deprecated import deprecated
+import numpy as np
+import pandas as pd
+from scipy.stats import gmean
+from Bio.Seq import Seq
+
+from eagle.constants import conf_constants
+from eagle.lib.general import generate_random_string, send_log_message, fullmatch_regexp_list, revert_dict
+from eagle.lib.seqs import SeqsDict, load_fasta_to_dict, nucl_accord_prot, reduce_seq_names
+from eagle.lib.phylo import DistanceMatrix, run_fastme
+
+
+class MultAln(SeqsDict):
+
+    name0 = "mult_aln"
+
+    dist_matr_method = "FastME"
+    dist_matr_options = dict()
+
+    def __init__(self, seqs_order, seqs_array,
+                 seq_info_dict=None,
+                 seqs_type=None,
+                 low_memory=False,
+                 chunk_size=None,
+                 states_seq=None,
+                 name=name0,
+                 tmp_dir=None,
+                 emboss_inst_dir=None,
+                 hmmer_inst_dir=None,
+                 infernal_inst_dir=None,
+                 fastme_exec_path=None,
+                 kaks_calculator_exec_path=None,
+                 **kwargs):
+
+        super(MultAln, self).__init__(seqs_order, seqs_array,
+                                      seq_info_dict=seq_info_dict,
+                                      seqs_type=seqs_type,
+                                      low_memory=low_memory,
+                                      chunk_size=chunk_size,
+                                      **kwargs)
+
+        if states_seq is None:
+            states_seq = list()
+        if emboss_inst_dir is None:
+            emboss_inst_dir = conf_constants.emboss_inst_dir
+        if hmmer_inst_dir is None:
+            hmmer_inst_dir = conf_constants.hmmer_inst_dir
+        if infernal_inst_dir is None:
+            infernal_inst_dir = conf_constants.infernal_inst_dir
+        if fastme_exec_path is None:
+            fastme_exec_path = conf_constants.fastme_exec_path
+        if kaks_calculator_exec_path is None:
+            kaks_calculator_exec_path = conf_constants.kaks_calculator_exec_path
+
+        self.states_seq = states_seq
+        self._distance_matrix = None
+        self.name = name
+        if tmp_dir is None:
+            tmp_dir = generate_random_string(10) + "_mult_aln_tmp"
+        self.tmp_dir = tmp_dir
+        self.emboss_inst_dir = emboss_inst_dir
+        self.infernal_inst_dir = infernal_inst_dir
+        self.hmmer_inst_dir = hmmer_inst_dir
+        self.fastme_exec_path = fastme_exec_path
+        self.kaks_calculator_exec_path = kaks_calculator_exec_path
+
+        self.logger = kwargs.get("logger", None)
+
+    def _init_subset(self, seqs_order, seqs_array,
+                     seq_info_dict=None,
+                     seqs_type=None,
+                     low_memory=None,
+                     chunk_size=None,
+                     states_seq=None,
+                     name=name0,
+                     tmp_dir=None,
+                     emboss_inst_dir=None,
+                     hmmer_inst_dir=None,
+                     infernal_inst_dir=None,
+                     fastme_exec_path=None,
+                     kaks_calculator_exec_path=None,
+                     **kwargs):
+
+        if states_seq is None:
+            states_seq = deepcopy(self.states_seq)
+        if name is None:
+            name = self.name
+        if tmp_dir is None:
+            tmp_dir = self.tmp_dir
+        if emboss_inst_dir is None:
+            emboss_inst_dir = self.emboss_inst_dir
+        if hmmer_inst_dir is None:
+            hmmer_inst_dir = self.hmmer_inst_dir
+        if infernal_inst_dir is None:
+            infernal_inst_dir = self.infernal_inst_dir
+        if fastme_exec_path is None:
+            fastme_exec_path = self.fastme_exec_path
+        if kaks_calculator_exec_path is None:
+            kaks_calculator_exec_path = self.kaks_calculator_exec_path
+        if kwargs.get("logger", None) is None:
+            kwargs["logger"] = self.logger
+
+        mult_aln = super(MultAln, self)._init_subset(seqs_order, seqs_array,
+                                                     seq_info_dict=seq_info_dict,
+                                                     seqs_type=seqs_type,
+                                                     low_memory=low_memory,
+                                                     chunk_size=chunk_size,
+                                                     states_seq=states_seq,
+                                                     name=name,
+                                                     tmp_dir=tmp_dir,
+                                                     emboss_inst_dir=emboss_inst_dir,
+                                                     hmmer_inst_dir=hmmer_inst_dir,
+                                                     infernal_inst_dir=infernal_inst_dir,
+                                                     fastme_exec_path=fastme_exec_path,
+                                                     kaks_calculator_exec_path=kaks_calculator_exec_path,
+                                                     **kwargs)
+        return mult_aln
+
+    def col(self, item):
+        seqs_dict = SeqsDict.load_from_dict({seq_name: seq[item] for seq_name, seq in self.items()},
+                                            seqs_type=self.seqs_type)
+        return self._init_subset(seqs_dict.seqs_order, seqs_dict.seqs_array)
+
+    def __setitem__(self, key, value):
+        super(MultAln, self).__setitem__(key=key, value=value)
+        self._distance_matrix = None
+
+    def __delitem__(self, key):
+        self._distance_matrix = None
+        super(MultAln, self).__delitem__(key=key)
+
+    @property
+    @deprecated(reason="use MultAln instance directly")
+    def mult_aln_dict(self):
+        return self
+
+    @property
+    @deprecated(reason="use 'name' attribute")
+    def aln_name(self):
+        return self.name
+
+    @aln_name.setter
+    @deprecated(reason="use 'name' attribute")
+    def aln_name(self, name):
+        self.name = name
+
+    @property
+    @deprecated(reason="use 'seqs_type' attribute")
+    def aln_type(self):
+        return self.seqs_type
+
+    @aln_type.setter
+    @deprecated(reason="use 'seqs_type' attribute")
+    def aln_type(self, aln_type):
+        self.seqs_type = aln_type
+
+    def rename_seqs(self, old_to_new_dict):
+        super(MultAln, self).rename_seqs(old_to_new_dict=old_to_new_dict)
+        self._distance_matrix = None
+
+    @property
+    def length(self):
+        if self.seqs_order:
+            return len(self[self.seq_names[0]])
+        else:
+            return 0
+
+    @property
+    def shape(self):
+        return self.num_seqs, self.length
+
+    @property
+    @deprecated(reason="use short_id attribute")
+    def mult_aln_dict_short_id(self):
+        return self.short_id
+
+    @deprecated(reason="use 'dump' method")
+    def dump_alignment(self, aln_path, aln_format="fasta"):
+        return self.dump(aln_path, format=aln_format)
+
+    def dump(self, fname=None, format="fasta", overwrite=True, **kwargs):
+        super(MultAln, self).dump(fname, format=format, overwrite=overwrite, shape=self.shape, **kwargs)
+
+        return self.short_to_full_seq_names  # TODO: update output (remained for backward compatibility)
+
+    @classmethod
+    @deprecated(reason="use 'load_from_file' method")
+    def load_alignment(cls, aln_path=None, aln_format="fasta", aln_type=None, aln_name=None, logger=None, **kwargs):
+        if "aln_fasta_path" in kwargs:
+            aln_path = None
+            aln_path = kwargs["aln_fasta_path"]
+
+        return cls.load_from_file(fname=aln_path, format=aln_format, seqs_type=aln_type, name=aln_name, logger=logger,
+                                  **kwargs)
+
+    def improve_aln(self,#####
+                    max_gap_fract=0.75,  # maximal fraction of gaps in a column to keep it in alignment
+                    max_mismatch_fract=1.0,  # maximal fraction of mismatches in a column to keep it in alignment
+                    remove_seq=False,  # if True can remove sequences for cleaning gaps between aln blocks
+                    dist_filt=False,
+                    # if True returns a list of alignments (or blocks coordinates) with different strictness of sequences removing (different thresholds for clustering)
+                    output='alignment',
+                    inplace=False,
+                    **kwargs):
+        # TODO: write methods for removing gaps between blocks
+        if self.logger:
+            self.logger.info("'%s' multiple alignment improvement started" % self.aln_name)
+        else:
+            print("'%s' multiple alignment improvement started" % self.aln_name)
+
+        if dist_filt:
+            # Constructs a list of rarefied by different distance thresholds alignments and runs improve_aln on it with dist_filt=False
+            pass
+
+        # TODO: speed up that
+        coords = list()
+        seq_id_list = list(self.mult_aln_dict.keys())
+        for i in range(self.length):
+            if self.states_seq:
+                if self.states_seq[i] in ("match", "specific"):
+                    coords = self._update_coords(i + 1, coords)
+                    continue
+            let_counts = defaultdict(int)
+            let_counts["-"] = 0
+            for seq_id in seq_id_list:
+                let_counts[self.mult_aln_dict[seq_id][i]] += 1
+            if float(let_counts.pop("-")) / float(len(seq_id_list)) <= max_gap_fract:
+                if sorted(let_counts.values(), reverse=True)[0] >= 1.0 - max_mismatch_fract:
+                    coords = self._update_coords(i + 1, coords)
+            elif remove_seq:
+                # TODO: write detection of seqs to remove
+                pass
+
+        if len(coords[-1]) == 1:
+            coords[-1] = (coords[-1][0], coords[-1][0])
+        if not remove_seq and len(coords) >= 1:
+            coords = [(coords[0][0], coords[-1][1])]
+        if output.lower() in ("coordinates", "coords", "coord", "c"):
+            seq_coord_list = list()
+            for seq_id in self.seq_names:
+                seq_c_dict = {"seq_id": seq_id}
+                coords_for_seq = self._get_coords_for_seq(coords, self.mult_aln_dict[seq_id])
+                for k in range(len(coords_for_seq)):
+                    seq_c_dict["c%s" % ((k + 1) * 2 - 1)] = coords_for_seq[k][0]
+                    seq_c_dict["c%s" % ((k + 1) * 2)] = coords_for_seq[k][1]
+                seq_coord_list.append(seq_c_dict)
+            return pandas.DataFrame(seq_coord_list)
+        else:
+            if inplace:
+                seqs_ids = self.seq_names
+                for seq_id in seqs_ids:
+                    self.mult_aln_dict[seq_id] = "".join(self.mult_aln_dict[seq_id][c1: c2] for c1, c2 in coords)
+                self._distance_matrix = None
+                if self.logger:
+                    self.logger.info("'%s' multiple alignment improved" % self.aln_name)
+                else:
+                    print("'%s' multiple alignment improved" % self.aln_name)
+            else:
+                impr_mult_aln_dict = {seq_id: "".join(self[seq_id][c1:c2] for c1, c2 in coords)
+                                      for seq_id in self.seq_names}
+                impr_mult_aln = self._sub_mult_aln(mult_aln_dict=SeqsDict.load_from_dict(impr_mult_aln_dict),
+                                                   aln_type=self.aln_type,
+                                                   aln_name="impr_" + self.aln_name)
+                if self.logger:
+                    self.logger.info("'%s' multiple alignment improved" % self.aln_name)
+                else:
+                    print("'%s' multiple alignment improved" % self.aln_name)
+                return impr_mult_aln
+
+    @staticmethod
+    def _update_coords(i, coords):
+        if not coords:
+            coords.append([i])
+        elif len(coords[-1]) == 1:
+            coords[-1].append(i)
+        elif coords[-1][1] == i - 1:
+            coords[-1][1] = i
+        else:
+            coords.append([i])
+        return coords
+
+    @staticmethod
+    def _get_coords_for_seq(coords, gapped_seq):
+        no_gaps_coords = list()
+        for coord_pair in coords:
+            c1_shift = gapped_seq[:coord_pair[0]].count("-")
+            c2_shift = gapped_seq[:coord_pair[1]].count("-")
+            no_gaps_coords.append((coord_pair[0] - c1_shift, coord_pair[1] - c2_shift))
+        return no_gaps_coords
+
+    @property
+    def distance_matrix(self):
+        if self._distance_matrix is None:
+            self._distance_matrix = DistanceMatrix.calculate(mult_aln=self,
+                                                             method=self.dist_matr_method,
+                                                             options=self.dist_matr_options,
+                                                             emboss_inst_dir=self.emboss_inst_dir,
+                                                             fastme_exec_path=self.fastme_exec_path,
+                                                             logger=self.logger)
+        return self._distance_matrix
+
+    def get_distance_matrix(self, method=None, options=None):
+        if method is None:
+            method = self.dist_matr_method
+        if options is None:
+            options = self.dist_matr_options
+
+        self._distance_matrix = DistanceMatrix.calculate(mult_aln=self,
+                                                         method=method,
+                                                         options=options,
+                                                         emboss_inst_dir=self.emboss_inst_dir,
+                                                         fastme_exec_path=self.fastme_exec_path,
+                                                         logger=self.logger)
+        return self._distance_matrix
+
+    def remove_paralogs(self, seq_ids_to_orgs=None, method="min_dist", inplace=False):
+        """
+
+        :param seq_ids_to_orgs: {seq_id: org_name}
+        :param method:
+        :param inplace:
+        :return:
+        """
+        send_log_message(message="paralogs removing started", mes_type='i', logger=self.logger)
+
+        if seq_ids_to_orgs is not None:
+            self.seq_ids_to_orgs = seq_ids_to_orgs
+
+        org_dists = defaultdict(dict)
+        for seq_name in self.distance_matrix.seq_names:
+            org_dists[self.seq_ids_to_orgs[seq_name]][seq_name] = sum(map(float, self.distance_matrix[seq_name]))
+        sorted_org_dists = dict()
+        for org in org_dists:
+            sorted_org_dists[org] = sorted(org_dists[org].items(), key=lambda x: x[1])
+        mult_aln_dict_filt = dict()
+        if method.lower() in ("minimal_distance", "min_dist", "md"):
+            for seq_name in self.seq_names:
+                if seq_name == sorted_org_dists[self.seq_ids_to_orgs[seq_name]][0][0]:
+                    mult_aln_dict_filt[seq_name] = self.mult_aln_dict[seq_name]
+        else:
+            # TODO: write spec_pos method
+            pass
+
+        filtered_aln_seqs = SeqsDict.load_from_dict(in_dict=mult_aln_dict_filt)
+        filtered_aln = self._init_subset(filtered_aln_seqs.seqs_order, filtered_aln_seqs.seqs_array,
+                                         name="no_par_" + self.name)
+
+        if inplace:
+            self.seqs_order = filtered_aln.seqs_order
+            self.seqs_array = filtered_aln.seqs_array
+            self._distance_matrix = None
+            self.seq_info_dict = filtered_aln.seq_info_dict
+            self.nucl_seqs_dict = filtered_aln.nucl_seqs_dict
+            self.full_to_short_seq_names = filtered_aln.full_to_short_seq_names
+        send_log_message("paralogs removed", "info", logger=self.logger)
+        if not inplace:
+            return filtered_aln
+
+    def get_profile(self, method="hmmer", profile_name=None, profile_path=None, **kwargs):
+        if method.lower() == "hmmer":
+            pass
+        if method.lower() == "infernal":
+            pass
+
+    @deprecated(reason="use method get_profile")
+    def get_hmm_profile(self, profile_path, method="hmmer"):###
+        if method.lower() == "hmmer":
+            if not os.path.exists(self.tmp_dir):
+                os.makedirs(self.tmp_dir)
+            aln_fasta_path = os.path.join(self.tmp_dir, self.aln_name + ".fasta")
+            dump_fasta_dict(self.mult_aln_dict, aln_fasta_path)
+            hmmer_handler = HmmerHandler(inst_dir=self.hmmer_inst_dir, config_path=self.config_path, logger=self.logger)
+            hmmer_handler.build_hmm_profile(profile_path=profile_path, in_aln_path=aln_fasta_path)
+            shutil.rmtree(self.tmp_dir)
+            return profile_path
+
+    def nucl_by_prot_aln(self, nucl_fasta_dict=None, nucl_fasta_path=None):
+        if self.aln_type.lower() not in self.prot_types:
+            if self.logger:
+                self.logger.error("reference alignment type is not protein")
+            else:
+                print("ERROR: reference alignment type is not protein")
+            return
+
+        if nucl_fasta_dict is not None:
+            self.nucl_seqs_dict = nucl_fasta_dict
+        elif nucl_fasta_path is not None:
+            self.nucl_seqs_dict = load_fasta_to_dict(fasta_path=nucl_fasta_path)
+        if not self.nucl_seqs_dict:
+            send_log_message(message="no nucleotide sequences are input", mes_type="e", logger=self.logger)
+            return
+
+        nucl_aln_dict = dict()
+        for seq_name in self.seq_names:
+            to_search = None
+            if "-" in self[seq_name] or "." in self[seq_name]:
+                to_search = re.sub("[-\.]", "", self[seq_name]).replace("*", ".")
+            else:
+                to_search = self[seq_name].replace("*", ".")
+            match = re.search(to_search, str(Seq(self.nucl_seqs_dict[seq_name]).translate()))
+            nucl_aln_dict[seq_name] = nucl_accord_prot(self[seq_name],
+                                                       self.nucl_seqs_dict[seq_name][
+                                                       match.start() * 3: match.end() * 3])
+        nucl_aln_seqs = SeqsDict.load_from_dict(nucl_aln_dict)
+        nucl_aln = self._init_subset(nucl_aln_seqs.seqs_order, nucl_aln_seqs.seqs_array,
+                                     seqs_type=self.nucl_type,
+                                     name="nucl_" + self.name)
+        if self.states_seq:
+            nucl_aln.states_seq = list()  # TODO: transform to codons states sequence
+        return nucl_aln
+
+    def estimate_uniformity(self, cons_thr=None, window_l=None, windows_step=None):
+        if cons_thr is None:
+            cons_thr = conf_constants.cons_thr
+        if window_l is None:
+            window_l = conf_constants.unif_window_l
+        if windows_step is None:
+            windows_step = conf_constants.unif_windows_step
+
+        windows_list = self.split_into_windows(window_l=window_l, windows_step=windows_step)
+        cons_cols_by_windows = np.array([w.cons_cols_num(cons_thr=cons_thr) for w in windows_list])
+        return np.std(cons_cols_by_windows)
+
+    def split_into_windows(self, window_l, windows_step=None):
+        if windows_step is None:
+            windows_step = window_l
+
+        windows_list = list()
+        i = 0
+        while i < self.length:
+            windows_list.append(self.col[i: i + window_l])
+            i += windows_step
+        return windows_list
+
+    def cons_cols_num(self, cons_thr=None):
+        if cons_thr is None:
+            cons_thr = conf_constants.cons_thr
+        if cons_thr > 1.0:
+            cons_thr = float(cons_thr) / 100.0
+
+        cln = 0
+        for i in range(self.length):
+            s_num_dict = defaultdict(int)
+            for seq_id in self:
+                s_num_dict[self[seq_id][i].lower()] += 1
+            all_s_num = sum(s_num_dict.values())
+            if float(s_num_dict.get("-", 0)) / float(all_s_num) <= 1.0 - cons_thr:
+                if float(sorted(s_num_dict.values(), reverse=True)[0]) / float(all_s_num) >= cons_thr:
+                    cln += 1
+        return cln
+
+    def rarefy(self, seqs_to_remain=100, **kwargs):
+        return super(MultAln, self).rarefy(seqs_to_remain=seqs_to_remain, name="raref_" + self.name, **kwargs)
+
+    def calculate_KaKs_windows(self,
+                               nucl_seqs_dict=None,
+                               window_l=None,
+                               method="KaKs_Calculator",
+                               only_first_seq=False,
+                               **kwargs):
+        if nucl_seqs_dict is not None:
+            self.nucl_seqs_dict = nucl_seqs_dict
+        if window_l is None:
+            window_l = conf_constants.kaks_window_l
+
+        if self.seqs_type.lower() in self.prot_types:
+            if not self.nucl_seqs_dict:
+                if self.logger:
+                    self.logger.error("protein alignment but no value input for argument 'nucl_seqs_dict'")
+                else:
+                    print("ERROR: protein alignment but no value input for argument 'nucl_seqs_dict'")
+                return
+            nucl_aln = self.nucl_by_prot_aln()
+            windows_list = nucl_aln.split_into_windows(window_l=window_l)
+        else:
+            windows_list = self.split_into_windows(window_l=window_l)
+
+        if not os.path.exists(self.tmp_dir):
+            os.makedirs(self.tmp_dir)
+
+        kaks_list = list()
+        ks_list = list()
+        for w in windows_list:
+            w.tmp_dir = self.tmp_dir
+            w_kaks = w.calculate_KaKs(method=method,
+                                      remove_tmp=False,
+                                      only_first_seq=only_first_seq,
+                                      raref_base=kwargs.pop("raref_base", 10.0),
+                                      **kwargs)
+            if type(w_kaks) is float or isinstance(w_kaks, np.floating):
+                if w_kaks["Ka/Ks"] >= 0.0 and not pd.isna(w_kaks["Ka/Ks"]):
+                    kaks_list.append(w_kaks["Ka/Ks"])
+                    ks_list.append(w_kaks["Ks"])
+                else:
+                    kaks_list.append(-1.0)
+                    ks_list.append(-1.0)
+
+        shutil.rmtree(self.tmp_dir)
+        return {"Ka/Ks": kaks_list, "Ks": ks_list}
+
+    def calculate_KaKs(self,
+                       nucl_seqs_dict=None,
+                       method="KaKs_Calculator",
+                       max_kaks=10.0,
+                       only_first_seq=False,
+                       **kwargs):
+
+        if not os.path.exists(self.tmp_dir):
+            os.makedirs(self.tmp_dir)
+        if nucl_seqs_dict is not None:
+            self.nucl_seqs_dict = nucl_seqs_dict
+
+        if self.seqs_type.lower() in self.prot_types:
+            if not self.nucl_seqs_dict:
+                send_log_message(message="protein alignment but no value input for argument 'nucl_seqs_dict'",
+                                 mes_type="e",
+                                 logger=self.logger)
+                return
+            nucl_aln = self.nucl_by_prot_aln()
+            return nucl_aln.calculate_KaKs(method=method, max_kaks=max_kaks, only_first_seq=only_first_seq, **kwargs)
+
+        seq_pairs = self.generate_seqs_pairs(only_first_seq=only_first_seq, raref_base=kwargs.get("raref_base", None))
+        if method.lower() == "kaks_calculator":
+            pairs_axt_path = os.path.join(self.tmp_dir, self.name + ".axt")
+            with open(pairs_axt_path, "w") as pairs_axt_f:
+                for seq_pair in seq_pairs:
+                    pairs_axt_f.write("vs".join(seq_pair) + "\n")
+                    pairs_axt_f.write(seq_pairs[seq_pair][0] + "\n")
+                    pairs_axt_f.write(seq_pairs[seq_pair][1] + "\n\n")
+            out_path = os.path.join(self.tmp_dir, self.name + ".kaks")
+            kaks_calculator_cmd = self.kaks_calculator_exec_path + \
+                                  " -i " + pairs_axt_path + " -o " + out_path + " -m YN"
+            if self.logger:
+                self.logger.info("running command: '%s'" % kaks_calculator_cmd)
+            else:
+                print("INFO: running command: '%s'" % kaks_calculator_cmd)
+            subprocess.call(kaks_calculator_cmd, shell=True)
+            try:
+                kaks_df = pd.read_csv(out_path, sep="\t")
+                kaks = gmean(kaks_df["Ka/Ks"].apply(lambda v: min(v, max_kaks)))
+                ks = gmean(kaks_df["Ks"])
+            except:
+                kaks = -1.0
+                ks = -1.0
+        if kwargs.get("remove_tmp", True):
+            shutil.rmtree(self.tmp_dir)
+        return {"Ka/Ks": kaks, "Ks": ks}
+
+    def build_tree(self,
+                   tree_name="phylo_tree",
+                   tmp_dir="phylo_tree_tmp",
+                   method="FastME",
+                   options=None,
+                   fastme_exec_path=None,
+                   **kwargs):
+
+        if fastme_exec_path is None:
+            fastme_exec_path = self.fastme_exec_path
+
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+
+        if method.lower() == "fastme":
+            if "-b" not in options and "--bootstrap" not in options and \
+                    self._distance_matrix is not None and not kwargs.get("rebuild_dist_matr", False):
+                return self.distance_matrix.build_tree(tree_name=tree_name, tmp_dir=tmp_dir, method=method,
+                                                       options=options, fastme_exec_path=fastme_exec_path)
+            if self.seqs_type.lower() in self.nucl_types:
+                if not list(filter(None, fullmatch_regexp_list("-d.*", options))) \
+                        and not list(filter(None, fullmatch_regexp_list("--dna.*", options))):
+                    options["-d"] = True
+            else:
+                if not list(filter(None, fullmatch_regexp_list("-p.*", options))) \
+                        and not list(filter(None, fullmatch_regexp_list("--protein.*", options))):
+                    options["-p"] = True
+            aln_phylip_path = os.path.join(tmp_dir, self.name + ".phylip")
+            self.dump(aln_phylip_path, format="phylip")
+            tree_path = os.path.join(tmp_dir, "tree.nwk")
+            phylo_tree = run_fastme(input_data=aln_phylip_path,
+                                    output_tree=tree_path,
+                                    options=options,
+                                    fastme_exec_path=fastme_exec_path)[0]
+            phylo_tree.tree_name = tree_name
+            phylo_tree.full_seq_names = self.short_to_full_seq_names
+            phylo_tree.tmp_dir = tmp_dir
+            phylo_tree.logger = self.logger
+            send_log_message(message="phylogenetic tree built with FastME", mes_type="i", logger=self.logger)
+        else:
+            return
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        return phylo_tree
+
+    def stop_codons_stats(self, improve_aln=False, **kwargs):
+        if improve_aln:
+            return self.improve_aln(inplace=False, **kwargs).stop_codons_stats(improve_aln=False, **kwargs)
+        else:
+            return super(MultAln, self).stop_codons_stats(improve_aln=False, **kwargs)
