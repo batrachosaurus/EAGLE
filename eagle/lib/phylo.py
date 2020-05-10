@@ -8,6 +8,7 @@ import numbers
 import numpy as np
 import pandas
 import dendropy
+from deprecated import deprecated
 
 from eagle.constants import conf_constants
 from eagle.lib.general import ConfBase, filter_list, generate_random_string, send_log_message, fullmatch_regexp_list
@@ -227,6 +228,7 @@ class DistanceMatrix(object):
         return len(self.seq_names)
 
     @classmethod
+    @deprecated(reason="Use MultAln.calculate_distance_matrix method")
     def calculate(cls, mult_aln, method=default_method, options=None, emboss_inst_dir=None, fastme_exec_path=None, **kwargs):
         # if method == "FastME":
         #     only '--dna' or '--protein' (full parameter names) can be used as keys in "options" dict to set the model
@@ -240,72 +242,7 @@ class DistanceMatrix(object):
         from eagle.lib.alignment import MultAln
         assert isinstance(mult_aln, MultAln), \
             "Error: the value for mult_aln argument is not eagle.lib.alignment.MultAln object"
-        if not os.path.exists(mult_aln.tmp_dir):
-            os.makedirs(mult_aln.tmp_dir)
-        if method.lower() == "phylip":
-            aln_fasta_path = os.path.join(mult_aln.tmp_dir, mult_aln.aln_name+".fasta")
-            phylip_matrix_path = os.path.join(mult_aln.tmp_dir, mult_aln.aln_name+".phylip")
-            if not mult_aln.mult_aln_dict:
-                if mult_aln.logger:
-                    mult_aln.logger.warning("No sequences in alignment")
-                else:
-                    print("No sequences in alignment")
-                return
-            dump_fasta_dict(fasta_dict=mult_aln.mult_aln_dict_short_id, fasta_path=aln_fasta_path)
-            if mult_aln.aln_type.lower() in mult_aln.prot_types:
-                if mult_aln.logger:
-                    mult_aln.logger.info("protdist is starting")
-                else:
-                    print("protdist is starting")
-                phylip_cmd = os.path.join(emboss_inst_dir, "fprotdist") + " -sequence " + aln_fasta_path + \
-                             " -method d -outfile " + phylip_matrix_path
-            else:
-                if mult_aln.logger:
-                    mult_aln.logger.info("dnadist is starting")
-                else:
-                    print("dnadist is starting")
-                phylip_cmd = os.path.join(emboss_inst_dir, "fdnadist") + " -sequence " + aln_fasta_path + \
-                             " -method f -outfile " + phylip_matrix_path
-            subprocess.call(phylip_cmd, shell=True)
-            if mult_aln.logger:
-                mult_aln.logger.info("distance calculations finished")
-            else:
-                print("distance calculations finished")
-            distance_matrix = cls.load(matrix_path=phylip_matrix_path,
-                                       matr_format="phylip",
-                                       short_to_full_seq_names=mult_aln.short_to_full_seq_names,
-                                       emboss_inst_dir=emboss_inst_dir,
-                                       fastme_exec_path=fastme_exec_path,
-                                       **kwargs)
-        if method.lower() == "fastme":
-            aln_phylip_path = os.path.join(mult_aln.tmp_dir, mult_aln.aln_name+".phylip")
-            phylip_matrix_path = os.path.join(mult_aln.tmp_dir, mult_aln.aln_name+"_dm.phylip")
-            if not mult_aln.mult_aln_dict:
-                send_log_message(message="no sequences in alignment", mes_type="e", logger=mult_aln.logger)
-                return
-            mult_aln.dump_alignment(aln_path=aln_phylip_path, aln_format="phylip")
-            for option in ("-O", "--output_matrix"):
-                options.pop(option, None)
-            if mult_aln.aln_type.lower() in mult_aln.prot_types:
-                fastme_options = {"--protein": "L", "-O": phylip_matrix_path}
-            else:
-                fastme_options = {"--dna": 4, "-O": phylip_matrix_path}
-            fastme_options.update(options)
-            send_log_message(message="distances calculation started", mes_type="i", logger=mult_aln.logger)
-            run_fastme(input_data=aln_phylip_path, options=fastme_options, fastme_exec_path=fastme_exec_path)
-            send_log_message(message="distances calculation finished", mes_type="i", logger=mult_aln.logger)
-
-            distance_matrix = cls.load(matrix_path=phylip_matrix_path,
-                                       matr_format="phylip",
-                                       short_to_full_seq_names=mult_aln.short_to_full_seq_names,
-                                       emboss_inst_dir=emboss_inst_dir,
-                                       fastme_exec_path=fastme_exec_path,
-                                       **kwargs)
-
-        shutil.rmtree(mult_aln.tmp_dir)
-        distance_matrix.aln_name = mult_aln.aln_name
-        distance_matrix.aln_type = mult_aln.aln_type
-        return distance_matrix
+        return mult_aln.calculate_distance_matrix(method=method, options=options)
 
     @classmethod
     def load(cls,
@@ -435,6 +372,33 @@ class DistanceMatrix(object):
         return phylo_tree
 
 
+def build_tree(source=None,
+               tree_name="phylo_tree",
+               tmp_dir="phylo_tree_tmp",
+               method="FastME",
+               options=None,
+               fastme_exec_path=None,
+               logger=None,
+               **kwargs):
+
+    from eagle.lib.alignment import MultAln
+
+    if "source_fasta" in kwargs:
+        source = MultAln.load_from_file(kwargs["source_fasta"], format="fasta", logger=logger)
+    if "source_phylip_aln" in kwargs:
+        source = MultAln.load_from_file(kwargs["source_phylip_aln"], format="phylip", logger=logger)
+    if "source_phylip_dist" in kwargs:
+        source = DistanceMatrix.load(kwargs["source_phylip_dist"], matr_format="phylip", logger=logger)
+
+    if isinstance(source, MultAln):
+        return source.build_tree(tree_name=tree_name, tmp_dir=tmp_dir, method=method, options=options,
+                                 fastme_exec_path=fastme_exec_path)
+    if isinstance(source, DistanceMatrix):
+        return source.build_tree(tree_name=tree_name, tmp_dir=tmp_dir, method=method, options=options,
+                                 fastme_exec_path=fastme_exec_path)
+
+
+@deprecated(reason="use 'build_tree' function")
 def build_tree_by_aln(mult_aln=None,
                       mult_aln_fasta=None,
                       tree_name="phylo_tree",
@@ -445,19 +409,25 @@ def build_tree_by_aln(mult_aln=None,
                       config_path=None,
                       logger=None):
 
-    from eagle.lib.alignment import MultAln
-
     if mult_aln is None and mult_aln_fasta is not None:
-        mult_aln = MultAln.load_alignment(aln_path=mult_aln_fasta, config_path=config_path, logger=logger)
-    if not isinstance(mult_aln, MultAln):
-        send_log_message(message="the value for mult_aln argument is not eagle.lib.alignment.MultAln object",
-                         mes_type='e', logger=logger)
-        return
+        return build_tree(source_fasta=mult_aln_fasta,
+                          tree_name=tree_name,
+                          tmp_dir=tmp_dir,
+                          method=method,
+                          options=options,
+                          fastme_exec_path=fastme_exec_path,
+                          logger=logger)
+    else:
+        return build_tree(source=mult_aln,
+                          tree_name=tree_name,
+                          tmp_dir=tmp_dir,
+                          method=method,
+                          options=options,
+                          fastme_exec_path=fastme_exec_path,
+                          logger=logger)
 
-    return mult_aln.build_tree(tree_name=tree_name, tmp_dir=tmp_dir, method=method, options=options,
-                               fastme_exec_path=fastme_exec_path)
 
-
+@deprecated(reason="use 'build_tree' function")
 def build_tree_by_dist(dist_matrix=None,
                        dist_matrix_path=None,  # should be in phylip format
                        full_seq_names=None,
@@ -470,15 +440,21 @@ def build_tree_by_dist(dist_matrix=None,
                        logger=None):
 
     if dist_matrix is None and dist_matrix_path is not None:
-        dist_matrix = DistanceMatrix.load(matrix_path=dist_matrix_path, short_to_full_seq_names=full_seq_names)
-    if not isinstance(dist_matrix, DistanceMatrix):
-        send_log_message(message="no distance matrix input or "
-                                 "value for dist_matrix argument is not eagle.lib.alignment.DistanceMatrix object",
-                         mes_type="e", logger=logger)
-        return
-
-    return dist_matrix.build_tree(tree_name=tree_name, tmp_dir=tmp_dir, method=method, options=options,
-                                  fastme_exec_path=fastme_exec_path)
+        return build_tree(source_phylip_dist=dist_matrix_path,
+                          tree_name=tree_name,
+                          tmp_dir=tmp_dir,
+                          method=method,
+                          options=options,
+                          fastme_exec_path=fastme_exec_path,
+                          logger=logger)
+    else:
+        return build_tree(source=dist_matrix,
+                          tree_name=tree_name,
+                          tmp_dir=tmp_dir,
+                          method=method,
+                          options=options,
+                          fastme_exec_path=fastme_exec_path,
+                          logger=logger)
 
 
 def run_fastme(input_data, output_tree=None, options=None, fastme_exec_path=None, **kwargs):

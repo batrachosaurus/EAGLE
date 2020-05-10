@@ -324,7 +324,8 @@ class SeqsDict(object):
                 if seq_l > 0:
                     n_chunks += (seq_l - 1) // chunk_size + 1
                     seq_l = 0
-        # TODO: implement phylip format reading
+        if format.lower() in ("phylip", "phy", "ph"):
+            print("not implemented yet")  # TODO: implement phylip format reading
 
         if low_memory:
             dat_path = kwargs.get("dat_path", "." + generate_random_string(10) + "_seqs_dict.dat")
@@ -510,6 +511,90 @@ class SeqsDict(object):
             rarefied_aln_dict[seq_id] = self[seq_id]
         rarefied_aln_seqs = SeqsDict.load_from_dict(rarefied_aln_dict)
         return self._init_subset(rarefied_aln_seqs.seqs_order, rarefied_aln_seqs.seqs_array, **kwargs)
+
+    def construct_mult_aln(self,
+                           method="MUSCLE",
+                           muscle_exec_path=None,
+                           mafft_exec_path=None,
+                           msaprobs_exec_path=None,
+                           emboss_inst_dir=None,
+                           hmmer_inst_dir=None,
+                           infernal_inst_dir=None,
+                           fastme_exec_path=None,
+                           kaks_calculator_exec_path=None,
+                           aln_name="mult_aln",
+                           tmp_dir=None,
+                           remove_tmp=True,
+                           num_threads=None,
+                           **kwargs):
+
+        from eagle.lib.alignment import MultAln
+
+        if muscle_exec_path is None:
+            muscle_exec_path = conf_constants.muscle_exec_path
+        if mafft_exec_path is None:
+            mafft_exec_path = conf_constants.mafft_exec_path
+        if msaprobs_exec_path is None:
+            msaprobs_exec_path = conf_constants.msaprobs_exec_path
+        if emboss_inst_dir is None:
+            emboss_inst_dir = conf_constants.emboss_inst_dir
+        if hmmer_inst_dir is None:
+            hmmer_inst_dir = conf_constants.hmmer_inst_dir
+        if infernal_inst_dir is None:
+            infernal_inst_dir = conf_constants.infernal_inst_dir
+        if fastme_exec_path is None:
+            fastme_exec_path = conf_constants.fastme_exec_path
+        if kaks_calculator_exec_path is None:
+            kaks_calculator_exec_path = conf_constants.fastme_exec_path
+        if tmp_dir is None:
+            tmp_dir = generate_random_string(10) + "_mult_aln_tmp"
+        if num_threads is None:
+            num_threads = conf_constants.num_threads
+
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+
+        in_fasta_path = os.path.join(tmp_dir, "to_align.fasta")
+        out_fasta_path = os.path.join(tmp_dir, aln_name + ".fasta")
+
+        if method.lower() == "muscle":
+            send_log_message("MUSCLE is starting", mes_type="info", logger=self.logger)
+            muscle_cmd = muscle_exec_path + " -in " + in_fasta_path + " -out " + out_fasta_path
+            subprocess.call(muscle_cmd, shell=True)
+            send_log_message("MUSCLE finished", mes_type="info", logger=self.logger)
+            mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
+
+        if method.lower() == "mafft":
+            send_log_message("MAFFT is starting", mes_type="info", logger=self.logger)
+            mafft_cmd = mafft_exec_path + " --auto" \
+                        " --op " + str(kwargs.get("op", kwargs.get("gap_open_penalty", 1.53))) + \
+                        " --ep " + str(kwargs.get("ep", kwargs.get("gap_ext_penalty", 0.123))) + \
+                        " --thread " + str(num_threads) + \
+                        " " + in_fasta_path + " > " + out_fasta_path
+            subprocess.call(mafft_cmd, shell=True)
+            send_log_message("MAFFT finished", mes_type="info", logger=self.logger)
+            mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
+
+        if method.lower() == "msaprobs":
+            send_log_message("MSAProbs is starting", mes_type="info", logger=self.logger)
+            msaprobs_cmd = msaprobs_exec_path + " -num_threads " + str(num_threads) + " -v " + \
+                           in_fasta_path + " > " + out_fasta_path
+            subprocess.call(msaprobs_cmd, shell=True)
+            send_log_message("MSAProbs finished", mes_type="info", logger=self.logger)
+            mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
+
+        mult_aln.seqs_type = self.seqs_type
+        mult_aln.emboss_inst_dir = emboss_inst_dir
+        mult_aln.hmmer_inst_dir = hmmer_inst_dir
+        mult_aln.infernal_inst_dir = infernal_inst_dir
+        mult_aln.fastme_exec_path = fastme_exec_path
+        mult_aln.kaks_calculator_exec_path = kaks_calculator_exec_path
+        mult_aln.name = aln_name
+        mult_aln.tmp_dir = tmp_dir
+
+        if remove_tmp:
+            shutil.rmtree(tmp_dir)
+        return mult_aln
 
 
 def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
