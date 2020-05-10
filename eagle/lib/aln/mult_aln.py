@@ -3,7 +3,7 @@ import re
 import shutil
 import subprocess
 from copy import deepcopy
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from deprecated import deprecated
 import numpy as np
@@ -123,6 +123,16 @@ class MultAln(SeqsDict):
                                                      **kwargs)
         return mult_aln
 
+    def _inplace(self, mult_aln):
+        assert isinstance(mult_aln, MultAln), "ERROR: value for argument 'mult_aln' should be an instance of " \
+                                              "eagle.lib.alignment.MultAln class"
+        self.seqs_order = mult_aln.seqs_order
+        self.seqs_array = mult_aln.seqs_array
+        self._distance_matrix = None
+        self.seq_info_dict = mult_aln.seq_info_dict
+        self.nucl_seqs_dict = mult_aln.nucl_seqs_dict
+        self.full_to_short_seq_names = mult_aln.full_to_short_seq_names
+
     def col(self, item):
         seqs_dict = SeqsDict.load_from_dict({seq_name: seq[item] for seq_name, seq in self.items()},
                                             seqs_type=self.seqs_type)
@@ -200,91 +210,86 @@ class MultAln(SeqsDict):
         return cls.load_from_file(fname=aln_path, format=aln_format, seqs_type=aln_type, name=aln_name, logger=logger,
                                   **kwargs)
 
-    def improve_aln(self,#####
-                    max_gap_fract=0.75,  # maximal fraction of gaps in a column to keep it in alignment
-                    max_mismatch_fract=1.0,  # maximal fraction of mismatches in a column to keep it in alignment
-                    remove_seq=False,  # if True can remove sequences for cleaning gaps between aln blocks
+    def improve_aln(self,
+                    max_gap_fract=0.75,
+                    max_mismatch_fract=1.0,
+                    remove_seq=False,
                     dist_filt=False,
-                    # if True returns a list of alignments (or blocks coordinates) with different strictness of sequences removing (different thresholds for clustering)
+                    num_threads=None,
                     output='alignment',
                     inplace=False,
                     **kwargs):
+
+        """
+        Method for removing not relevant parts of alignment
+        :param max_gap_fract: maximal fraction of gaps in a column to keep it in alignment
+        :param max_mismatch_fract: 1.0 - 'minimal allowed frequency of most frequent letter in a column'
+        :param remove_seq: if True can remove sequences for cleaning gaps between aln blocks
+        :param dist_filt: if True returns a list of alignments (or blocks coordinates) with different strictness of
+                          sequences removing (different thresholds for clustering)
+        :param output:
+        :param inplace:
+        :param kwargs:
+        :return:
+        """
         # TODO: write methods for removing gaps between blocks
-        if self.logger:
-            self.logger.info("'%s' multiple alignment improvement started" % self.aln_name)
-        else:
-            print("'%s' multiple alignment improvement started" % self.aln_name)
+        send_log_message("'%s' multiple alignment improvement started" % self.name, mes_type='info', logger=self.logger)
+        to_return = None
+        if num_threads is None:
+            num_threads = num_threads
 
         if dist_filt:
             # Constructs a list of rarefied by different distance thresholds alignments and runs improve_aln on it with dist_filt=False
             pass
 
-        # TODO: speed up that
-        coords = list()
-        seq_id_list = list(self.mult_aln_dict.keys())
+        # TODO: speed up that with threading
+        block_coords = list()
         for i in range(self.length):
             if self.states_seq:
                 if self.states_seq[i] in ("match", "specific"):
-                    coords = self._update_coords(i + 1, coords)
+                    block_coords = self._update_block_coords(i, block_coords)
                     continue
-            let_counts = defaultdict(int)
-            let_counts["-"] = 0
-            for seq_id in seq_id_list:
-                let_counts[self.mult_aln_dict[seq_id][i]] += 1
-            if float(let_counts.pop("-")) / float(len(seq_id_list)) <= max_gap_fract:
-                if sorted(let_counts.values(), reverse=True)[0] >= 1.0 - max_mismatch_fract:
-                    coords = self._update_coords(i + 1, coords)
+            let_counts = Counter("".join(self[seq_id][i].lower() for seq_id in self.seq_names))
+            if float(let_counts["-"]) <= max_gap_fract * float(self.num_seqs):
+                del let_counts["-"]
+                if sorted(let_counts.values(), reverse=True)[0] >= (1.0 - max_mismatch_fract) * float(self.num_seqs):
+                    block_coords = self._update_block_coords(i, block_coords)
             elif remove_seq:
                 # TODO: write detection of seqs to remove
                 pass
 
-        if len(coords[-1]) == 1:
-            coords[-1] = (coords[-1][0], coords[-1][0])
-        if not remove_seq and len(coords) >= 1:
-            coords = [(coords[0][0], coords[-1][1])]
         if output.lower() in ("coordinates", "coords", "coord", "c"):
-            seq_coord_list = list()
-            for seq_id in self.seq_names:
-                seq_c_dict = {"seq_id": seq_id}
-                coords_for_seq = self._get_coords_for_seq(coords, self.mult_aln_dict[seq_id])
-                for k in range(len(coords_for_seq)):
-                    seq_c_dict["c%s" % ((k + 1) * 2 - 1)] = coords_for_seq[k][0]
-                    seq_c_dict["c%s" % ((k + 1) * 2)] = coords_for_seq[k][1]
-                seq_coord_list.append(seq_c_dict)
-            return pandas.DataFrame(seq_coord_list)
+            to_return = block_coords
         else:
-            if inplace:
-                seqs_ids = self.seq_names
-                for seq_id in seqs_ids:
-                    self.mult_aln_dict[seq_id] = "".join(self.mult_aln_dict[seq_id][c1: c2] for c1, c2 in coords)
-                self._distance_matrix = None
-                if self.logger:
-                    self.logger.info("'%s' multiple alignment improved" % self.aln_name)
+            if block_coords:
+                if remove_seq:
+                    impr_mult_aln_dict = SeqsDict.load_from_dict(
+                        {seq_id: "".join(self[seq_id][c1:c2] for c1, c2 in block_coords) for seq_id in self.seq_names}
+                    )
                 else:
-                    print("'%s' multiple alignment improved" % self.aln_name)
+                    impr_mult_aln_dict = SeqsDict.load_from_dict(
+                        {seq_id: self[seq_id][block_coords[0][0]:block_coords[-1][1]] for seq_id in self.seq_names}
+                    )
+                improved_mult_aln = self._init_subset(impr_mult_aln_dict.seqs_order, impr_mult_aln_dict.seqs_array,
+                                                      name="improved_" + self.name)
+                if inplace:
+                    self._inplace(improved_mult_aln)
+                else:
+                    to_return = improved_mult_aln
             else:
-                impr_mult_aln_dict = {seq_id: "".join(self[seq_id][c1:c2] for c1, c2 in coords)
-                                      for seq_id in self.seq_names}
-                impr_mult_aln = self._sub_mult_aln(mult_aln_dict=SeqsDict.load_from_dict(impr_mult_aln_dict),
-                                                   aln_type=self.aln_type,
-                                                   aln_name="impr_" + self.aln_name)
-                if self.logger:
-                    self.logger.info("'%s' multiple alignment improved" % self.aln_name)
-                else:
-                    print("'%s' multiple alignment improved" % self.aln_name)
-                return impr_mult_aln
+                send_log_message("no columns left in '%s' multiple alignment" % self.name,
+                                 mes_type='warning', logger=self.logger)
+
+        send_log_message("'%s' multiple alignment improved" % self.name, mes_type='info', logger=self.logger)
+        return to_return
 
     @staticmethod
-    def _update_coords(i, coords):
-        if not coords:
-            coords.append([i])
-        elif len(coords[-1]) == 1:
-            coords[-1].append(i)
-        elif coords[-1][1] == i - 1:
-            coords[-1][1] = i
+    def _update_block_coords(i, block_coords):
+        if not block_coords or block_coords[-1][1] < i:
+            block_coords.append(np.array([i, i + 1]))
         else:
-            coords.append([i])
-        return coords
+            block_coords[-1][1] = i + 1
+        return block_coords
 
     @staticmethod
     def _get_coords_for_seq(coords, gapped_seq):
@@ -306,18 +311,72 @@ class MultAln(SeqsDict):
                                                              logger=self.logger)
         return self._distance_matrix
 
+    @deprecated(reason="Use 'calculate_distance_matrix' method")
     def get_distance_matrix(self, method=None, options=None):
+        return self.calculate_distance_matrix(method=method, options=options)
+
+    def calculate_distance_matrix(self, method=None, options=None, **kwargs):
         if method is None:
             method = self.dist_matr_method
         if options is None:
             options = self.dist_matr_options
 
-        self._distance_matrix = DistanceMatrix.calculate(mult_aln=self,
-                                                         method=method,
-                                                         options=options,
-                                                         emboss_inst_dir=self.emboss_inst_dir,
-                                                         fastme_exec_path=self.fastme_exec_path,
-                                                         logger=self.logger)
+        if not os.path.exists(self.tmp_dir):
+            os.makedirs(self.tmp_dir)
+
+        if method.lower() == "phylip":
+            aln_fasta_path = os.path.join(self.tmp_dir, self.name+".fasta")
+            phylip_matrix_path = os.path.join(self.tmp_dir, self.name+".phylip")
+            if not self:
+                send_log_message("no sequences in alignment", mes_type="warning", logger=self.logger)
+                return
+            self.dump(aln_fasta_path, format="fasta")
+            if self.seqs_type.lower() in self.prot_types:
+                send_log_message("protdist is starting", mes_type="info", logger=self.logger)
+                phylip_cmd = os.path.join(self.emboss_inst_dir, "fprotdist") + " -sequence " + aln_fasta_path + \
+                             " -method d -outfile " + phylip_matrix_path
+            else:
+                send_log_message("dnadist is starting", mes_type="info", logger=self.logger)
+                phylip_cmd = os.path.join(self.emboss_inst_dir, "fdnadist") + " -sequence " + aln_fasta_path + \
+                             " -method f -outfile " + phylip_matrix_path
+            subprocess.call(phylip_cmd, shell=True)
+            send_log_message("distance calculations finished", mes_type="info", logger=self.logger)
+            self._distance_matrix = DistanceMatrix.load(matrix_path=phylip_matrix_path,
+                                                        matr_format="phylip",
+                                                        short_to_full_seq_names=self.short_to_full_seq_names,
+                                                        emboss_inst_dir=self.emboss_inst_dir,
+                                                        fastme_exec_path=self.fastme_exec_path,
+                                                        logger=self.logger,
+                                                        **kwargs)
+
+        if method.lower() == "fastme":
+            aln_phylip_path = os.path.join(self.tmp_dir, self.name+".phylip")
+            phylip_matrix_path = os.path.join(self.tmp_dir, self.name+"_dm.phylip")
+            if not self:
+                send_log_message(message="no sequences in alignment", mes_type="e", logger=self.logger)
+                return
+            self.dump(aln_phylip_path, format="phylip")
+            for option in ("-O", "--output_matrix"):
+                options.pop(option, None)
+            if self.seqs_type.lower() in self.prot_types:
+                fastme_options = {"--protein": "L", "-O": phylip_matrix_path}
+            else:
+                fastme_options = {"--dna": 4, "-O": phylip_matrix_path}
+            fastme_options.update(options)
+            send_log_message(message="distances calculation started", mes_type="i", logger=self.logger)
+            run_fastme(input_data=aln_phylip_path, options=fastme_options, fastme_exec_path=self.fastme_exec_path)
+            send_log_message(message="distances calculation finished", mes_type="i", logger=self.logger)
+            self._distance_matrix = DistanceMatrix.load(matrix_path=phylip_matrix_path,
+                                                        matr_format="phylip",
+                                                        short_to_full_seq_names=self.short_to_full_seq_names,
+                                                        emboss_inst_dir=self.emboss_inst_dir,
+                                                        fastme_exec_path=self.fastme_exec_path,
+                                                        logger=self.logger,
+                                                        **kwargs)
+        shutil.rmtree(self.tmp_dir)
+        self._distance_matrix.aln_name = self.name
+        self._distance_matrix.aln_type = self.seqs_type
+
         return self._distance_matrix
 
     def remove_paralogs(self, seq_ids_to_orgs=None, method="min_dist", inplace=False):
@@ -353,12 +412,7 @@ class MultAln(SeqsDict):
                                          name="no_par_" + self.name)
 
         if inplace:
-            self.seqs_order = filtered_aln.seqs_order
-            self.seqs_array = filtered_aln.seqs_array
-            self._distance_matrix = None
-            self.seq_info_dict = filtered_aln.seq_info_dict
-            self.nucl_seqs_dict = filtered_aln.nucl_seqs_dict
-            self.full_to_short_seq_names = filtered_aln.full_to_short_seq_names
+            self._inplace(filtered_aln)
         send_log_message("paralogs removed", "info", logger=self.logger)
         if not inplace:
             return filtered_aln
@@ -602,3 +656,72 @@ class MultAln(SeqsDict):
             return self.improve_aln(inplace=False, **kwargs).stop_codons_stats(improve_aln=False, **kwargs)
         else:
             return super(MultAln, self).stop_codons_stats(improve_aln=False, **kwargs)
+
+
+def get_kaks_gmean(kaks_array, ks_array=None, stype="negative", top_fract=None):
+    if top_fract is None:
+        top_fract = conf_constants.kaks_top_fract
+
+    l = len(kaks_array)
+    kaks_syn_array = sorted(filter(lambda p: True if p[0] > 0 else False,
+                                   [(kaks_array[i], ks_array[i] if ks_array is not None else None) for i in range(l)]),
+                            key=lambda p: p[0])
+    kaks_list = list(map(lambda p: p[0], kaks_syn_array))
+    ks_list = list(map(lambda p: p[1], kaks_syn_array))
+    sep_ind = top_fract*float(l)
+
+    ks = None
+    if stype.lower() in ("n", "neg", "negative", "s", "stab", "stabilising"):
+        kaks = gmean(kaks_list[: sep_ind])
+        if ks_array is not None:
+            ks = gmean(ks_list[: sep_ind])
+    else:
+        kaks = gmean(kaks_list[-sep_ind: ])
+        if ks_array is not None:
+            ks = gmean(ks_list[-sep_ind: ])
+    return kaks, ks
+
+
+def construct_mult_aln(seqs_dict=None,
+                       fasta_path=None,
+                       method="MUSCLE",
+                       seqs_type=None,
+                       muscle_exec_path=None,
+                       mafft_exec_path=None,
+                       msaprobs_exec_path=None,
+                       emboss_inst_dir=None,
+                       hmmer_inst_dir=None,
+                       infernal_inst_dir=None,
+                       fastme_exec_path=None,
+                       kaks_calculator_exec_path=None,
+                       aln_name="mult_aln",
+                       tmp_dir=None,
+                       remove_tmp=True,
+                       num_threads=None,
+                       config_path=None,
+                       logger=None,
+                       **kwargs):
+
+    if "seq_dict" in kwargs:
+        seqs_dict = kwargs["seq_dict"]
+    if "aln_type" in kwargs:
+        seqs_type = kwargs["aln_type"]
+
+    if seqs_dict is None and fasta_path is not None:
+        seqs_dict = SeqsDict.load_from_file(fasta_path, format="fasta", seqs_type=seqs_type, logger=logger, **kwargs)
+
+    if isinstance(seqs_dict, SeqsDict):
+        return seqs_dict.construct_mult_aln(method=method,
+                                            muscle_exec_path=muscle_exec_path,
+                                            mafft_exec_path=mafft_exec_path,
+                                            msaprobs_exec_path=msaprobs_exec_path,
+                                            emboss_inst_dir=emboss_inst_dir,
+                                            hmmer_inst_dir=hmmer_inst_dir,
+                                            infernal_inst_dir=infernal_inst_dir,
+                                            fastme_exec_path=fastme_exec_path,
+                                            kaks_calculator_exec_path=kaks_calculator_exec_path,
+                                            aln_name=aln_name,
+                                            tmp_dir=tmp_dir,
+                                            remove_tmp=remove_tmp,
+                                            num_threads=num_threads,
+                                            **kwargs)
