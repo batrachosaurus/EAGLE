@@ -373,7 +373,7 @@ class MultAln(SeqsDict):
                                                         fastme_exec_path=self.fastme_exec_path,
                                                         logger=self.logger,
                                                         **kwargs)
-        shutil.rmtree(self.tmp_dir)
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
         self._distance_matrix.aln_name = self.name
         self._distance_matrix.aln_type = self.seqs_type
 
@@ -417,13 +417,13 @@ class MultAln(SeqsDict):
         if not inplace:
             return filtered_aln
 
-    def get_profile(self, method="hmmer", profile_name=None, profile_path=None, **kwargs):
+    def build_profile(self, method="hmmer", profile_name=None, profile_path=None, **kwargs):
         if method.lower() == "hmmer":
             pass
         if method.lower() == "infernal":
             pass
 
-    @deprecated(reason="use method get_profile")
+    @deprecated(reason="use method build_profile")
     def get_hmm_profile(self, profile_path, method="hmmer"):###
         if method.lower() == "hmmer":
             if not os.path.exists(self.tmp_dir):
@@ -556,7 +556,7 @@ class MultAln(SeqsDict):
                     kaks_list.append(-1.0)
                     ks_list.append(-1.0)
 
-        shutil.rmtree(self.tmp_dir)
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
         return {"Ka/Ks": kaks_list, "Ks": ks_list}
 
     def calculate_KaKs(self,
@@ -604,7 +604,7 @@ class MultAln(SeqsDict):
                 kaks = -1.0
                 ks = -1.0
         if kwargs.get("remove_tmp", True):
-            shutil.rmtree(self.tmp_dir)
+            shutil.rmtree(self.tmp_dir, ignore_errors=True)
         return {"Ka/Ks": kaks, "Ks": ks}
 
     def build_tree(self,
