@@ -87,7 +87,7 @@ class GenomeInfo(JsonEntry):
         return in_dict["org_name"]
 
 
-class SeqProfileInfo(JsonEntry):
+class SeqsProfileInfo(JsonEntry):
 
     # json keys
     name_key = "name"
@@ -124,6 +124,9 @@ class SeqProfileInfo(JsonEntry):
             "seq_type": (cls.seq_type_key,),
             "weight": (cls.weight_key,),
         }
+
+
+SeqProfileInfo = SeqsProfileInfo
 
 
 class BtaxInfo(JsonEntry):
