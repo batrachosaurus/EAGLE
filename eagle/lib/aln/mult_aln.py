@@ -28,7 +28,6 @@ class MultAln(SeqsDict):
                  seq_info_dict=None,
                  seqs_type=None,
                  low_memory=False,
-                 chunk_size=None,
                  states_seq=None,
                  name=name0,
                  tmp_dir=None,
@@ -43,7 +42,6 @@ class MultAln(SeqsDict):
                                       seq_info_dict=seq_info_dict,
                                       seqs_type=seqs_type,
                                       low_memory=low_memory,
-                                      chunk_size=chunk_size,
                                       **kwargs)
 
         if states_seq is None:
@@ -77,7 +75,6 @@ class MultAln(SeqsDict):
                      seq_info_dict=None,
                      seqs_type=None,
                      low_memory=None,
-                     chunk_size=None,
                      states_seq=None,
                      name=name0,
                      tmp_dir=None,
@@ -111,7 +108,6 @@ class MultAln(SeqsDict):
                                                      seq_info_dict=seq_info_dict,
                                                      seqs_type=seqs_type,
                                                      low_memory=low_memory,
-                                                     chunk_size=chunk_size,
                                                      states_seq=states_seq,
                                                      name=name,
                                                      tmp_dir=tmp_dir,
@@ -210,6 +206,33 @@ class MultAln(SeqsDict):
         return cls.load_from_file(fname=aln_path, format=aln_format, seqs_type=aln_type, name=aln_name, logger=logger,
                                   **kwargs)
 
+    @classmethod
+    def load_from_file(cls, fname=None, format="fasta", seqs_type=None, low_memory=None, **kwargs):
+        if format.lower() in ("fasta", "fas", "fa"):
+            with open(fname) as fasta_f:
+                seq_l = 0
+                for line_ in fasta_f:
+                    line = None
+                    line = line_.strip()
+                    if not line:
+                        continue
+                    if line[0] == ">" and seq_l > 0:
+                        break
+                    else:
+                        seq_l += len(line)
+        if format.lower() in ("phylip", "phy", "ph"):
+            print("not implemented yet")  # TODO: implement phylip format reading
+
+        chunk_size = kwargs.pop("chunk_size", seq_l)
+        return super(MultAln, cls).load_from_file(fname=fname, format=format, seqs_type=seqs_type,
+                                                  low_memory=low_memory, chunk_size=chunk_size, **kwargs)
+
+    @classmethod
+    def load_from_dict(cls, in_dict, seqs_type=None, low_memory=None, **kwargs):
+        chunk_size = kwargs.pop("chunk_size", len(in_dict[list(in_dict.keys())[0]]))
+        return super(MultAln, cls).load_from_dict(in_dict=in_dict, seqs_type=seqs_type, low_memory=low_memory,
+                                                  chunk_size=chunk_size, **kwargs)
+
     def improve_aln(self,
                     max_gap_fract=0.75,
                     max_mismatch_fract=1.0,
@@ -264,7 +287,7 @@ class MultAln(SeqsDict):
             if block_coords:
                 if remove_seq:
                     impr_mult_aln_dict = SeqsDict.load_from_dict(
-                        {seq_id: "".join(self[seq_id][c1:c2] for c1, c2 in block_coords) for seq_id in self.seq_names}
+                        {seq_id: "".join(self[seq_id][c1:c2] for c1, c2 in block_coords) for seq_id in self.seq_names}  # TODO: self.seq_names?
                     )
                 else:
                     impr_mult_aln_dict = SeqsDict.load_from_dict(

@@ -29,7 +29,6 @@ class SeqsDict(object):
                  seq_info_dict=None,
                  seqs_type=None,
                  low_memory=None,
-                 chunk_size=None,
                  **kwargs):
 
         self._seqs_type = None
@@ -38,8 +37,6 @@ class SeqsDict(object):
             seq_info_dict = defaultdict(lambda: defaultdict(lambda: None))
         if low_memory is None:
             low_memory = self.low_memory0
-        if chunk_size is None:
-            chunk_size = self._chunk_size0
 
         self.seqs_order = seqs_order
         self.seqs_array = seqs_array
@@ -47,7 +44,7 @@ class SeqsDict(object):
         if seqs_type.lower() in self.prot_types + self.nucl_types:
             self.seqs_type = seqs_type.lower()
         self.low_memory = low_memory
-        self._chunk_size = chunk_size
+        self._chunk_size = int(str(seqs_array.dtype).strip("<U"))
         self.logger = kwargs.get("logger", None)
 
         self._nucl_seqs_dict = dict()
@@ -61,7 +58,6 @@ class SeqsDict(object):
                      seq_info_dict=None,
                      seqs_type=None,
                      low_memory=None,
-                     chunk_size=None,
                      **kwargs):
 
         if seq_info_dict is None:
@@ -72,14 +68,11 @@ class SeqsDict(object):
             seqs_type = self.seqs_type
         if low_memory is None:
             low_memory = self.low_memory
-        if chunk_size is None:
-            chunk_size = self._chunk_size
 
         seqs_dict = self.__class__(seqs_order, seqs_array,
                                    seq_info_dict=seq_info_dict,
                                    seqs_type=seqs_type,
                                    low_memory=low_memory,
-                                   chunk_size=chunk_size,
                                    logger=kwargs.pop("logger", self.logger),
                                    **kwargs)
 
@@ -305,7 +298,7 @@ class SeqsDict(object):
         assert fname is not None, "ERROR: no value passed for argument 'fname'"
 
         chunk_size = kwargs.get("chunk_size", cls._chunk_size0)
-        if low_memory == 'auto':
+        if low_memory == 'auto' or low_memory is None:
             low_memory = cls._check_low_memory(seqs_path=fname)
 
         n_chunks = 0
@@ -330,9 +323,9 @@ class SeqsDict(object):
 
         if low_memory:
             dat_path = kwargs.get("dat_path", "." + generate_random_string(10) + "_seqs_dict.dat")
-            seqs_array = np.memmap(dat_path, dtype=np.dtype("S%s" % chunk_size), mode='w+', shape=(n_chunks,))
+            seqs_array = np.memmap(dat_path, dtype=np.dtype("U%s" % chunk_size), mode='w+', shape=(n_chunks,))
         else:
-            seqs_array = np.zeros(n_chunks, dtype=np.dtype("S%s" % chunk_size))
+            seqs_array = np.zeros(n_chunks, dtype=np.dtype("U%s" % chunk_size))
 
         i = 0
         seqs_order = dict()
@@ -376,22 +369,23 @@ class SeqsDict(object):
         return cls(seqs_order, seqs_array,
                    seqs_type=seqs_type,
                    low_memory=low_memory,
-                   chunk_size=chunk_size,
                    **kwargs)
 
     @classmethod
-    def load_from_dict(cls, in_dict, seqs_type=None, low_memory=low_memory0, **kwargs):
+    def load_from_dict(cls, in_dict, seqs_type=None, low_memory=None, **kwargs):
         chunk_size = kwargs.get("chunk_size", cls._chunk_size0)
         n_chunks = 0
         for seq in in_dict.values():
             if seq:
                 n_chunks += (len(seq)-1)//chunk_size + 1
 
+        if low_memory is None:
+            low_memory = cls.low_memory0
         if low_memory:
             dat_path = kwargs.get("dat_path", "." + generate_random_string(10) + "_seqs_dict.dat")
-            seqs_array = np.memmap(dat_path, dtype=np.dtype("S%s" % chunk_size), mode='w+', shape=(n_chunks,))
+            seqs_array = np.memmap(dat_path, dtype=np.dtype("U%s" % chunk_size), mode='w+', shape=(n_chunks,))
         else:
-            seqs_array = np.zeros(n_chunks, dtype=np.dtype("S%s" % chunk_size))
+            seqs_array = np.zeros(n_chunks, dtype=np.dtype("U%s" % chunk_size))
 
         i = 0
         seqs_order = dict()
@@ -400,11 +394,9 @@ class SeqsDict(object):
             for n, j in enumerate(seqs_order[seq_id]):
                 seqs_array[j] = seq[n * chunk_size: (n + 1) * chunk_size]
             i = seqs_order[seq_id].stop
-        return cls(seqs_order=seqs_order,
-                   seqs_array=seqs_array,
+        return cls(seqs_order, seqs_array,
                    seqs_type=seqs_type,
                    low_memory=low_memory,
-                   chunk_size=chunk_size,
                    **kwargs)
 
     @staticmethod
