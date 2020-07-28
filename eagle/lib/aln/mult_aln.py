@@ -130,8 +130,8 @@ class MultAln(SeqsDict):
         self.full_to_short_seq_names = mult_aln.full_to_short_seq_names
 
     def col(self, item):
-        seqs_dict = SeqsDict.load_from_dict({seq_name: seq[item] for seq_name, seq in self.items()},
-                                            seqs_type=self.seqs_type)
+        seqs_dict = self.load_from_dict({seq_name: seq[item] for seq_name, seq in self.items()},
+                                        seqs_type=self.seqs_type)
         return self._init_subset(seqs_dict.seqs_order, seqs_dict.seqs_array)
 
     def __setitem__(self, key, value):
@@ -286,11 +286,11 @@ class MultAln(SeqsDict):
         else:
             if block_coords:
                 if remove_seq:
-                    impr_mult_aln_dict = SeqsDict.load_from_dict(
+                    impr_mult_aln_dict = self.load_from_dict(
                         {seq_id: "".join(self[seq_id][c1:c2] for c1, c2 in block_coords) for seq_id in self.seq_names}  # TODO: self.seq_names?
                     )
                 else:
-                    impr_mult_aln_dict = SeqsDict.load_from_dict(
+                    impr_mult_aln_dict = self.load_from_dict(
                         {seq_id: self[seq_id][block_coords[0][0]:block_coords[-1][1]] for seq_id in self.seq_names}
                     )
                 improved_mult_aln = self._init_subset(impr_mult_aln_dict.seqs_order, impr_mult_aln_dict.seqs_array,
@@ -430,7 +430,7 @@ class MultAln(SeqsDict):
             # TODO: write spec_pos method
             pass
 
-        filtered_aln_seqs = SeqsDict.load_from_dict(in_dict=mult_aln_dict_filt)
+        filtered_aln_seqs = self.load_from_dict(in_dict=mult_aln_dict_filt)
         filtered_aln = self._init_subset(filtered_aln_seqs.seqs_order, filtered_aln_seqs.seqs_array,
                                          name="no_par_" + self.name)
 
@@ -485,7 +485,7 @@ class MultAln(SeqsDict):
             nucl_aln_dict[seq_name] = nucl_accord_prot(self[seq_name],
                                                        self.nucl_seqs_dict[seq_name][
                                                        match.start() * 3: match.end() * 3])
-        nucl_aln_seqs = SeqsDict.load_from_dict(nucl_aln_dict)
+        nucl_aln_seqs = self.load_from_dict(nucl_aln_dict)
         nucl_aln = self._init_subset(nucl_aln_seqs.seqs_order, nucl_aln_seqs.seqs_array,
                                      seqs_type=self.nucl_type,
                                      name="nucl_" + self.name)
