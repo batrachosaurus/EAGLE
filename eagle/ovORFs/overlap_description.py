@@ -1,30 +1,32 @@
+# coordinates are ALWAYS in forward strand: c[0] < c[1]
+
 def detect_frame_parallel(orf_c, ovorf_c, orf_ori):
-    if int(float(orf_c[0] - ovorf_c[0]) % 3.0) == 0:
+    if (orf_c[0] - ovorf_c[0]) % 3 == 0:
         return +1
-    if orf_ori == "+" or orf_ori == 1:
-        if int(float(orf_c[0] - (ovorf_c[0] - 1)) % 3.0) == 0:
+    if orf_ori == "+" or orf_ori > 0:
+        if (orf_c[0] - (ovorf_c[0] - 1)) % 3 == 0:
             return +2
-        if int(float(orf_c[0] - (ovorf_c[0] - 2)) % 3.0) == 0:
+        if (orf_c[0] - (ovorf_c[0] - 2)) % 3 == 0:
             return +3
     else:
-        if int(float(orf_c[0] - (ovorf_c[0] + 1)) % 3.0) == 0:
+        if (orf_c[0] - (ovorf_c[0] + 1)) % 3 == 0:
             return +2
-        if int(float(orf_c[0] - (ovorf_c[0] + 2)) % 3.0) == 0:
+        if (orf_c[0] - (ovorf_c[0] + 2)) % 3 == 0:
             return +3
 
 
 def detect_frame_antiparallel(orf_c, ovorf_c, orf_ori):
-    if int(float(orf_c[0] - ovorf_c[0]) % 3.0) == 0:
+    if (orf_c[0] - ovorf_c[0]) % 3 == 0:
         return -1
-    if orf_ori == "+" or orf_ori == 1:
-        if int(float(orf_c[0] - (ovorf_c[0] + 1)) % 3.0) == 0:
+    if orf_ori == "+" or orf_ori > 0:
+        if (orf_c[0] - (ovorf_c[0] + 1)) % 3 == 0:
             return -2
-        if int(float(orf_c[0] - (ovorf_c[0] + 2)) % 3.0) == 0:
+        if (orf_c[0] - (ovorf_c[0] + 2)) % 3 == 0:
             return -3
     else:
-        if int(float(orf_c[0] - (ovorf_c[0] - 1)) % 3.0) == 0:
+        if (orf_c[0] - (ovorf_c[0] - 1)) % 3 == 0:
             return -2
-        if int(float(orf_c[0] - (ovorf_c[0] - 2)) % 3.0) == 0:
+        if (orf_c[0] - (ovorf_c[0] - 2)) % 3 == 0:
             return -3
 
 
