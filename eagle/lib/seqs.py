@@ -589,39 +589,28 @@ class SeqsDict(object):
             shutil.rmtree(tmp_dir)
         return mult_aln
 
-    def to_blastdb(self, blast_handler=None, dbtype=None, db_name=None, **kwargs):
-        from eagle.lib.alignment import BlastHandler
+    def to_blastdb(self, dbtype=None, db_name=None, blast_inst_dir=None, **kwargs):
+        from eagle.lib.alignment import BlastDB
 
-        if blast_handler is None:
-            blast_handler = BlastHandler(db_name=db_name,
-                                         dbtype=dbtype,
-                                         inst_dir=kwargs.get("blast_inst_dir", None),
-                                         tmp_dir=kwargs.get("blast_tmp_dir", None),
-                                         logger=self.logger)
-        assert isinstance(blast_handler, BlastHandler), "ERROR: the value for argument 'blast_handler' should be " \
-                                                        "an instance of class eagle.lib.alignment.BlastHandler"
-        return blast_handler.make_blastdb(in_seqs=self, dbtype=dbtype, db_name=db_name, **kwargs)
+        return BlastDB.make_blastdb(db_name=db_name,
+                                    dbtype=dbtype,
+                                    blast_inst_dir=blast_inst_dir,
+                                    tmp_dir=kwargs.get("blast_tmp_dir", None),
+                                    logger=self.logger)
 
-    def to_blast_search(self, blast_type, blast_handler=None, db=None, out=None, num_threads=1, outfmt=7, max_hsps=100,
+    def to_blast_search(self, blast_type, blast_db, out=None, num_threads=1, outfmt=7, max_hsps=100,
                         **kwargs):
-        from eagle.lib.alignment import BlastHandler
+        from eagle.lib.alignment import BlastDB
 
-        if blast_handler is None:
-            blast_handler = BlastHandler(db_name=db,
-                                         dbtype=kwargs.get("dbtype", None),
-                                         inst_dir=kwargs.get("blast_inst_dir", None),
-                                         tmp_dir=kwargs.get("blast_tmp_dir", None),
-                                         logger=self.logger)
-        assert isinstance(blast_handler, BlastHandler), "ERROR: the value for argument 'blast_handler' should be " \
-                                                        "an instance of class eagle.lib.alignment.BlastHandler"
-        return blast_handler.run_blast_search(blast_type=blast_type,
-                                              query=self,
-                                              db=db,
-                                              out=out,
-                                              num_threads=num_threads,
-                                              outfmt=outfmt,
-                                              max_hsps=max_hsps,
-                                              **kwargs)
+        assert isinstance(blast_db, BlastDB), "ERROR: the value for argument 'blast_db' should be " \
+                                              "an instance of class eagle.lib.alignment.BlastDB"
+        return blast_db.run_blast_search(blast_type=blast_type,
+                                         query=self,
+                                         out=out,
+                                         num_threads=num_threads,
+                                         outfmt=outfmt,
+                                         max_hsps=max_hsps,
+                                         **kwargs)
 
 
 def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
