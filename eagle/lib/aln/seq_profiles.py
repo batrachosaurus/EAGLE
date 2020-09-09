@@ -7,7 +7,7 @@ from eagle.lib.general import generate_random_string, join_files
 from eagle.lib.seqs import SeqsDict
 
 
-class SeqsProfileHandler(object):
+class SeqProfiles(object):
 
     hmmer_key = "hmmer"
     infernal_key = "infernal"
@@ -76,7 +76,7 @@ class HMMERHandler(object):
         hmmpress_cmd = os.path.join(self.inst_dir, "hmmpress") + " " + profiles_db_path
         subprocess.call(hmmpress_cmd, shell=True)
 
-    def run_hmmsearch(self, in_profile_path, seqdb, out_path=None, cpu=1, shred_seqdb=False):
+    def run_hmmsearch(self, in_profile_path, seqdb=None, out_path=None, cpu=1, shred_seqdb=False):
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
         if shred_seqdb:

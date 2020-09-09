@@ -10,50 +10,48 @@ from eagle.lib.general import send_log_message, generate_random_string, join_fil
 from eagle.lib.seqs import SeqsDict
 
 
-class BlastHandler(object):
+class BlastDB(object):
 
     def __init__(self,
-                 db_name=None,
                  dbtype=None,
-                 inst_dir=None,
+                 db_name=None,
+                 blast_inst_dir=None,
                  tmp_dir=None,
-                 config_path=None,
-                 logger=None):
+                 logger=None,
+                 **kwargs):
 
         if tmp_dir is None:
             tmp_dir = generate_random_string(10) + "_blast_tmp"
 
-        self.db_name = db_name
         self.dbtype=dbtype
-        self.inst_dir = inst_dir
-        if self.inst_dir is None:
-            self.inst_dir = conf_constants.blast_inst_dir
+        self.db_name = db_name
+        self.blast_inst_dir = blast_inst_dir
+        if self.blast_inst_dir is None:
+            self.blast_inst_dir = conf_constants.blast_inst_dir
         self.tmp_dir = tmp_dir
         self.logger = logger
 
-    def make_blastdb(self, in_seqs=None, dbtype=None, db_name=None, **kwargs):
+    @classmethod
+    def make_blastdb(cls, in_seqs=None, dbtype=None, db_name=None, blast_inst_dir=None, **kwargs):
         if "in_fasta" in kwargs:
             in_seqs = kwargs["in_fasta"]
         assert in_seqs is not None, "ERROR: no value passed for argument 'in_seqs'"
 
-        if dbtype is not None:
-            self.dbtype = dbtype
-        if db_name is not None:
-            self.db_name = db_name
+        blast_db = cls(dbtype=dbtype, db_name=db_name, blast_inst_dir=blast_inst_dir, **kwargs)
 
         if isinstance(in_seqs, SeqsDict):
-            assert self.db_name is not None, "ERROR: no value for argument 'db_name'"
-            in_fasta = in_seqs.dump(os.path.splitext(self.db_name)[0]+".fasta", format="fasta")
+            assert blast_db.db_name is not None, "ERROR: no value for argument 'db_name'"
+            in_fasta = in_seqs.dump(os.path.splitext(blast_db.db_name)[0]+".fasta", format="fasta")
         else:
             in_fasta = in_seqs
-            if self.db_name is None and type(in_fasta) is str and os.path.exists(in_fasta):
-                self.db_name = os.path.splitext(in_fasta)[0]
+            if blast_db.db_name is None and type(in_fasta) is str and os.path.exists(in_fasta):
+                blast_db.db_name = os.path.splitext(in_fasta)[0]
 
-        makeblastdb_cmd = os.path.join(self.inst_dir, "makeblastdb") + " -in " + in_fasta + \
-                          " -dbtype " + self.dbtype + \
-                          " -out " + self.db_name
+        makeblastdb_cmd = os.path.join(blast_db.blast_inst_dir, "makeblastdb") + " -in " + in_fasta + \
+                          " -dbtype " + blast_db.dbtype + \
+                          " -out " + blast_db.db_name
         subprocess.call(makeblastdb_cmd, shell=True)
-        return db_name
+        return blast_db
 
     def run_blast_search(self, blast_type, query, db=None, out=None, num_threads=1, outfmt=7, max_hsps=100, **kwargs):
         if db is None:
@@ -115,7 +113,7 @@ class BlastHandler(object):
                 query.dump(query_path, format="fasta")
             else:
                 query_path = query
-            blast_search_cmd = os.path.join(self.inst_dir, blast_type) + \
+            blast_search_cmd = os.path.join(self.blast_inst_dir, blast_type) + \
                                " -query " + query_path + \
                                " -db " + db + \
                                " -out " + out + \
