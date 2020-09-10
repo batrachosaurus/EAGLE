@@ -1,54 +1,95 @@
 import os
 import shutil
 import subprocess
+from collections import defaultdict
 
 from eagle.constants import conf_constants
 from eagle.lib.general import generate_random_string, join_files
 from eagle.lib.seqs import SeqsDict
+from eagle.lib.alignment.mult_aln import MultAln
+from eagledb.scheme import SeqsProfileInfo
 
 
-class SeqProfiles(object):
+HMMER_KEY = "hmmer"
+INFERNAL_KEY = "infernal"
 
-    hmmer_key = "hmmer"
-    infernal_key = "infernal"
 
-    def __init__(self,
-                 method=hmmer_key,
-                 hmmer_inst_dir=None,
-                 infernal_inst_dir=None,
-                 seqdb=None,
-                 profiles_db=None,
-                 tmp_dir=None,
-                 logger=None):
+class SeqsProfile(object):
+
+    def __init__(self, seqs_profile_info: SeqsProfileInfo,
+                 method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None, tmp_dir=None, logger=None):
+        self.name = seqs_profile_info.name
+        self.seq_type = seqs_profile_info.seq_type
+        self.path = seqs_profile_info.path
+        self.weight = seqs_profile_info.weight
 
         if hmmer_inst_dir is None:
             hmmer_inst_dir = conf_constants.hmmer_inst_dir
         if infernal_inst_dir is None:
             infernal_inst_dir = conf_constants.infernal_inst_dir
         if tmp_dir is None:
-            tmp_dir = generate_random_string(10) + "_profile_tmp"
+            if self.path is not None:
+                tmp_dir = self.path.split(".")[0] + "_%s_tmp" % generate_random_string(10)
+            elif self.name is not None:
+                tmp_dir = self.name.split(".")[0] + "_%s_tmp" % generate_random_string(10)
+            else:
+                tmp_dir = "seqs_profile_%s_tmp" % generate_random_string(10)
 
         self.method = method
         self.hmmer_inst_dir = hmmer_inst_dir
         self.infernal_inst_dir = infernal_inst_dir
-        self.seqdb = seqdb
-        self.profiles_db = profiles_db
-        self.logger = logger
         self.tmp_dir = tmp_dir
+        self.logger = logger
 
-    def search(self):
+    @classmethod
+    def build(cls, mult_aln, name=None, path=None, weight=1.0,
+              method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None, tmp_dir=None, logger=None,
+              **kwargs):
+        if name is None:
+            if path is None:
+                raise ValueError("")
+            else:
+                name = os.path.splitext(os.path.basename(path))[0]
+        elif path is None:
+            path = name
+        if tmp_dir is None:
+            tmp_dir = path.split(".")[0] + "_%s_tmp" % generate_random_string(10)
+
+        if method.lower() == HMMER_KEY:
+            os.makedirs(tmp_dir)
+            if isinstance(mult_aln, str) and os.path.exists(mult_aln):
+                mult_aln_path = mult_aln
+            elif isinstance(mult_aln, MultAln):
+                mult_aln_path = mult_aln.dump(os.path.join(tmp_dir, name)+".fasta", format="fasta")
+            else:
+                raise ValueError("the value for argument 'mult_aln' should be an instance of "
+                                 "class eagle.lib.alignment.MultAln or path to a file with the alignment")
+            hmmbuild_cmd = os.path.join(hmmer_inst_dir, "hmmbuild") + " " + path + " " + mult_aln_path
+            subprocess.call(hmmbuild_cmd, shell=True)
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        if method.lower() == INFERNAL_KEY:
+            pass
+
+        return cls(SeqsProfileInfo(name=name, path=path, seq_type=mult_aln.seqs_type, weight=weight),
+                   method=method, hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir,
+                   tmp_dir=tmp_dir, logger=logger)
+
+    def search(self, seqdb):
         return
+
+    @property
+    def info(self):
+        return SeqsProfileInfo(name=self.name, path=self.path, seq_type=self.seq_type, weight=self.weight)
+
+
+class SeqProfilesDB(object):
+
+    @classmethod
+    def build(cls, profiles, name):
+        return cls()
 
     def scan(self):
-        return
-
-    def build_profile(self):
-        return
-
-    def build_seqdb(self):
-        return
-
-    def build_profile_db(self):
         return
 
 

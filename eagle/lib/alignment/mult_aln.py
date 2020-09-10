@@ -61,7 +61,7 @@ class MultAln(SeqsDict):
         self._distance_matrix = None
         self.name = name
         if tmp_dir is None:
-            tmp_dir = generate_random_string(10) + "_mult_aln_tmp"
+            tmp_dir = self.name + "_%s_tmp" % generate_random_string(10)
         self.tmp_dir = tmp_dir
         self.emboss_inst_dir = emboss_inst_dir
         self.infernal_inst_dir = infernal_inst_dir
@@ -440,23 +440,14 @@ class MultAln(SeqsDict):
         if not inplace:
             return filtered_aln
 
-    def build_profile(self, method="hmmer", profile_name=None, profile_path=None, **kwargs):
-        if method.lower() == "hmmer":
-            pass
-        if method.lower() == "infernal":
-            pass
+    def build_profile(self, profile_name=None, profile_path=None, method="hmmer", **kwargs):
+        from eagle.lib.alignment.seq_profiles import SeqsProfile
+
+        return SeqsProfile.build(mult_aln=self, method=method, name=profile_name, path=profile_path, **kwargs)
 
     @deprecated(reason="use method build_profile")
-    def get_hmm_profile(self, profile_path, method="hmmer"):###
-        if method.lower() == "hmmer":
-            if not os.path.exists(self.tmp_dir):
-                os.makedirs(self.tmp_dir)
-            aln_fasta_path = os.path.join(self.tmp_dir, self.aln_name + ".fasta")
-            dump_fasta_dict(self.mult_aln_dict, aln_fasta_path)
-            hmmer_handler = HmmerHandler(inst_dir=self.hmmer_inst_dir, config_path=self.config_path, logger=self.logger)
-            hmmer_handler.build_hmm_profile(profile_path=profile_path, in_aln_path=aln_fasta_path)
-            shutil.rmtree(self.tmp_dir)
-            return profile_path
+    def get_hmm_profile(self, profile_path, method="hmmer"):
+        return self.build_profile(profile_path=profile_path, method=method)
 
     def nucl_by_prot_aln(self, nucl_fasta_dict=None, nucl_fasta_path=None):
         if self.aln_type.lower() not in self.prot_types:
@@ -565,7 +556,7 @@ class MultAln(SeqsDict):
         kaks_list = list()
         ks_list = list()
         for w in windows_list:
-            w.tmp_dir = self.tmp_dir
+            w.storage_dir = self.tmp_dir
             w_kaks = w.calculate_KaKs(method=method,
                                       remove_tmp=False,
                                       only_first_seq=only_first_seq,
@@ -666,7 +657,7 @@ class MultAln(SeqsDict):
                                     fastme_exec_path=fastme_exec_path)[0]
             phylo_tree.tree_name = tree_name
             phylo_tree.full_seq_names = self.short_to_full_seq_names
-            phylo_tree.tmp_dir = tmp_dir
+            phylo_tree.storage_dir = tmp_dir
             phylo_tree.logger = self.logger
             send_log_message(message="phylogenetic tree built with FastME", mes_type="i", logger=self.logger)
         else:

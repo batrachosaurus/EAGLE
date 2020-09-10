@@ -583,7 +583,7 @@ class SeqsDict(object):
         mult_aln.fastme_exec_path = fastme_exec_path
         mult_aln.kaks_calculator_exec_path = kaks_calculator_exec_path
         mult_aln.name = aln_name
-        mult_aln.tmp_dir = tmp_dir
+        mult_aln.storage_dir = tmp_dir
 
         if remove_tmp:
             shutil.rmtree(tmp_dir)

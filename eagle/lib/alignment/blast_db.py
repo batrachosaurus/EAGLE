@@ -13,8 +13,8 @@ from eagle.lib.seqs import SeqsDict
 class BlastDB(object):
 
     def __init__(self,
-                 dbtype=None,
-                 db_name=None,
+                 dbtype,
+                 db_name,
                  blast_inst_dir=None,
                  tmp_dir=None,
                  logger=None,
@@ -32,11 +32,7 @@ class BlastDB(object):
         self.logger = logger
 
     @classmethod
-    def make_blastdb(cls, in_seqs=None, dbtype=None, db_name=None, blast_inst_dir=None, **kwargs):
-        if "in_fasta" in kwargs:
-            in_seqs = kwargs["in_fasta"]
-        assert in_seqs is not None, "ERROR: no value passed for argument 'in_seqs'"
-
+    def make_blastdb(cls, in_seqs, dbtype, db_name, blast_inst_dir=None, **kwargs):
         blast_db = cls(dbtype=dbtype, db_name=db_name, blast_inst_dir=blast_inst_dir, **kwargs)
 
         if isinstance(in_seqs, SeqsDict):
@@ -53,12 +49,10 @@ class BlastDB(object):
         subprocess.call(makeblastdb_cmd, shell=True)
         return blast_db
 
-    def run_blast_search(self, blast_type, query, db=None, out=None, num_threads=1, outfmt=7, max_hsps=100, **kwargs):
-        if db is None:
-            db = self.db_name
+    def run_blast_search(self, blast_type, query, out=None, num_threads=1, outfmt=7, max_hsps=100, **kwargs):
         read_output = False
         if out is None:
-            out = os.path.splitext(self.db_name)[0] + "_%s.xml" % generate_random_string(10)
+            out = os.path.splitext(self.db_name)[0] + "_out_%s.xml" % generate_random_string(10)
             outfmt = 5
             read_output = True
         if not os.path.exists(self.tmp_dir):
@@ -98,7 +92,7 @@ class BlastDB(object):
                     query_dict.get_sample(query_seqs[i*query_chunk_size:
                                                      (i+1)*query_chunk_size]).dump(seqs_path=query_chunks_list[-1][0])
                 p = mp.Process(target=self.run_blast_search,
-                               args=(blast_type, query_chunks_list[-1][0], db,
+                               args=(blast_type, query_chunks_list[-1][0],
                                      query_chunks_list[-1][1], 1, outfmt, max_hsps),
                                kwargs=chunk_kwargs)
                 p.start()
@@ -115,7 +109,7 @@ class BlastDB(object):
                 query_path = query
             blast_search_cmd = os.path.join(self.blast_inst_dir, blast_type) + \
                                " -query " + query_path + \
-                               " -db " + db + \
+                               " -db " + self.db_name + \
                                " -out " + out + \
                                " -word_size " + kwargs.get("word_size", str(3)) + \
                                " -num_threads " + str(num_threads) + \
