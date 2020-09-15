@@ -10,7 +10,7 @@ from Bio.Data.CodonTable import TranslationError
 from eagle.btax_scanner import get_btax_name
 from eagle.constants import conf_constants, eagle_logger, ORF_ALNS_DIR, ORF_TREES_DIR, DB_INFO_NAME
 from eagle.lib.alignment import BlastHandler, construct_mult_aln, get_kaks_gmean
-from eagle.lib.general import worker
+from eagle.lib.general import process_worker
 from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out, parse_orf_id
 from eagle.lib.orthan import explore_ortho_group
 from eagledb.scheme import BtaxInfo, DBInfo
@@ -162,7 +162,7 @@ def analyze_tblastn_out(tblastn_out_path,
         })
 
     pool = mp.Pool(num_threads)
-    pool.map(worker, params_list)
+    pool.map(process_worker, params_list)
     # list(map(worker, params_list))  # for debug
     pool.close()
     pool.join()

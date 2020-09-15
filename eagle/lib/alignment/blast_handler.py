@@ -50,7 +50,7 @@ class BlastDB(object):
         return blast_db
 
     def run_blast_search(self, blast_type, query, out=None, num_threads=1, outfmt=7, max_hsps=100, **kwargs):
-        read_output = False
+        read_output = kwargs.get("read_output", False)
         if out is None:
             out = os.path.splitext(self.db_name)[0] + "_out_%s.xml" % generate_random_string(10)
             outfmt = 5

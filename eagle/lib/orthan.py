@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from eagle.constants import conf_constants
-from eagle.lib.general import send_log_message, join_files, worker
+from eagle.lib.general import send_log_message, join_files, process_worker
 from eagle.lib.seqs import SeqsDict, read_blast_out, get_orfs
 from eagle.lib.alignment import MultAln, BlastHandler, search_profile
 from eagle.lib.phylo import PhyloTree, compare_trees
@@ -68,7 +68,7 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
     nucldb_path = os.path.join(work_dir, "nucldb.fasta")
 
     pool = mp.Pool(num_threads)
-    profiles_list = pool.map(worker, map(lambda a_or_p: {"function": _prepare_profile,
+    profiles_list = pool.map(process_worker, map(lambda a_or_p: {"function": _prepare_profile,
                                                          "a_or_p": a_or_p,
                                                          "work_dir": work_dir,
                                                          "seq_types": seq_types,
@@ -76,12 +76,12 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
                                                          "nucldb_path": nucldb_path,
                                                          "fna_id2org": fna_id2org,
                                                          "cpu": cpu},
-                                         alns_or_profiles))
+                                                 alns_or_profiles))
     pool.close()
     pool.join()
 
     pool = mp.Pool(num_threads)
-    db_part_paths = pool.map(worker, map(lambda genome_dict: {
+    db_part_paths = pool.map(process_worker, map(lambda genome_dict: {
                                              "function": _prepare_genome_db,
                                              "genome_dict": genome_dict,
                                              "fna_id2org": fna_id2org,
@@ -89,7 +89,7 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
                                              "seq_prot": seq_types["prot"],
                                              "seq_nucl": seq_types["nucl"]
                                          },
-                                         genomes_list))
+                                                 genomes_list))
     pool.close()
     pool.join()
 
@@ -104,7 +104,7 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
     join_files(in_files_list=nucl_fasta_paths, out_file_path=nucldb_path, remove_infiles=True)
 
     pool = mp.Pool(num_threads)
-    hom_alns = pool.map(worker, profiles_list)
+    hom_alns = pool.map(process_worker, profiles_list)
     pool.close()
     pool.join()
     return hom_alns

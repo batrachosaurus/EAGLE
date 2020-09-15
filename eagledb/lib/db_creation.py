@@ -12,7 +12,7 @@ import operator
 
 from eagle.constants import conf_constants, eagle_logger
 from eagle.lib.general import join_files, gunzip, download_file
-from eagle.lib.alignment import BlastHandler, HmmerHandler
+from eagle.lib.alignment import BlastDB, SeqProfilesDB
 from eagledb.constants import PROFILES_DB_NAME
 from eagledb.scheme import BtaxInfo, GenomeInfo
 
@@ -165,17 +165,21 @@ def transform_seq_id(fna_f, seq_id_dict, fna_to_orgs, **kwargs):
     return io.BytesIO(b"\n".join(transf_fna_lines)+b"\n")
 
 
-def create_btax_blastdb(btax_fna_path, btax_name, db_dir, blast_inst_dir=conf_constants.blast_inst_dir, logger=None):
+def create_btax_blastdb(btax_fna_path, btax_name, db_dir, blast_inst_dir=None, logger=None):
+    if blast_inst_dir is None:
+        blast_inst_dir = conf_constants.blast_inst_dir
+
     blastdb_dir = os.path.join(db_dir, btax_name+"_blastdb")
     if not os.path.exists(blastdb_dir):
         os.makedirs(blastdb_dir)
     blast_db_path = os.path.join(blastdb_dir, btax_name)
-    blast_handler = BlastHandler(inst_dir=blast_inst_dir, logger=logger)
-    blast_handler.make_blastdb(btax_fna_path, dbtype="nucl", db_name=blast_db_path)
+    blast_db = BlastDB.make_blastdb(in_seqs=btax_fna_path, dbtype="nucl", db_name=blast_db_path,
+                                    blast_inst_dir=blast_inst_dir, logger=logger)
     return blast_db_path
 
 
-def generate_btax_profiles(source, db_dir, btax_name, method="hmmer"):
+def generate_btax_profiles(source, db_dir, btax_name, method="hmmer"):###
+    # TODO: what is source?
     btax_profiles_dir = os.path.join(db_dir, btax_name+"_profiles")
     if not os.path.exists(btax_profiles_dir):
         os.makedirs(btax_profiles_dir)
@@ -193,7 +197,7 @@ def create_profiles_db(btax_dict,
                        profiles_db_name=PROFILES_DB_NAME,
                        method="hmmer",
                        hmmer_inst_dir="",
-                       config_path=None,
+                       config_path=None,  # TODO: remove this argument
                        logger=None):
     # Maybe it will be two databases: prot and nucl
 
@@ -206,6 +210,6 @@ def create_profiles_db(btax_dict,
             continue
     profiles_db_path = os.path.join(db_dir, profiles_db_name)
     if method.lower() == "hmmer":
-        hmmer_handler = HmmerHandler(inst_dir=hmmer_inst_dir, config_path=config_path, logger=logger)
-        hmmer_handler.make_profiles_db(profiles_list, profiles_db_path)
+        seq_profiles_db = SeqProfilesDB.build(profiles=profiles_list, name=profiles_db_path,
+                                              method="hmmer", hmmer_inst_dir=hmmer_inst_dir, logger=logger)
     return profiles_db_path
