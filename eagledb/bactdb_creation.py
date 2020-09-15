@@ -1,3 +1,4 @@
+# TODO: are all the functions useful for bacteria only?
 import gzip
 import io
 import json
@@ -12,7 +13,7 @@ import pandas
 
 from eagle.constants import eagle_logger, conf_constants, DB_INFO_NAME
 from eagle.lib.alignment import construct_mult_aln, MultAln
-from eagle.lib.general import worker, get_un_fix, bool_from_str
+from eagle.lib.general import process_worker, get_un_fix, bool_from_str
 from eagle.lib.phylo import build_tree_by_dist, DistanceMatrix
 from eagle.lib.seqs import load_fasta_to_dict, reduce_seq_names
 from eagledb import join_genomes_lists
@@ -129,7 +130,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
         n += 1
     eagle_logger.info("got download links for %s bacteria" % len(params_list))
     pool = mp.Pool(conf_constants.num_threads)
-    pool.map(worker, params_list)
+    pool.map(process_worker, params_list)
     pool.close()
     pool.join()
     prepared_bacteria_f = open(os.path.join(bactdb_dir, PREPARED_BACTERIA_F_NAME), "w")
@@ -674,7 +675,7 @@ def prepare_families(families_dict, db_dir, bact_fam_f_path, num_threads=4):
                             'try_err_message': "%s is not prepared: " % family})
 
     pool = mp.Pool(num_threads)
-    pool.map(worker, params_list)
+    pool.map(process_worker, params_list)
     pool.close()
     pool.join()
 

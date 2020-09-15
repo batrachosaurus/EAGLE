@@ -75,7 +75,7 @@ class SeqsProfile(object):
                    method=method, hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir,
                    tmp_dir=tmp_dir, logger=logger)
 
-    def search(self, seqdb):
+    def search(self, seqdb, threads=1, shred_seqdb=False):
         return
 
     @property
@@ -86,7 +86,8 @@ class SeqsProfile(object):
 class SeqProfilesDB(object):
 
     @classmethod
-    def build(cls, profiles, name):
+    def build(cls, profiles, name, method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None,
+              tmp_dir=None, logger=None, **kwargs):
         return cls()
 
     def scan(self):
