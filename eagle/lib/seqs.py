@@ -631,25 +631,12 @@ def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
             return str(Seq(fasta_dict[seq_id][end-1: start]).reverse_complement())
 
 
-def shred_fasta(in_fasta, shredded_fasta_path, part_l=50000, parts_ov=5000):
-    if isinstance(in_fasta, SeqsDict):
-        in_seqs_dict = in_fasta
+def shred_seqs(seqs, part_l=50000, parts_ov=5000, shredded_seqs_path=None):
+    if isinstance(seqs, str) and os.path.exists(seqs):
+        seqs_dict = SeqsDict.load_from_file(seqs, format="fasta")
     else:
-        in_seqs_dict = load_fasta_to_dict(fasta_path=in_fasta)
+        seqs_dict = seqs
 
-    shredded_in_seqs = shred_seqs(seqs_dict=in_seqs_dict, part_l=part_l, parts_ov=parts_ov)
-    seqs_to_scan_dict = OrderedDict()
-    for seq_id in shredded_in_seqs:
-        i = 0
-        for seq in shredded_in_seqs[seq_id]:
-            start = i*(part_l-parts_ov)
-            seqs_to_scan_dict[seq_id + "|:" + str(start+1) + "-" + str(start+part_l)] = seq
-            i += 1
-    dump_fasta_dict(fasta_dict=seqs_to_scan_dict, fasta_path=shredded_fasta_path)
-    return shredded_fasta_path
-
-
-def shred_seqs(seqs_dict, part_l=50000, parts_ov=5000):
     shredded_seqs = defaultdict(list)
     for seq_id in seqs_dict:
         i = 0
@@ -665,7 +652,19 @@ def shred_seqs(seqs_dict, part_l=50000, parts_ov=5000):
             else:
                 shredded_seqs[seq_id].append(seqs_dict[seq_id][i:])
             i += part_l
-    return shredded_seqs
+
+    shredded_seqs_dict = OrderedDict()
+    if shredded_seqs_path is not None:
+        for seq_id in shredded_seqs:
+            i = 0
+            for seq in shredded_seqs[seq_id]:
+                start = i * (part_l - parts_ov)
+                shredded_seqs_dict[seq_id + "|:" + str(start + 1) + "-" + str(start + part_l)] = seq
+                i += 1
+        SeqsDict.load_from_dict(shredded_seqs_dict).dump(shredded_seqs_path)
+        return shredded_seqs_path
+    else:
+        return shredded_seqs
 
 
 def load_fasta_to_dict(fasta_path, low_memory="auto", **kwargs):
