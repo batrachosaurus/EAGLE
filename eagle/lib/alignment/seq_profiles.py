@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from eagle.constants import conf_constants
 from eagle.lib.general import generate_random_string, join_files
-from eagle.lib.seqs import SeqsDict
+from eagle.lib.seqs import SeqsDict, shred_seqs
 from eagle.lib.alignment.mult_aln import MultAln
 from eagledb.scheme import SeqsProfileInfo
 
@@ -75,7 +75,20 @@ class SeqsProfile(object):
                    method=method, hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir,
                    tmp_dir=tmp_dir, logger=logger)
 
-    def search(self, seqdb, threads=1, shred_seqdb=False):
+    def search(self, seqdb, out_path=None, threads=1, shred_seqdb=False, **kwargs):
+        read_output = kwargs.get("read_output", False)
+        if out_path is None:
+            out = os.path.splitext(self.path)[0] + "_out_%s.psr" % generate_random_string(10)
+            read_output = True
+        if shred_seqdb:
+            prepared_seqdb = shred_seqs(seqdb)
+        else:
+            prepared_seqdb = seqdb
+
+        if self.method.lower() == HMMER_KEY:
+            pass
+        if self.method.lower() == INFERNAL_KEY:
+            pass
         return
 
     @property
