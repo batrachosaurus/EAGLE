@@ -631,7 +631,7 @@ def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
             return str(Seq(fasta_dict[seq_id][end-1: start]).reverse_complement())
 
 
-def shred_seqs(seqs, part_l=50000, parts_ov=5000, shredded_seqs_path=None):
+def shred_seqs(seqs, part_l=50000, parts_ov=5000, shredded_seqs_fasta=None):
     if isinstance(seqs, str) and os.path.exists(seqs):
         seqs_dict = SeqsDict.load_from_file(seqs, format="fasta")
     else:
@@ -654,15 +654,15 @@ def shred_seqs(seqs, part_l=50000, parts_ov=5000, shredded_seqs_path=None):
             i += part_l
 
     shredded_seqs_dict = OrderedDict()
-    if shredded_seqs_path is not None:
+    if shredded_seqs_fasta is not None:
         for seq_id in shredded_seqs:
             i = 0
             for seq in shredded_seqs[seq_id]:
                 start = i * (part_l - parts_ov)
                 shredded_seqs_dict[seq_id + "|:" + str(start + 1) + "-" + str(start + part_l)] = seq
                 i += 1
-        SeqsDict.load_from_dict(shredded_seqs_dict).dump(shredded_seqs_path)
-        return shredded_seqs_path
+        SeqsDict.load_from_dict(shredded_seqs_dict).dump(shredded_seqs_fasta, format="fasta")
+        return shredded_seqs_fasta
     else:
         return shredded_seqs
 

@@ -3,6 +3,8 @@ import shutil
 import subprocess
 from collections import defaultdict
 
+from Bio.SearchIO.HmmerIO.hmmer3_text import Hmmer3TextParser
+
 from eagle.constants import conf_constants
 from eagle.lib.general import generate_random_string, join_files
 from eagle.lib.seqs import SeqsDict, shred_seqs
@@ -78,15 +80,35 @@ class SeqsProfile(object):
     def search(self, seqdb, out_path=None, threads=1, shred_seqdb=False, **kwargs):
         read_output = kwargs.get("read_output", False)
         if out_path is None:
-            out = os.path.splitext(self.path)[0] + "_out_%s.psr" % generate_random_string(10)
+            out_path = os.path.splitext(self.path)[0] + "_out_%s.psr" % generate_random_string(10)
             read_output = True
-        if shred_seqdb:
-            prepared_seqdb = shred_seqs(seqdb)
-        else:
-            prepared_seqdb = seqdb
 
         if self.method.lower() == HMMER_KEY:
-            pass
+            if not os.path.exists(self.tmp_dir):
+                os.makedirs(self.tmp_dir)
+            if shred_seqdb:  # I don't know if this this functional is needed for all methods
+                prepared_seqdb = shred_seqs(seqdb, shredded_seqs_fasta=os.path.join(self.tmp_dir, "seqdb_shred.fasta"),
+                                            part_l=50000, parts_ov=5000)
+            else:
+                prepared_seqdb = seqdb
+
+            if isinstance(prepared_seqdb, SeqsDict):
+                seqdb_path = prepared_seqdb.dump(os.path.join(self.tmp_dir, "seqdb_to_search.fasta"), format="fasta")
+            else:
+                seqdb_path = prepared_seqdb
+
+            hmmsearch_cmd = os.path.join(self.hmmer_inst_dir, "hmmsearch") + \
+                            " " + self.path + \
+                            " " + seqdb_path + \
+                            " --cpu " + str(threads)
+            subprocess.call(hmmsearch_cmd, shell=True)
+            shutil.rmtree(self.tmp_dir, ignore_errors=True)
+            if read_output:
+                with open(out_path) as out_f:
+                    return Hmmer3TextParser(out_f)
+            else:
+                return out_path
+
         if self.method.lower() == INFERNAL_KEY:
             pass
         return
@@ -98,107 +120,77 @@ class SeqsProfile(object):
 
 class SeqProfilesDB(object):
 
+    def __init__(self, name:str, method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None,
+                 tmp_dir=None, logger=None):
+        self.name = name
+
+        if hmmer_inst_dir is None:
+            hmmer_inst_dir = conf_constants.hmmer_inst_dir
+        if infernal_inst_dir is None:
+            infernal_inst_dir = conf_constants.infernal_inst_dir
+        if tmp_dir is None:
+            tmp_dir = self.name.split(".")[0] + "_%s_tmp" % generate_random_string(10)
+
+        self.method = method
+        self.hmmer_inst_dir = hmmer_inst_dir
+        self.infernal_inst_dir = infernal_inst_dir
+        self.tmp_dir = tmp_dir
+        self.logger = logger
+
     @classmethod
     def build(cls, profiles, name, method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None,
               tmp_dir=None, logger=None, **kwargs):
-        return cls()
+        profile_paths = list()
+        for profile_info in profiles:
+            if isinstance(profile_info, SeqsProfileInfo):
+                profile_paths.append(profile_info.path)
+            elif isinstance(profile_info, dict):
+                profile_paths.append(SeqsProfileInfo.load_from_dict(profile_info).path)
+            elif isinstance(profile_info, str) and os.path.exists(profile_info):
+                profile_paths.append(profile_info)
+        join_files(profile_paths, name)
 
-    def scan(self):
-        return
+        if method.lower() == HMMER_KEY:
+            hmmpress_cmd = os.path.join(hmmer_inst_dir, "hmmpress") + " " + name
+            subprocess.call(hmmpress_cmd, shell=True)
 
+        if method.lower() == INFERNAL_KEY:
+            pass
 
-class HMMERHandler(object):
+        return cls(name=name, method=method, hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir,
+                   tmp_dir=tmp_dir, logger=logger)
 
-    def __init__(self, inst_dir=None, seqdb=None, profiles_db=None, tmp_dir=None, logger=None):
-        if inst_dir is None:
-            inst_dir = conf_constants.hmmer_inst_dir
-        if tmp_dir is None:
-            tmp_dir = generate_random_string(10) + "_hmmer_tmp"
-
-        self.inst_dir = inst_dir
-        self.seqdb = seqdb
-        self.profiles_db = profiles_db
-        self.logger = logger
-        self.tmp_dir = tmp_dir
-
-    def build_hmm_profile(self, profile_path, in_aln_path):###  in_aln - MultAln?
-        hmmbuild_cmd = os.path.join(self.inst_dir, "hmmbuild") + " " + profile_path + " " + in_aln_path
-        subprocess.call(hmmbuild_cmd, shell=True)
-        return profile_path
-
-    def make_profiles_db(self, profiles_list, profiles_db_path):
-        join_files(profiles_list, profiles_db_path)### profiles list should contain ProfileInfo instancies
-        hmmpress_cmd = os.path.join(self.inst_dir, "hmmpress") + " " + profiles_db_path
-        subprocess.call(hmmpress_cmd, shell=True)
-
-    def run_hmmsearch(self, in_profile_path, seqdb=None, out_path=None, cpu=1, shred_seqdb=False):
-        if not os.path.exists(self.tmp_dir):
-            os.makedirs(self.tmp_dir)
-        if shred_seqdb:
-            seqdb_path = shred_fasta(in_fasta=seqdb,
-                                     shredded_fasta_path=os.path.join(self.tmp_dir, os.path.basename(seqdb)),
-                                     part_l=50000,
-                                     parts_ov=5000,)
-        elif isinstance(seqdb, SeqsDict):
-            seqdb_path = seqdb.dump(os.path.join(self.tmp_dir, "seqdb_to_search.fasta"))
-        else:
-            seqdb_path = seqdb
+    def scan(self, in_seqs, num_threads=4, out_path=None, shred_in_seqs=False, **kwargs):
+        read_output = kwargs.get("read_output", False)
         if out_path is None:
-            read_hsr = True
-            out_path = os.path.splitext(in_profile_path) + ".hsr"
-        else:
-            read_hsr = False
-        hmmsearch_cmd = os.path.join(self.inst_dir, "hmmsearch") + \
-                        " " + in_profile_path + \
-                        " " + seqdb_path + \
-                        " --cpu " + str(cpu)
-        subprocess.call(hmmsearch_cmd, shell=True)
-        shutil.rmtree(self.tmp_dir, ignore_errors=True)
-        if read_hsr:
-            return self.read_hsr(hsr_path=out_path, is_shred=shred_seqdb)
-        else:
-            return out_path
+            out_path = os.path.splitext(self.name)[0] + "_out_%s.psr" % generate_random_string(10)
+            read_output = True
 
-    def run_hmmscan(self, profiles_db, in_seqs, num_threads=4, out_path=None, shred_in_fasta=False):
-        if not os.path.exists(self.tmp_dir):
-            os.makedirs(self.tmp_dir)
-        if shred_in_fasta:
-            in_fasta_path = shred_fasta(in_fasta=in_seqs,
-                                        shredded_fasta_path=os.path.join(self.tmp_dir, os.path.basename(in_seqs)),
-                                        part_l=50000,
-                                        parts_ov=5000)
-        elif isinstance(in_seqs, SeqsDict):
-            in_fasta_path = in_seqs.dump(os.path.join(self.tmp_dir, "seqfile_to_scan.fasta"))
-        else:
-            in_fasta_path = in_seqs
-        if out_path is None:
-            read_hsr = True
-            if "." in in_seqs:
-                out_path = ".".join(in_seqs.split(".")[:-1]) + ".hsr"
+        if self.method.lower() == HMMER_KEY:
+            if not os.path.exists(self.tmp_dir):
+                os.makedirs(self.tmp_dir)
+            if shred_in_seqs:  # I don't know if this this functional is needed for all methods
+                prepared_in_seqs = shred_seqs(in_seqs,
+                                              shredded_seqs_fasta=os.path.join(self.tmp_dir, "in_seqs_shred.fasta"),
+                                              part_l=50000, parts_ov=5000)
             else:
-                out_path = in_seqs + ".hsr"
-        else:
-            read_hsr = False
-        hmmscan_cmd = os.path.join(self.inst_dir, "hmmscan") + " --cpu " + str(num_threads) + " " + profiles_db + " " +\
-                      in_fasta_path + " > " + out_path
-        subprocess.call(hmmscan_cmd, shell=True)
-        shutil.rmtree(self.tmp_dir, ignore_errors=True)
-        if read_hsr:
-            return self.read_hsr(hsr_path=out_path, is_shred=shred_in_fasta)
-        else:
-            return out_path
+                prepared_in_seqs = in_seqs
 
+            if isinstance(prepared_in_seqs, SeqsDict):
+                in_seqs_path = prepared_in_seqs.dump(os.path.join(self.tmp_dir, "seqs_to_scan.fasta"), format="fasta")
+            else:
+                in_seqs_path = prepared_in_seqs
+            hmmscan_cmd = os.path.join(self.hmmer_inst_dir, "hmmscan") + \
+                          " --cpu " + str(num_threads) + " " + self.name + " " + \
+                          in_seqs_path + " > " + out_path
+            subprocess.call(hmmscan_cmd, shell=True)
+            shutil.rmtree(self.tmp_dir, ignore_errors=True)
+            if read_output:
+                with open(out_path) as out_f:
+                    return Hmmer3TextParser(out_f)
+            else:
+                return out_path
 
-class InfernalHandler(object):
-
-    def __init__(self, inst_dir=None, seqdb=None, profiles_db=None, tmp_dir=None, logger=None):
-        if inst_dir is None:
-            inst_dir = conf_constants.infernal_inst_dir
-        if tmp_dir is None:
-            tmp_dir = generate_random_string(10) + "_infernal_tmp"
-
-        self.inst_dir = inst_dir
-        self.seqdb = seqdb
-        self.profiles_db = profiles_db
-        self.logger = logger
-        self.tmp_dir = tmp_dir
+        if self.method.lower() == INFERNAL_KEY:
+            pass
+        return
