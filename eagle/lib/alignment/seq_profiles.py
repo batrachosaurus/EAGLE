@@ -57,7 +57,7 @@ class SeqsProfile(object):
         if tmp_dir is None:
             tmp_dir = path.split(".")[0] + "_%s_tmp" % generate_random_string(10)
 
-        if method.lower() == HMMER_KEY:
+        if method.lower() in (HMMER_KEY, INFERNAL_KEY):
             os.makedirs(tmp_dir)
             if isinstance(mult_aln, str) and os.path.exists(mult_aln):
                 mult_aln_path = mult_aln
@@ -66,12 +66,13 @@ class SeqsProfile(object):
             else:
                 raise ValueError("the value for argument 'mult_aln' should be an instance of "
                                  "class eagle.lib.alignment.MultAln or path to a file with the alignment")
-            hmmbuild_cmd = os.path.join(hmmer_inst_dir, "hmmbuild") + " " + path + " " + mult_aln_path
-            subprocess.call(hmmbuild_cmd, shell=True)
-            shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        if method.lower() == INFERNAL_KEY:
-            pass
+            if method.lower() == HMMER_KEY:
+                build_cmd = os.path.join(hmmer_inst_dir, "hmmbuild") + " " + path + " " + mult_aln_path
+            if method.lower() == INFERNAL_KEY:
+                build_cmd = os.path.join(infernal_inst_dir, "cmbuild") + " " + path + " " + mult_aln_path
+            subprocess.call(build_cmd, shell=True)
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
         return cls(SeqsProfileInfo(name=name, path=path, seq_type=mult_aln.seqs_type, weight=weight),
                    method=method, hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir,
@@ -83,7 +84,7 @@ class SeqsProfile(object):
             out_path = os.path.splitext(self.path)[0] + "_out_%s.psr" % generate_random_string(10)
             read_output = True
 
-        if self.method.lower() == HMMER_KEY:
+        if self.method.lower() in (HMMER_KEY, INFERNAL_KEY):
             if not os.path.exists(self.tmp_dir):
                 os.makedirs(self.tmp_dir)
             if shred_seqdb:  # I don't know if this this functional is needed for all methods
@@ -97,20 +98,23 @@ class SeqsProfile(object):
             else:
                 seqdb_path = prepared_seqdb
 
-            hmmsearch_cmd = os.path.join(self.hmmer_inst_dir, "hmmsearch") + \
-                            " " + self.path + \
-                            " " + seqdb_path + \
-                            " --cpu " + str(threads)
-            subprocess.call(hmmsearch_cmd, shell=True)
+            if self.method.lower() == HMMER_KEY:
+                search_cmd = os.path.join(self.hmmer_inst_dir, "hmmsearch") + \
+                             " " + self.path + \
+                             " " + seqdb_path + \
+                             " --cpu " + str(threads)
+            if self.method.lower() == INFERNAL_KEY:
+                search_cmd = os.path.join(self.infernal_inst_dir, "cmsearch") + \
+                             " " + self.path + \
+                             " " + seqdb_path + \
+                             " --cpu " + str(threads)
+            subprocess.call(search_cmd, shell=True)
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
             if read_output:
                 with open(out_path) as out_f:
-                    return Hmmer3TextParser(out_f)
+                    return Hmmer3TextParser(out_f)  # TODO: check if it works for Infernal
             else:
                 return out_path
-
-        if self.method.lower() == INFERNAL_KEY:
-            pass
         return
 
     @property
@@ -153,9 +157,9 @@ class SeqProfilesDB(object):
         if method.lower() == HMMER_KEY:
             hmmpress_cmd = os.path.join(hmmer_inst_dir, "hmmpress") + " " + name
             subprocess.call(hmmpress_cmd, shell=True)
-
         if method.lower() == INFERNAL_KEY:
-            pass
+            cmpress_cmd = os.path.join(infernal_inst_dir, "cmmpress") + " " + name
+            subprocess.call(cmpress_cmd, shell=True)
 
         return cls(name=name, method=method, hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir,
                    tmp_dir=tmp_dir, logger=logger)
@@ -166,7 +170,7 @@ class SeqProfilesDB(object):
             out_path = os.path.splitext(self.name)[0] + "_out_%s.psr" % generate_random_string(10)
             read_output = True
 
-        if self.method.lower() == HMMER_KEY:
+        if self.method.lower() in (HMMER_KEY, INFERNAL_KEY):
             if not os.path.exists(self.tmp_dir):
                 os.makedirs(self.tmp_dir)
             if shred_in_seqs:  # I don't know if this this functional is needed for all methods
@@ -180,17 +184,20 @@ class SeqProfilesDB(object):
                 in_seqs_path = prepared_in_seqs.dump(os.path.join(self.tmp_dir, "seqs_to_scan.fasta"), format="fasta")
             else:
                 in_seqs_path = prepared_in_seqs
-            hmmscan_cmd = os.path.join(self.hmmer_inst_dir, "hmmscan") + \
-                          " --cpu " + str(num_threads) + " " + self.name + " " + \
-                          in_seqs_path + " > " + out_path
-            subprocess.call(hmmscan_cmd, shell=True)
+
+            if self.method.lower() == HMMER_KEY:
+                scan_cmd = os.path.join(self.hmmer_inst_dir, "hmmscan") + \
+                           " --cpu " + str(num_threads) + " -o " + out_path + \
+                           " " + self.name + " " + in_seqs_path
+            if self.method.lower() == INFERNAL_KEY:
+                scan_cmd = os.path.join(self.infernal_inst_dir, "cmscan") + \
+                           " --cpu " + str(num_threads) + " -o " + out_path + \
+                           " " + self.name + " " + in_seqs_path
+            subprocess.call(scan_cmd, shell=True)
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
             if read_output:
                 with open(out_path) as out_f:
-                    return Hmmer3TextParser(out_f)
+                    return Hmmer3TextParser(out_f)  # TODO: check if it works for Infernal (and for scan)
             else:
                 return out_path
-
-        if self.method.lower() == INFERNAL_KEY:
-            pass
         return

@@ -12,7 +12,8 @@ from scipy.stats import gmean
 from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
-from eagle.lib.general import generate_random_string, send_log_message, fullmatch_regexp_list, revert_dict
+from eagle.lib.general import generate_random_string, fullmatch_regexp_list, revert_dict
+from eagle.lib.logging import send_log_message
 from eagle.lib.seqs import SeqsDict, load_fasta_to_dict, nucl_accord_prot, reduce_seq_names
 from eagle.lib.phylo import DistanceMatrix, run_fastme
 

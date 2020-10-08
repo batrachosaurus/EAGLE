@@ -6,7 +6,8 @@ import multiprocessing as mp
 from Bio.Blast import NCBIXML
 
 from eagle.constants import conf_constants
-from eagle.lib.general import send_log_message, generate_random_string, join_files
+from eagle.lib.general import generate_random_string, join_files
+from eagle.lib.logging import send_log_message
 from eagle.lib.seqs import SeqsDict
 
 

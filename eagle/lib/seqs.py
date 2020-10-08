@@ -10,8 +10,8 @@ import numpy as np
 from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
-from eagle.lib.general import generate_random_string, np_memmap_astype, filter_list, get_un_fix, send_log_message, \
-    revert_dict
+from eagle.lib.general import generate_random_string, np_memmap_astype, filter_list, get_un_fix, revert_dict
+from eagle.lib.logging import send_log_message
 
 
 class SeqsDict(object):

@@ -6,6 +6,7 @@ MUSCLE
 MAFFT  
 MSAProbs  
 HMMER3  
+Infernal >= 1.1.2
 EMBOSS + PHYLIPNEW (EMBASSY package)  
 FastME >= 2.0  
 Blast+  
