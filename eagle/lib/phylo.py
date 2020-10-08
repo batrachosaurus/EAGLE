@@ -11,7 +11,8 @@ import dendropy
 from deprecated import deprecated
 
 from eagle.constants import conf_constants
-from eagle.lib.general import ConfBase, filter_list, generate_random_string, send_log_message, fullmatch_regexp_list
+from eagle.lib.general import filter_list, generate_random_string, fullmatch_regexp_list
+from eagle.lib.logging import send_log_message
 from eagle.lib.seqs import reduce_seq_names, dump_fasta_dict
 
 

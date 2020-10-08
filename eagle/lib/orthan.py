@@ -6,9 +6,11 @@ import numpy as np
 import pandas as pd
 
 from eagle.constants import conf_constants
-from eagle.lib.general import send_log_message, join_files, process_worker
+from eagle.lib.general import join_files
+from eagle.lib.workers import process_worker
+from eagle.lib.logging import send_log_message
 from eagle.lib.seqs import SeqsDict, read_blast_out, get_orfs
-from eagle.lib.alignment import MultAln, BlastHandler, search_profile
+from eagle.lib.alignment import MultAln
 from eagle.lib.phylo import PhyloTree, compare_trees
 from eagledb.scheme import GenomeInfo, SeqProfileInfo
 

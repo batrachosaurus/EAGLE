@@ -1,15 +1,9 @@
-import logging
 import os
+import configparser
 
-from eagle.lib.general import ConfBase, get_redis_server, setup_logging
 
 CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_DIR = os.path.join(CONSTANTS_PATH, "tests")
-CONF_DIR_NAME = 'configs'
-CONF_DIR_PATH = os.path.join(CONSTANTS_PATH, CONF_DIR_NAME)
-DEFAULT_CONFIG = os.path.join(CONF_DIR_PATH, "default_config.ini")
-LOG_CONFIG_NAME = 'log_conf.yaml'
-LOGGER_NAME = 'EAGLE_logger'
 
 # inner names (not configurable)
 DB_INFO_NAME = "db_info.json"
@@ -17,13 +11,10 @@ PROFILES_SCAN_OUT = "profiles_scan.hsr"
 ORF_ALNS_DIR = "orf_alignments"
 ORF_TREES_DIR = "orf_homolog_trees"
 
-setup_logging(os.path.join(CONF_DIR_PATH, LOG_CONFIG_NAME))
-eagle_logger = logging.getLogger(LOGGER_NAME)
 
+class ConfConstants(object):
 
-class ConfConstants(ConfBase):
-
-    def __init__(self, config_path=DEFAULT_CONFIG):
+    def __init__(self):
         # GENERAL
         self.num_threads = 4
         self.redis_host = 'localhost'
@@ -51,10 +42,8 @@ class ConfConstants(ConfBase):
         self.btax_det_method = "hmmer"
         self.min_orf_l = 300  # 100 amino acids
 
-        super(ConfConstants, self).__init__(config_path=config_path)
-
-    def get_redis_server(self, restart=True):
-        eagle_logger.info(get_redis_server(self.redis_host, self.redis_port, restart=restart))
+    def update_by_config(self, config_path):
+        pass
 
 
 conf_constants = ConfConstants()

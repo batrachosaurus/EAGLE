@@ -13,11 +13,13 @@ import pandas
 
 from eagle.constants import eagle_logger, conf_constants, DB_INFO_NAME
 from eagle.lib.alignment import construct_mult_aln, MultAln
-from eagle.lib.general import process_worker, get_un_fix, bool_from_str
+from eagle.lib.general import get_un_fix, bool_from_str
+from eagle.lib.workers import process_worker
 from eagle.lib.phylo import build_tree_by_dist, DistanceMatrix
 from eagle.lib.seqs import load_fasta_to_dict, reduce_seq_names
 from eagledb import join_genomes_lists
-from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BACT_FAM_F_NAME, conf_constants_db, \
+from eagledb.constants import conf_constants as conf_constants_db
+from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BACT_FAM_F_NAME,\
     REFSEQ_BACTERIA_TABLE, GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME, \
     BACTERIA_GLOBAL_DIST_MATRIX, BACTERIA_SHORT_TO_FULL_ORG_NAMES, BTAX_JSON_NAME, BACTERIA_REFSEQ_SUMMARY_LINK, \
     BACTERIA_GENBANK_SUMMARY_LINK

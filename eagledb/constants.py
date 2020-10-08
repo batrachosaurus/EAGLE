@@ -1,7 +1,5 @@
 import os
-
-from eagle.constants import DEFAULT_CONFIG
-from eagle.lib.general import ConfBase
+import configparser
 
 CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_DIR = os.path.join(CONSTANTS_PATH, "tests")
@@ -24,9 +22,9 @@ DEFAULT_BACTDB_DIR = os.path.join("EAGLEdb", "bacteria")
 PROFILES_DB_NAME = "db_repr_profiles"  # it is inner name (not configurable)
 
 
-class ConfConstants(ConfBase):
+class ConfConstants(object):
 
-    def __init__(self, config_path=DEFAULT_CONFIG):
+    def __init__(self):
         # Bacteria db
         self.only_repr = False
         self.btax_level = 4
@@ -34,7 +32,8 @@ class ConfConstants(ConfBase):
         self.k_min = 20
         self.btc_profile_aln_method = "MAFFT"
 
-        super(ConfConstants, self).__init__(config_path=config_path)
+    def update_by_config(self, config_path):
+        pass
 
 
-conf_constants_db = ConfConstants()
+conf_constants = ConfConstants()
