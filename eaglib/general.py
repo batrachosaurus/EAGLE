@@ -126,3 +126,10 @@ def download_file(file_link, download_dir="./", logger=None):
     else:
         subprocess.call("wget " + file_link + " -P " + download_dir + "/", shell=True)
     return os.path.join(download_dir, os.path.basename(file_link))
+
+
+def bool_from_str(string):
+    if str(string).lower() in ("0", "false", "f", "no", "n", "na", "none", "null"):
+        return False
+    else:
+        return True

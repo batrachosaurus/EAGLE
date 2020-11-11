@@ -12,10 +12,10 @@ from scipy.stats import gmean
 from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
-from eagle.lib.general import generate_random_string, fullmatch_regexp_list, revert_dict
-from eagle.lib.logging import send_log_message
-from eagle.lib.seqs import SeqsDict, load_fasta_to_dict, nucl_accord_prot, reduce_seq_names
-from eagle.lib.phylo import DistanceMatrix, run_fastme
+from eaglib.general import generate_random_string, fullmatch_regexp_list
+from eaglib.logging import send_log_message
+from eaglib.seqs import SeqsDict, load_fasta_to_dict, nucl_accord_prot
+from eaglib.phylo import DistanceMatrix, run_fastme
 
 
 class MultAln(SeqsDict):
@@ -122,7 +122,7 @@ class MultAln(SeqsDict):
 
     def _inplace(self, mult_aln):
         assert isinstance(mult_aln, MultAln), "ERROR: value for argument 'mult_aln' should be an instance of " \
-                                              "eagle.lib.alignment.MultAln class"
+                                              "eagle.eaglib.alignment.MultAln class"
         self.seqs_order = mult_aln.seqs_order
         self.seqs_array = mult_aln.seqs_array
         self._distance_matrix = None
@@ -442,7 +442,7 @@ class MultAln(SeqsDict):
             return filtered_aln
 
     def build_profile(self, profile_name=None, profile_path=None, method="hmmer", **kwargs):
-        from eagle.lib.alignment.seq_profiles import SeqsProfile
+        from eaglib.alignment.seq_profiles import SeqsProfile
 
         return SeqsProfile.build(mult_aln=self, method=method, name=profile_name, path=profile_path, **kwargs)
 

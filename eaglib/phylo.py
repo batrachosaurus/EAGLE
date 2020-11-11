@@ -11,9 +11,9 @@ import dendropy
 from deprecated import deprecated
 
 from eagle.constants import conf_constants
-from eagle.lib.general import filter_list, generate_random_string, fullmatch_regexp_list
-from eagle.lib.logging import send_log_message
-from eagle.lib.seqs import reduce_seq_names, dump_fasta_dict
+from eaglib.general import filter_list, generate_random_string, fullmatch_regexp_list
+from eaglib.logging import send_log_message
+from eaglib.seqs import reduce_seq_names, dump_fasta_dict
 
 
 class PhyloTree(object):
@@ -240,9 +240,9 @@ class DistanceMatrix(object):
         if options is None:
             options = dict()
 
-        from eagle.lib.alignment import MultAln
+        from eaglib.alignment import MultAln
         assert isinstance(mult_aln, MultAln), \
-            "Error: the value for mult_aln argument is not eagle.lib.alignment.MultAln object"
+            "Error: the value for mult_aln argument is not eagle.eaglib.alignment.MultAln object"
         return mult_aln.calculate_distance_matrix(method=method, options=options)
 
     @classmethod
@@ -382,7 +382,7 @@ def build_tree(source=None,
                logger=None,
                **kwargs):
 
-    from eagle.lib.alignment import MultAln
+    from eaglib.alignment import MultAln
 
     if "source_fasta" in kwargs:
         source = MultAln.load_from_file(kwargs["source_fasta"], format="fasta", logger=logger)

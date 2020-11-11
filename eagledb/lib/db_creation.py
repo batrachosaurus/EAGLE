@@ -9,10 +9,10 @@ import shutil
 from functools import reduce
 import operator
 
-
-from eagle.constants import conf_constants, eagle_logger
-from eagle.lib.general import join_files, gunzip, download_file
-from eagle.lib.alignment import BlastDB, SeqProfilesDB
+from eaglib.constants import conf_constants as conf_constants_lib
+from eaglib.logging import eagle_logger
+from eaglib.general import join_files, gunzip, download_file
+from eaglib.alignment import BlastDB, SeqProfilesDB
 from eagledb.constants import PROFILES_DB_NAME
 from eagledb.scheme import BtaxInfo, GenomeInfo
 
@@ -167,7 +167,7 @@ def transform_seq_id(fna_f, seq_id_dict, fna_to_orgs, **kwargs):
 
 def create_btax_blastdb(btax_fna_path, btax_name, db_dir, blast_inst_dir=None, logger=None):
     if blast_inst_dir is None:
-        blast_inst_dir = conf_constants.blast_inst_dir
+        blast_inst_dir = conf_constants_lib.blast_inst_dir
 
     blastdb_dir = os.path.join(db_dir, btax_name+"_blastdb")
     if not os.path.exists(blastdb_dir):

@@ -1,4 +1,4 @@
-# WARNING: this module cannot be imported in any eagle.lib module!
+# WARNING: this module cannot be imported in any eagle.eaglib module!
 import os
 import multiprocessing as mp
 
@@ -6,19 +6,19 @@ import numpy as np
 import pandas as pd
 
 from eagle.constants import conf_constants
-from eagle.lib.general import join_files
-from eagle.lib.workers import process_worker
-from eagle.lib.logging import send_log_message
-from eagle.lib.seqs import SeqsDict, read_blast_out, get_orfs
-from eagle.lib.alignment import MultAln
-from eagle.lib.phylo import PhyloTree, compare_trees
+from eaglib.general import join_files
+from eaglib.workers import process_worker
+from eaglib.logging import send_log_message
+from eaglib.seqs import SeqsDict, read_blast_out, get_orfs
+from eaglib.alignment import MultAln, BlastDB
+from eaglib.phylo import PhyloTree, compare_trees
 from eagledb.scheme import GenomeInfo, SeqProfileInfo
 
 
 def hom_search_blast(seqs_dict, genomes_list, blastdb_path=None, work_dir="./blast_search", low_memory="auto",
                      num_threads=None, blast_inst_dir=None, autoremove=True):
     assert isinstance(seqs_dict, SeqsDict), "ERROR: the value for 'seqs_dict' argument should be an object " \
-                                            "of eagle.lib.seqs.SeqsDict class"
+                                            "of eagle.eaglib.seqs.SeqsDict class"
 
     if num_threads is None:
         num_threads = conf_constants.num_threads
@@ -169,8 +169,8 @@ def _prepare_genome_db(genome_dict, fna_id2org, work_dir, seq_prot, seq_nucl, **
 
 def explore_ortho_group(homologs_mult_aln, remove_paralogs=True, ref_tree_newick=None, phylo_params=None, **kwargs):
     assert isinstance(homologs_mult_aln, MultAln), \
-        "ERROR: the value for 'homologs_mult_aln' argument is not an object of eagle.lib.alignment.MultAln class"
-    work_dir = kwargs.get("work_dir", "./")
+        "ERROR: the value for 'homologs_mult_aln' argument is not an object of eagle.eaglib.alignment.MultAln class"
+    work_dir = kwargs.get("work_dir", "/")
     ref_tree_full_names = kwargs.get("ref_tree_full_names", None)
     kaks_for_only_first = kwargs.get("kaks_for_only_first", False)
     orgs_tree = kwargs.get("orgs_tree", False)

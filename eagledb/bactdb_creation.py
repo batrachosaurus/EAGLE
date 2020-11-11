@@ -11,18 +11,19 @@ from collections import defaultdict
 import numpy as np
 import pandas
 
-from eagle.constants import eagle_logger, conf_constants, DB_INFO_NAME
-from eagle.lib.alignment import construct_mult_aln, MultAln
-from eagle.lib.general import get_un_fix, bool_from_str
-from eagle.lib.workers import process_worker
-from eagle.lib.phylo import build_tree_by_dist, DistanceMatrix
-from eagle.lib.seqs import load_fasta_to_dict, reduce_seq_names
+from eaglib.constants import conf_constants as conf_constants_lib
+from eaglib.logging import eagle_logger
+from eaglib.alignment import construct_mult_aln, MultAln
+from eaglib.general import get_un_fix, bool_from_str
+from eaglib.workers import process_worker
+from eaglib.phylo import build_tree_by_dist, DistanceMatrix
+from eaglib.seqs import load_fasta_to_dict, reduce_seq_names
 from eagledb import join_genomes_lists
-from eagledb.constants import conf_constants as conf_constants_db
+from eagledb.constants import conf_constants
 from eagledb.constants import BACTERIA_LIST_F_NAME, PREPARED_BACTERIA_F_NAME, BACT_FAM_F_NAME,\
     REFSEQ_BACTERIA_TABLE, GENBANK_BACTERIA_TABLE, DEFAULT_BACTDB_DIR, PROFILES_DB_NAME, \
     BACTERIA_GLOBAL_DIST_MATRIX, BACTERIA_SHORT_TO_FULL_ORG_NAMES, BTAX_JSON_NAME, BACTERIA_REFSEQ_SUMMARY_LINK, \
-    BACTERIA_GENBANK_SUMMARY_LINK
+    BACTERIA_GENBANK_SUMMARY_LINK, DB_INFO_NAME
 from eagledb.lib.db_creation import download_organism_files, clean_btax_data, download_btax_files, \
     create_btax_blastdb, generate_btax_profiles, create_profiles_db, get_btax_fna
 from eagledb.scheme import GenomeInfo, SeqProfileInfo, BtaxInfo, DBInfo
@@ -41,7 +42,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
 
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
-        conf_constants_db.update_by_config(config_path=config_path)
+        conf_constants_lib.update_by_config(config_path=config_path)
     if num_threads is not None:
         conf_constants.num_threads = num_threads
     if refseq_bacteria_table is None and genbank_bacteria_table is None:
@@ -146,7 +147,7 @@ def get_bacteria_from_ncbi(refseq_bacteria_table=None,
 
 
 def get_bacterium(ncbi_db_link, bacterium_name, is_repr, prepared_bacteria, db_dir, source_db=None, **kwargs):
-    if conf_constants_db.only_repr and not is_repr:
+    if conf_constants.only_repr and not is_repr:
         return
     assembly_id = ncbi_db_link.split("/")[-1]
     bacterium_info = GenomeInfo(genome_id=assembly_id,
@@ -332,7 +333,7 @@ def get_btax_dict(genomes_list,
 
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
-        conf_constants_db.update_by_config(config_path=config_path)
+        conf_constants_lib.update_by_config(config_path=config_path)
     if not num_threads:
         num_threads = conf_constants.num_threads
     else:
@@ -372,7 +373,7 @@ def get_btax_dict(genomes_list,
                                           aln_type=btc_profile_types[btc_profile_name],
                                           aln_name=btc_profile_name+"_aln",
                                           tmp_dir=kwargs.get("aln_tmp_dir", "mult_aln_tmp"),
-                                          method=conf_constants_db.btc_profile_aln_method,
+                                          method=conf_constants.btc_profile_aln_method,
                                           num_threads=num_threads,
                                           logger=eagle_logger,
                                           op=15.0,
@@ -468,9 +469,9 @@ def get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs):
 def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
     # TODO: make it parallel
     if k_max is None:
-        k_max = conf_constants_db.k_max
+        k_max = conf_constants.k_max
     if k_min is None:
-        k_min = conf_constants_db.k_min
+        k_min = conf_constants.k_min
 
     assert isinstance(btax_dict, defaultdict) and btax_dict.default_factory is BtaxInfo, \
         "ERROR: the value for btax_dict should be defaultdict(BtaxInfo)"
@@ -543,7 +544,7 @@ def get_btax_dist(btax1_orgs, btax2_orgs, global_dist_matr):
 
 def filter_btax(btax_info, global_dist_matr, k_max=None):
     if k_max is None:
-        k_max = conf_constants_db.k_max
+        k_max = conf_constants.k_max
     assert isinstance(btax_info, BtaxInfo), \
         "ERROR: the value for btax_info parameter should be eagledb.scheme.setup_db.BtaxInfo object"
 
@@ -573,8 +574,8 @@ def filter_btax(btax_info, global_dist_matr, k_max=None):
 
 def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, config_path=None):
     if config_path:
+        conf_constants_lib.update_by_config(config_path=config_path)
         conf_constants.update_by_config(config_path=config_path)
-        conf_constants_db.update_by_config(config_path=config_path)
     if not num_threads:
         num_threads = conf_constants.num_threads
     else:
@@ -594,7 +595,7 @@ def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, con
         btax_info.blastdb = create_btax_blastdb(btax_fna_path=btax_info.btax_fna,
                                                 btax_name=btax_name,
                                                 db_dir=db_dir,
-                                                blast_inst_dir=conf_constants.blast_inst_dir,
+                                                blast_inst_dir=conf_constants_lib.blast_inst_dir,
                                                 logger=eagle_logger)
         if btr_profiles is not None:
             # create repr profile
@@ -606,15 +607,15 @@ def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, con
 def get_families_dict(bacteria_list, db_dir, num_threads=None, only_repr=False, config_path=None):
     if config_path:
         conf_constants.update_by_config(config_path=config_path)
-        conf_constants_db.update_by_config(config_path=config_path)
+        conf_constants_lib.update_by_config(config_path=config_path)
     if not num_threads:
         num_threads = conf_constants.num_threads
     else:
         conf_constants.num_threads = num_threads
     if not only_repr:
-        only_repr = conf_constants_db.only_repr
+        only_repr = conf_constants.only_repr
     else:
-        conf_constants_db.only_repr = only_repr
+        conf_constants.only_repr = only_repr
 
     families_dict = dict()
     for bacterium in bacteria_list:
@@ -724,9 +725,9 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
                                   aln_type=MultAln.nucl_type,
                                   aln_name=family_name+"_rRNA_aln",
                                   tmp_dir=tmp_fam_dir,
-                                  muscle_exec_path=conf_constants.muscle_exec_path,
-                                  emboss_inst_dir=conf_constants.emboss_inst_dir,
-                                  hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                                  muscle_exec_path=conf_constants_lib.muscle_exec_path,
+                                  emboss_inst_dir=conf_constants_lib.emboss_inst_dir,
+                                  hmmer_inst_dir=conf_constants_lib.hmmer_inst_dir,
                                   logger=eagle_logger)
     eagle_logger.info("%s rRNA alignment constructed" % family_name)
     rRNA_aln.short_to_full_seq_names = short_ids_dict
@@ -761,7 +762,7 @@ def prepare_family(family_name, family_data, bact_fam_f_path, db_dir, **kwargs):
     family_data["blastdb"] = create_btax_blastdb(btax_fna_path=family_data["fam_fna"],
                                                  btax_name=family_name,
                                                  db_dir=db_dir,
-                                                 blast_inst_dir=conf_constants.blast_inst_dir,
+                                                 blast_inst_dir=conf_constants_lib.blast_inst_dir,
                                                  logger=eagle_logger)
     # repr_alns = <function that builds alignments for set of representative genes (returns dict = {aln_name: MultAln object})>
     family_data["repr_profile"] = generate_btax_profiles(source={"16S_rRNA": rRNA_aln},
@@ -795,9 +796,9 @@ def create_bactdb(input_table_refseq=None,
 
     if config_path is not None:
         conf_constants.update_by_config(config_path=config_path)
-        conf_constants_db.update_by_config(config_path=config_path)
+        conf_constants_lib.update_by_config(config_path=config_path)
     if btax_level is not None:
-        conf_constants_db.btax_level = btax_level
+        conf_constants_lib.btax_level = btax_level
     if db_dir is None:
         db_dir = DEFAULT_BACTDB_DIR
     if db_root is not None:
@@ -848,7 +849,7 @@ def create_bactdb(input_table_refseq=None,
     # currently it is filled during get_bacteria_from_ncbi run - not good
 
     btax_dict = get_btax_dict(genomes_list=bacteria_list,
-                              btax_level=conf_constants_db.btax_level,
+                              btax_level=conf_constants.btax_level,
                               btc_profiles=btc_profiles,
                               btr_profiles=btr_profiles,
                               db_dir=db_dir,
@@ -863,7 +864,7 @@ def create_bactdb(input_table_refseq=None,
                                             db_dir=db_dir,
                                             profiles_db_name=PROFILES_DB_NAME,
                                             method="hmmer",
-                                            hmmer_inst_dir=conf_constants.hmmer_inst_dir,
+                                            hmmer_inst_dir=conf_constants_lib.hmmer_inst_dir,
                                             config_path=config_path,
                                             logger=eagle_logger)
     with open(os.path.join(db_dir, BTAX_JSON_NAME), "w") as btax_json_f:

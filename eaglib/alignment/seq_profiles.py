@@ -6,9 +6,9 @@ from collections import defaultdict
 from Bio.SearchIO.HmmerIO.hmmer3_text import Hmmer3TextParser
 
 from eagle.constants import conf_constants
-from eagle.lib.general import generate_random_string, join_files
-from eagle.lib.seqs import SeqsDict, shred_seqs
-from eagle.lib.alignment.mult_aln import MultAln
+from eaglib.general import generate_random_string, join_files
+from eaglib.seqs import SeqsDict, shred_seqs
+from eaglib.alignment.mult_aln import MultAln
 from eagledb.scheme import SeqsProfileInfo
 
 
@@ -65,7 +65,7 @@ class SeqsProfile(object):
                 mult_aln_path = mult_aln.dump(os.path.join(tmp_dir, name)+".fasta", format="fasta")
             else:
                 raise ValueError("the value for argument 'mult_aln' should be an instance of "
-                                 "class eagle.lib.alignment.MultAln or path to a file with the alignment")
+                                 "class eagle.eaglib.alignment.MultAln or path to a file with the alignment")
 
             if method.lower() == HMMER_KEY:
                 build_cmd = os.path.join(hmmer_inst_dir, "hmmbuild") + " " + path + " " + mult_aln_path

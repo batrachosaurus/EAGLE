@@ -10,8 +10,8 @@ import numpy as np
 from Bio.Seq import Seq
 
 from eagle.constants import conf_constants
-from eagle.lib.general import generate_random_string, np_memmap_astype, filter_list, get_un_fix, revert_dict
-from eagle.lib.logging import send_log_message
+from eaglib.general import generate_random_string, np_memmap_astype, filter_list, get_un_fix, revert_dict
+from eaglib.logging import send_log_message
 
 
 class SeqsDict(object):
@@ -118,7 +118,7 @@ class SeqsDict(object):
             if isinstance(nucl_seqs_dict, dict):
                 nucl_seqs_dict = SeqsDict.load_from_dict(nucl_seqs_dict)
             assert isinstance(nucl_seqs_dict, SeqsDict), "ERROR: the value for argument 'nucl_seqs_dict' should be " \
-                                                         "an instance of eagle.lib.seqs.SeqsDict"
+                                                         "an instance of eagle.eaglib.seqs.SeqsDict"
             self._nucl_seqs_dict = nucl_seqs_dict
 
     @property
@@ -521,7 +521,7 @@ class SeqsDict(object):
                            num_threads=None,
                            **kwargs):
 
-        from eagle.lib.alignment import MultAln
+        from eaglib.alignment import MultAln
 
         if muscle_exec_path is None:
             muscle_exec_path = conf_constants.muscle_exec_path
@@ -590,7 +590,7 @@ class SeqsDict(object):
         return mult_aln
 
     def to_blastdb(self, dbtype=None, db_name=None, blast_inst_dir=None, **kwargs):
-        from eagle.lib.alignment import BlastDB
+        from eaglib.alignment import BlastDB
 
         return BlastDB.make_blastdb(db_name=db_name,
                                     dbtype=dbtype,
@@ -600,10 +600,10 @@ class SeqsDict(object):
 
     def to_blast_search(self, blast_type, blast_db, out=None, num_threads=1, outfmt=7, max_hsps=100,
                         **kwargs):
-        from eagle.lib.alignment import BlastDB
+        from eaglib.alignment import BlastDB
 
         assert isinstance(blast_db, BlastDB), "ERROR: the value for argument 'blast_db' should be " \
-                                              "an instance of class eagle.lib.alignment.BlastDB"
+                                              "an instance of class eagle.eaglib.alignment.BlastDB"
         return blast_db.run_blast_search(blast_type=blast_type,
                                          query=self,
                                          out=out,

@@ -1,12 +1,10 @@
 import os
-import shutil
 import unittest
 
-from eagle.constants import TEST_DIR, eagle_logger
-from eagle.lib import general, alignment, phylo, seqs
+from eagle.constants import TEST_DIR
+from eagle.lib import general
 
-
-PACKAGE_DIR = 'lib'
+PACKAGE_DIR = 'eaglib'
 INPUT_DIR = os.path.join(TEST_DIR, 'test_data', PACKAGE_DIR)
 OUTPUT_DIR = os.path.join(TEST_DIR, 'test_results', PACKAGE_DIR)
 
