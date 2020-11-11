@@ -11,9 +11,11 @@ setup(name='EAGLE',
           "License :: OSI Approved :: MIT License",
           "Operating System :: OS Independent",
       ],
-      packages=find_packages(exclude=find_packages("Research").__add__(["eagle.tests", "eagledb.tests", "Research"])),
+      packages=find_packages(exclude=find_packages("Research") +
+                                     ["eagle.tests", "eaglib.tests", "eagledb.tests", "Research"]),
       package_data={'eagle': ['tests/*'],
-                    'eagle.lib.logging': ['eagle_log_conf.yml'],
+                    'eaglib': ['tests/*'],
+                    'eaglib.logging': ['eagle_log_conf.yml'],
                     'eagledb': ['org_tables/*', 'tests/*']},
       install_requires=[
           'wget >= 3.2',

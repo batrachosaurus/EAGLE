@@ -4,7 +4,7 @@ import sys
 
 import pandas
 
-from eagle.lib.general import download_file
+from eaglib.general import download_file
 from eagledb.constants import ORG_TABLES_DIR
 from eagledb.scheme import GenomeInfo  # may produce import error
 

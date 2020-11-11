@@ -3,12 +3,12 @@ import json
 import shutil
 import unittest
 
-from eagle.constants import eagle_logger
+from eaglib.logging import eagle_logger
 from eagledb.constants import TEST_DIR, PROFILES_DB_NAME, BTAX_JSON_NAME
 from eagledb.lib import db_creation
 
 
-PACKAGE_DIR = 'lib'
+PACKAGE_DIR = 'eaglib'
 INPUT_DIR = os.path.join(TEST_DIR, 'test_data', PACKAGE_DIR)
 OUTPUT_DIR = os.path.join(TEST_DIR, 'test_results', PACKAGE_DIR)
 

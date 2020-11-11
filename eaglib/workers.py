@@ -45,7 +45,7 @@ class AsyncWorker(object):
     def get_result(self, task_id):
         while True:
             task = self.tasks[task_id]
-            if task._state == "FINISHED":
+            if task.done():
                 break
             time.sleep(5)
         return task.result()
@@ -82,6 +82,7 @@ class ProcessPool(object):
             p_states[p_index] = 0
 
     def join(self, timeout=1):
+        time.sleep(timeout)
         is_running = True
         while is_running:
             is_running = False

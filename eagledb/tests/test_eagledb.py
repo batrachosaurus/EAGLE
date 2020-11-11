@@ -3,8 +3,9 @@ import json
 import shutil
 import unittest
 
-from eagle.constants import eagle_logger, conf_constants
-from eagledb.constants import TEST_DIR, CONSTANTS_PATH, conf_constants_db, BTAX_JSON_NAME, BACTERIA_LIST_F_NAME
+from eaglib.constants import conf_constants as conf_constants_lib
+from eaglib.logging import eagle_logger
+from eagledb.constants import TEST_DIR, CONSTANTS_PATH, conf_constants, BTAX_JSON_NAME, BACTERIA_LIST_F_NAME
 from eagledb.scheme import SeqProfileInfo
 from eagledb import bactdb_creation, files_utils
 
@@ -25,11 +26,11 @@ class TestBactDBCreation(unittest.TestCase):
                      "Aerococcaceae", "Abiotrophia", "Abiotrophia_defectiva"]
     test_org_name = "Abiotrophia_defectiva_ATCC_49176"
     test_genome_id = "GCF_000160075.2_ASM16007v2"
-    conf_constants.fastme_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "fastme")
-    conf_constants.msaprobs_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "msaprobs")
-    conf_constants_db.btc_profile_aln_method = "MAFFT"
-    conf_constants_db.k_max = 15
-    conf_constants_db.k_min = 10
+    conf_constants_lib.fastme_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "fastme")
+    conf_constants_lib.msaprobs_exec_path = os.path.join(os.path.dirname(CONSTANTS_PATH), "docker_build", "msaprobs")
+    conf_constants.btc_profile_aln_method = "MAFFT"
+    conf_constants.k_max = 15
+    conf_constants.k_min = 10
 
     def test_get_bacteria_from_ncbi(self, last_bact=20, use_prapared=True):
         if use_prapared:
