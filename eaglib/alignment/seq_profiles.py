@@ -9,7 +9,6 @@ from eagle.constants import conf_constants
 from eaglib.general import generate_random_string, join_files
 from eaglib.seqs import SeqsDict, shred_seqs
 from eaglib.alignment.mult_aln import MultAln
-from eagledb.scheme import SeqsProfileInfo  # TODO: move SeqsProfileInfo into eaglib
 
 
 HMMER_KEY = "hmmer"
@@ -206,3 +205,42 @@ class SeqProfilesDB(object):
             else:
                 return out_path
         return
+
+ 
+class SeqsProfileInfo(JsonEntry):
+
+    # json keys
+    name_key = "name"
+    path_key = "path"
+    seq_type_key = "type"
+    weight_key = "weight"
+
+    # default values
+    name_0 = None
+    path_0 = None
+    seq_type_0 = 'nucl'
+    weight_0 = 1.0
+
+    def __init__(self,
+                 name=name_0,
+                 path=path_0,
+                 seq_type=seq_type_0,
+                 weight=weight_0):
+
+        # attribute names must match keys form SeqProfileInfo.attr_scheme()
+        self.name = name
+        self.path = path
+        self.seq_type = seq_type
+        self.weight = weight
+
+    @classmethod
+    def attr_scheme(cls):
+        # json scheme (the keys must match attribute names defined in __init__)
+        # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
+        # don't include it to the result dict
+        return {
+            "name": (cls.name_key,),
+            "path": (cls.path_key,),
+            "seq_type": (cls.seq_type_key,),
+            "weight": (cls.weight_key,),
+        }
