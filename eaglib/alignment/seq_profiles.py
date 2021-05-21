@@ -9,7 +9,7 @@ from eagle.constants import conf_constants
 from eaglib.general import generate_random_string, join_files
 from eaglib.seqs import SeqsDict, shred_seqs
 from eaglib.alignment.mult_aln import MultAln
-from eagledb.scheme import SeqsProfileInfo
+from eagledb.scheme import SeqsProfileInfo  # TODO: move SeqsProfileInfo into eaglib
 
 
 HMMER_KEY = "hmmer"
