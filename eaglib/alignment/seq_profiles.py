@@ -5,6 +5,8 @@ from collections import defaultdict
 
 from Bio.SearchIO.HmmerIO.hmmer3_text import Hmmer3TextParser
 
+from jsondler import JsonEntry
+
 from eagle.constants import conf_constants
 from eaglib.general import generate_random_string, join_files
 from eaglib.seqs import SeqsDict, shred_seqs
