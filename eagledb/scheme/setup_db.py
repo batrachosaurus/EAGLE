@@ -5,6 +5,8 @@ from collections import defaultdict
 
 from jsondler import JsonEntry
 
+from eaglib.alignment import SeqsProfileInfo
+
 
 class GenomeInfo(JsonEntry):
 
@@ -85,45 +87,6 @@ class GenomeInfo(JsonEntry):
     @classmethod
     def org_name_from_dict(cls, in_dict):
         return in_dict["org_name"]
-
-
-class SeqsProfileInfo(JsonEntry):
-
-    # json keys
-    name_key = "name"
-    path_key = "path"
-    seq_type_key = "type"
-    weight_key = "weight"
-
-    # default values
-    name_0 = None
-    path_0 = None
-    seq_type_0 = 'nucl'
-    weight_0 = 1.0
-
-    def __init__(self,
-                 name=name_0,
-                 path=path_0,
-                 seq_type=seq_type_0,
-                 weight=weight_0):
-
-        # attribute names must match keys form SeqProfileInfo.attr_scheme()
-        self.name = name
-        self.path = path
-        self.seq_type = seq_type
-        self.weight = weight
-
-    @classmethod
-    def attr_scheme(cls):
-        # json scheme (the keys must match attribute names defined in __init__)
-        # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
-        # don't include it to the result dict
-        return {
-            "name": (cls.name_key,),
-            "path": (cls.path_key,),
-            "seq_type": (cls.seq_type_key,),
-            "weight": (cls.weight_key,),
-        }
 
 
 SeqProfileInfo = SeqsProfileInfo
