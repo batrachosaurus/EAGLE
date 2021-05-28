@@ -9,6 +9,8 @@ import psutil
 import numpy as np
 from Bio.Seq import Seq
 
+from jsondler import JsonEntry
+
 from eagle.constants import conf_constants
 from eaglib.general import generate_random_string, np_memmap_astype, filter_list, get_un_fix, revert_dict
 from eaglib.logging import send_log_message
@@ -918,3 +920,84 @@ def nucl_accord_prot(prot_seq, nucl_seq):
             nucl_seq_list.append(nucl_seq[i*3:(i+1)*3])
             i += 1
     return "".join(nucl_seq_list)
+
+
+class GenomeInfo(JsonEntry):
+
+    # json keys
+    genome_id_key = "genome_id"
+    org_name_key = "org_name"
+    taxonomy_key = "taxonomy"
+    ncbi_download_prefix_key = "ncbi_download_prefix"
+    fna_path_key = "fna_path"
+    fna_id_list_key = "fna_id_list"
+    btc_seqs_key = "btc_seqs"
+    btc_seqs_fasta_key = "fasta"
+    btc_seqs_id_key = "ids"
+    source_db_key = "source_db"
+    is_repr_key = "is_repr"
+
+    # default values
+    genome_id_0 = None
+    org_name_0 = None
+    taxonomy_0 = list()
+    ncbi_download_prefix_0 = None
+    fna_path_0 = None
+    fna_id_list_0 = list()
+    btc_seqs_fasta_0 = None
+    btc_seqs_id_0 = defaultdict(str)  # {btc_seq_id: btc_seq_profile_name}
+    source_db_0 = None
+    is_repr_0 = False
+
+    def __init__(self,
+                 genome_id=genome_id_0,
+                 org_name=org_name_0,
+                 taxonomy=None,
+                 ncbi_download_prefix=ncbi_download_prefix_0,
+                 fna_path=fna_path_0,
+                 fna_id_list=None,
+                 btc_seqs_fasta=btc_seqs_fasta_0,
+                 btc_seqs_id=None,
+                 source_db=source_db_0,
+                 is_repr=is_repr_0):
+
+        # attribute names must match keys form GenomeInfo.attr_scheme()
+        if taxonomy is None:
+            taxonomy = self.taxonomy_0
+        if fna_id_list is None:
+            fna_id_list = self.fna_id_list_0
+        if btc_seqs_id is None:
+            btc_seqs_id = self.btc_seqs_id_0
+        
+        self.genome_id = genome_id
+        self.org_name = org_name
+        self.taxonomy = taxonomy
+        self.ncbi_download_prefix = ncbi_download_prefix
+        self.fna_path = fna_path
+        self.fna_id_list = fna_id_list
+        self.btc_seqs_fasta = btc_seqs_fasta
+        self.btc_seqs_id = btc_seqs_id
+        self.source_db = source_db
+        self.is_repr = is_repr
+
+    @classmethod
+    def attr_scheme(cls):
+        # json scheme (the keys must match attribute names defined in __init__)
+        # CAUTION: if attribute is not defined in __init__ method (sublevel key in a json)
+        # don't include it to the result dict
+        return {
+            "genome_id": (cls.genome_id_key,),
+            "org_name": (cls.org_name_key,),
+            "taxonomy": (cls.taxonomy_key,),
+            "ncbi_download_prefix": (cls.ncbi_download_prefix_key,),
+            "fna_path": (cls.fna_path_key,),
+            "fna_id_list": (cls.fna_id_list_key,),
+            "btc_seqs_fasta": (cls.btc_seqs_key, cls.btc_seqs_fasta_key,),
+            "btc_seqs_id": (cls.btc_seqs_key, cls.btc_seqs_id_key,),
+            "source_db": (cls.source_db_key,),
+            "is_repr": (cls.is_repr_key,),
+        }
+
+    @classmethod
+    def org_name_from_dict(cls, in_dict):
+        return in_dict["org_name"]
