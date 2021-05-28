@@ -1,5 +1,5 @@
 # EAGLE - Essential and Advantageous Genes Location Explorer  
-### Now it works only for bacterial genomes
+### Currently it works only for bacterial genomes
 
 ## Requirements
 MUSCLE  
