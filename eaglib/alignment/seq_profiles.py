@@ -53,7 +53,12 @@ class SeqsProfile(object):
             else:
                 name = os.path.splitext(os.path.basename(path))[0]
         elif path is None:
-            path = name
+            if method.lower() == HMMER_KEY:
+                path = name + ".hmm"
+            elif method.lower() == INFERNAL_KEY:
+                path = name + ".cm"
+            else:
+                path = name
         if tmp_dir is None:
             tmp_dir = path.split(".")[0] + "_%s_tmp" % generate_random_string(10)
 
