@@ -9,7 +9,7 @@ from eagledb.constants import ORG_TABLES_DIR
 from eagledb.scheme import GenomeInfo  # may produce import error
 
 
-def are_bacteria_analyzed(bacteria_list_path=None, analyzed_bacteria_path=None):
+def are_bacteria_analyzed(bacteria_list_path=None, analyzed_bacteria_path=None):###
     if not bacteria_list_path and not analyzed_bacteria_path:
         try:
             bacteria_list_path = sys.argv[1]
