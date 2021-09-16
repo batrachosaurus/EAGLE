@@ -780,17 +780,17 @@ def create_bactdb_cmd():
     pass
 
 
-def create_bactdb(input_table_refseq=None,
-                  input_table_genbank=None,
-                  input_table_custom=None,
+def create_bactdb(input_table_refseq=None,#
+                  input_table_genbank=None,#
+                  input_table_custom=None,#
                   btax_level=None,
                   btax_class_profile=None,
                   btax_rep_profile=None,
                   db_dir=DEFAULT_BACTDB_DIR,
-                  db_root=None,  # TODO: implement this for console
+                  db_root=None,  #
                   num_threads=None,
-                  prepared_genomes=PREPARED_BACTERIA_F_NAME,
-                  prepared_genomes_info=None,
+                  prepared_genomes=PREPARED_BACTERIA_F_NAME,#
+                  prepared_genomes_info=None,#
                   config_path=None,
                   **kwargs):
 
