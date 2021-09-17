@@ -14,7 +14,7 @@ import wget
 import numpy as np
 
 
-def filter_list(in_list):  # This can be reduced with 'list(filter(lambda li: li.strip(), in_list))'
+def filter_list_(in_list):  # This can be reduced with 'list(filter(lambda li: li.strip(), in_list))'
     filtered_list = list()
     for elm_ in in_list:
         elm = None
@@ -24,7 +24,7 @@ def filter_list(in_list):  # This can be reduced with 'list(filter(lambda li: li
     return filtered_list
 
 
-def revert_dict(in_dict):  # This can be reduced with '{v: k for k, v in in_dict}'
+def revert_dict_(in_dict):  # This can be reduced with '{v: k for k, v in in_dict}'
     out_dict = OrderedDict()
     for key in in_dict:
         out_dict[in_dict[key]] = key
