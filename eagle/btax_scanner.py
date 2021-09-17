@@ -2,8 +2,7 @@ import os
 from collections import defaultdict
 
 from eagle.constants import conf_constants, PROFILES_SCAN_OUT
-from eagle.lib.logging import eagle_logger
-from eagle.lib.general import filter_list
+from eaglib.logging import eagle_logger
 
 
 def get_btax_name_cmd():
