@@ -9,11 +9,11 @@ from Bio.Data.CodonTable import TranslationError
 
 from eagle.btax_scanner import get_btax_name
 from eagle.constants import conf_constants, ORF_ALNS_DIR, ORF_TREES_DIR, DB_INFO_NAME
-from eagle.lib.logging import eagle_logger
-from eagle.lib.alignment import construct_mult_aln, get_kaks_gmean
-from eagle.lib.workers import process_worker
-from eagle.lib.seqs import get_orfs, load_fasta_to_dict, read_blast_out, parse_orf_id
-from eagle.lib.orthan import explore_ortho_group
+from eaglib.logging import eagle_logger
+from eaglib.alignment import construct_mult_aln, get_kaks_gmean
+from eaglib.workers import process_worker
+from eaglib.seqs import get_orfs, load_fasta_to_dict, read_blast_out, parse_orf_id
+from eaglib.orthan import explore_ortho_group
 from eagledb.scheme import BtaxInfo, DBInfo
 
 
