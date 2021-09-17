@@ -14,7 +14,7 @@ import wget
 import numpy as np
 
 
-def filter_list(in_list):
+def filter_list(in_list):  # This can be reduced with 'list(filter(lambda li: li.strip(), in_list))'
     filtered_list = list()
     for elm_ in in_list:
         elm = None
@@ -24,7 +24,7 @@ def filter_list(in_list):
     return filtered_list
 
 
-def revert_dict(in_dict):
+def revert_dict(in_dict):  # This can be reduced with '{v: k for k, v in in_dict}'
     out_dict = OrderedDict()
     for key in in_dict:
         out_dict[in_dict[key]] = key
@@ -48,7 +48,7 @@ def get_un_fix(un_num, fix_len):
         return un_codes[un_num//filled_rank] + get_un_fix(un_num % filled_rank, fix_len - 1)
 
 
-def join_files(in_files_list, out_file_path, files_transform=None, **kwargs):
+def join_files(in_files_list, out_file_path, files_transform=None, **kwargs):  # TODO: move to eaglib._utils.files
     if type(in_files_list) not in (list, tuple):
         if in_files_list == out_file_path:
             return 1
@@ -71,7 +71,7 @@ def join_files(in_files_list, out_file_path, files_transform=None, **kwargs):
     return out_file_path
 
 
-def gunzip(in_path, out_path, remove_input=True):
+def gunzip(in_path, out_path, remove_input=True):  # TODO: move to eaglib._utils.files
     with gzip.open(in_path, 'rb') as input_f_gz, \
             io.open(out_path, 'wb') as output_f:
         shutil.copyfileobj(input_f_gz, output_f)
@@ -80,7 +80,7 @@ def gunzip(in_path, out_path, remove_input=True):
         os.remove(in_path)
 
 
-def compare_files(f1_path, f2_path):
+def compare_files(f1_path, f2_path):  # TODO: move to eaglib._utils.files
     # returns True if files are equal else returns False
     f1 = open(f1_path, 'rb')
     f2 = open(f2_path, 'rb')
@@ -96,11 +96,11 @@ def compare_files(f1_path, f2_path):
     return True
 
 
-def generate_random_string(l=10):
+def generate_random_string(l=10):  # TODO: move to eaglib._utils.strings
     return "".join(random.choice(string.ascii_letters + string.digits) for i in range(l))
 
 
-def np_memmap_astype(dat_path, old_dtype, new_dtype, shape):
+def np_memmap_astype(dat_path, old_dtype, new_dtype, shape):  # TODO: move to eaglib._utils.types
     old_dat_path = dat_path+".old"
     shutil.move(dat_path, old_dat_path)
     memmap_array = np.memmap(dat_path, dtype=new_dtype, mode="w+", shape=shape)
@@ -110,11 +110,12 @@ def np_memmap_astype(dat_path, old_dtype, new_dtype, shape):
     return memmap_array
 
 
-def fullmatch_regexp_list(pattern, target_list):
+def fullmatch_regexp_list(pattern, target_list):  # TODO: move to eaglib._utils.strings
     return list(map(lambda x: re.fullmatch(pattern, x), target_list))
 
 
-def download_file(file_link, download_dir="./", logger=None):
+def download_file(file_link, download_dir="./", logger=None): # TODO: find more pythonic way; move to eaglib._utils.files
+
     if platform.system() == 'Windows':
         try:
             wget.download(file_link, out=download_dir)
@@ -128,7 +129,7 @@ def download_file(file_link, download_dir="./", logger=None):
     return os.path.join(download_dir, os.path.basename(file_link))
 
 
-def bool_from_str(string):
+def bool_from_str(string):  # TODO: move to eaglib._utils.types
     if str(string).lower() in ("0", "false", "f", "no", "n", "na", "none", "null"):
         return False
     else:
