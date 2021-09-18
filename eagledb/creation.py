@@ -10,7 +10,7 @@ def create_cmd():
 
 
 def create(db_dir: str,
-           orgs_table_path: str,
+           genomes_table_path: str,
            btax_class_profiles: Iterable,
            btax_repr_profiles: Iterable,
            btax_level=None,
