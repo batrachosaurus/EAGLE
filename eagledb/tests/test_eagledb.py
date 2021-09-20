@@ -4,11 +4,9 @@ import shutil
 import unittest
 
 from eaglib.constants import conf_constants as conf_constants_lib
-from eaglib.logging import eagle_logger
 from eagledb.constants import TEST_DIR, CONSTANTS_PATH, conf_constants, BTAX_JSON_NAME, BACTERIA_LIST_F_NAME
 from eagledb.scheme import SeqProfileInfo
-from eagledb import bactdb_creation, files_utils
-
+from eagledb import bactdb_creation
 
 PACKAGE_DIR = 'eagledb'
 INPUT_DIR = os.path.join(TEST_DIR, 'test_data', PACKAGE_DIR)

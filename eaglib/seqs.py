@@ -12,8 +12,9 @@ from Bio.Seq import Seq
 from jsondler import JsonEntry
 
 from eagle.constants import conf_constants
-from eaglib.general import generate_random_string, np_memmap_astype, filter_list, get_un_fix, revert_dict
-from eaglib.logging import send_log_message
+from eaglib.general import filter_list, revert_dict
+from eaglib._utils.strings import get_un_fix, generate_random_string
+from eaglib._utils.logging import send_log_message
 
 
 class SeqsDict(object):

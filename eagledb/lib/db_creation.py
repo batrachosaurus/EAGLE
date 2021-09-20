@@ -2,16 +2,10 @@
 
 import os
 import io
-import subprocess
 import urllib.request
-import gzip
-import shutil
-from functools import reduce
-import operator
 
 from eaglib.constants import conf_constants as conf_constants_lib
-from eaglib.logging import eagle_logger
-from eaglib.general import join_files, gunzip, download_file
+from eaglib._utils.files import join_files, gunzip, download_file
 from eaglib.alignment import BlastDB, SeqProfilesDB
 from eagledb.constants import PROFILES_DB_NAME
 from eagledb.scheme import BtaxInfo, GenomeInfo

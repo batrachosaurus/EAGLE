@@ -1,5 +1,3 @@
-# TODO: move this module to eaglib._utils
-
 import time
 import queue
 import random
