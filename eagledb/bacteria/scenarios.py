@@ -1,5 +1,8 @@
 import os
 import argparse
+from urllib.request import urlretrieve, urlopen
+
+import pandas as pd
 
 from eagledb.creation import create
 
@@ -20,7 +23,9 @@ def create_ncbi_cmd():
 def create_ncbi(db_name: str, db_dir=None, num_threads=None, config_path=None):
     # conf_constants update
 
-    bacteria_summary_link = BACTERIA_SUMMARY_LINKS[db_name.lower()]
+    pd.read_table(urlopen(BACTERIA_SUMMARY_LINKS[db_name.lower()]), sep="\t", header=1, dtype=str)
+
+
     # download BACTERIA_SUMMARY_LINK
     # prepare BACTERIA_SUMMARY
     # create(...)

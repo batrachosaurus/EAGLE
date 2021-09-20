@@ -2,16 +2,15 @@ import json
 import os
 import multiprocessing as mp
 
-import numpy as np
 import pandas as pd
 from Bio.Seq import Seq
 from Bio.Data.CodonTable import TranslationError
 
 from eagle.btax_scanner import get_btax_name
 from eagle.constants import conf_constants, ORF_ALNS_DIR, ORF_TREES_DIR, DB_INFO_NAME
-from eaglib.logging import eagle_logger
+from eaglib._utils.logging import eagle_logger
 from eaglib.alignment import construct_mult_aln, get_kaks_gmean
-from eaglib.workers import process_worker
+from eaglib._utils.workers import process_worker
 from eaglib.seqs import get_orfs, load_fasta_to_dict, read_blast_out, parse_orf_id
 from eaglib.orthan import explore_ortho_group
 from eagledb.scheme import BtaxInfo, DBInfo

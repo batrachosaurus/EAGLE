@@ -12,10 +12,11 @@ import numpy as np
 import pandas
 
 from eaglib.constants import conf_constants as conf_constants_lib
-from eaglib.logging import eagle_logger
+from eaglib._utils.logging import eagle_logger
 from eaglib.alignment import construct_mult_aln, MultAln
-from eaglib.general import get_un_fix, bool_from_str
-from eaglib.workers import process_worker
+from eaglib._utils.types import bool_from_str
+from eaglib._utils.strings import get_un_fix
+from eaglib._utils.workers import process_worker
 from eaglib.phylo import build_tree_by_dist, DistanceMatrix
 from eaglib.seqs import load_fasta_to_dict, reduce_seq_names
 from eagledb import join_genomes_lists

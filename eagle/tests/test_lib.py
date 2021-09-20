@@ -1,6 +1,7 @@
 import os
 import unittest
 
+import eaglib._utils.files
 from eagle.constants import TEST_DIR
 from eagle.lib import general
 
@@ -17,8 +18,10 @@ except OSError:
 class TestGeneral(unittest.TestCase):
 
     def test_compare_files(self):
-        self.assertTrue(general.compare_files(os.path.join(INPUT_DIR, "f1.txt"), os.path.join(INPUT_DIR, "f1.txt")))
-        self.assertFalse(general.compare_files(os.path.join(INPUT_DIR, "f1.txt"), os.path.join(INPUT_DIR, "f2.txt")))
+        self.assertTrue(
+            eaglib._utils.files.compare_files(os.path.join(INPUT_DIR, "f1.txt"), os.path.join(INPUT_DIR, "f1.txt")))
+        self.assertFalse(
+            eaglib._utils.files.compare_files(os.path.join(INPUT_DIR, "f1.txt"), os.path.join(INPUT_DIR, "f2.txt")))
 
 
 class TestAlignment(unittest.TestCase):

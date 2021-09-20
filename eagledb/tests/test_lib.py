@@ -1,9 +1,8 @@
 import os
 import json
-import shutil
 import unittest
 
-from eaglib.logging import eagle_logger
+from eaglib._utils.logging import eagle_logger
 from eagledb.constants import TEST_DIR, PROFILES_DB_NAME, BTAX_JSON_NAME
 from eagledb.lib import db_creation
 
