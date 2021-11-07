@@ -1,5 +1,6 @@
 # each path for DB file should be stored as relative path from db_dir
 # each time a DB file is used it should be accessed with os.path.join(db_dir, relative_f_path)
+
 import argparse
 from collections import Iterable
 
@@ -27,8 +28,8 @@ def create(db_dir: str,
         id
         name
         taxonomy - fixed positions list of taxonomic units
-        profile_seqs - list of paths to FASTA with sequences used for btc or btr profile building
-                       sequences can be joined into single file or distributed between several files
+        btc_seqs - list of paths to FASTA with sequences used for basic taxons classification
+                   sequences can be joined into single file or distributed between several files
         genome - list of paths or links to the genome files (FASTA or archived FASTA)
                  sequences can be joined into single file or distributed between several files
     :param btax_class_profiles:
