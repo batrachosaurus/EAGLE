@@ -12,7 +12,6 @@ from Bio.Seq import Seq
 from jsondler import JsonEntry
 
 from eagle.constants import conf_constants
-from eaglib.general import filter_list, revert_dict
 from eaglib._utils.strings import get_un_fix, generate_random_string
 from eaglib._utils.logging import send_log_message
 
@@ -134,7 +133,7 @@ class SeqsDict(object):
     def full_to_short_seq_names(self, full2short_dict):
         if isinstance(full2short_dict, dict):  # not exhaustive condition
             self._full_to_short_seq_names = full2short_dict
-            self._short_to_full_seq_names = revert_dict(full2short_dict)
+            self._short_to_full_seq_names = {v: k for k, v in full2short_dict}
         else:
             send_log_message(message="the value to assign should be a dict", mes_type="e", logger=self.logger)
 
@@ -147,7 +146,7 @@ class SeqsDict(object):
     @short_to_full_seq_names.setter
     def short_to_full_seq_names(self, short2full_dict):
         if isinstance(short2full_dict, dict):  # not exhaustive condition
-            self._full_to_short_seq_names = revert_dict(short2full_dict)
+            self._full_to_short_seq_names = {v: k for k, v in short2full_dict}
             self._short_to_full_seq_names = short2full_dict
         else:
             send_log_message(message="the value to assign should be a dict", mes_type="e", logger=self.logger)
@@ -714,7 +713,8 @@ def reduce_seq_names(fasta_dict, num_letters=10, num_words=4):
             seq_names_dict[seq_name] = seq_name
         else:
             reduced_seq_name = None
-            seq_name_list = filter_list("".join([splitters_repl.get(s, s) for s in seq_name]).split())
+            seq_name_list = list(filter(lambda li: li.strip(),
+                                        "".join([splitters_repl.get(s, s) for s in seq_name]).split()))
             parts = list()
             for i in range(num_words):
                 try:
@@ -929,57 +929,56 @@ class GenomeInfo(JsonEntry):
     genome_id_key = "genome_id"
     org_name_key = "org_name"
     taxonomy_key = "taxonomy"
-    ncbi_download_prefix_key = "ncbi_download_prefix"
-    fna_path_key = "fna_path"
-    fna_id_list_key = "fna_id_list"
-    btc_seqs_key = "btc_seqs"
-    btc_seqs_fasta_key = "fasta"
-    btc_seqs_id_key = "ids"
-    source_db_key = "source_db"
-    is_repr_key = "is_repr"
+    fna_seqs_key = "fna_seqs"
+    fna_seq_fasta_key = "fasta"
+    fna_seq_ids_key = "ids"
+    repr_seqs_key = "repr_seqs"  # repr - for example, btc or btr
+    repr_seq_fasta_key = "fasta"
+    repr_seq_id2profile_key = "id2profile"
+    extra_info_key = "extra_info"
 
     # default values
     genome_id_0 = None
     org_name_0 = None
     taxonomy_0 = list()
-    ncbi_download_prefix_0 = None
-    fna_path_0 = None
-    fna_id_list_0 = list()
-    btc_seqs_fasta_0 = None
-    btc_seqs_id_0 = defaultdict(str)  # {btc_seq_id: btc_seq_profile_name}
-    source_db_0 = None
-    is_repr_0 = False
+    fna_seq_fasta_0 = list()
+    fna_seq_ids_0 = list()
+    repr_seq_fasta_0 = list()
+    repr_seq_id2profile_0 = defaultdict(str)  # {repr_seq_id: repr_seq_profile_name}
+    extra_info_0 = dict()
 
     def __init__(self,
                  genome_id=genome_id_0,
                  org_name=org_name_0,
                  taxonomy=None,
-                 ncbi_download_prefix=ncbi_download_prefix_0,
-                 fna_path=fna_path_0,
-                 fna_id_list=None,
-                 btc_seqs_fasta=btc_seqs_fasta_0,
-                 btc_seqs_id=None,
-                 source_db=source_db_0,
-                 is_repr=is_repr_0):
+                 fna_seq_fasta=None,
+                 fna_seq_ids=None,
+                 repr_seq_fasta=None,
+                 repr_seq_id2profile=None,
+                 extra_info=None):
 
         # attribute names must match keys form GenomeInfo.attr_scheme()
         if taxonomy is None:
             taxonomy = self.taxonomy_0
-        if fna_id_list is None:
-            fna_id_list = self.fna_id_list_0
-        if btc_seqs_id is None:
-            btc_seqs_id = self.btc_seqs_id_0
+        if fna_seq_fasta is None:
+            fna_seq_fasta = self.fna_seq_fasta_0
+        if fna_seq_ids is None:
+            fna_seq_ids = self.fna_seq_ids_0
+        if repr_seq_fasta is None:
+            repr_seq_fasta = self.repr_seq_fasta_0
+        if repr_seq_id2profile is None:
+            repr_seq_id2profile = self.repr_seq_id2profile_0
+        if extra_info is None:
+            extra_info = self.extra_info_0
         
         self.genome_id = genome_id
         self.org_name = org_name
         self.taxonomy = taxonomy
-        self.ncbi_download_prefix = ncbi_download_prefix
-        self.fna_path = fna_path
-        self.fna_id_list = fna_id_list
-        self.btc_seqs_fasta = btc_seqs_fasta
-        self.btc_seqs_id = btc_seqs_id
-        self.source_db = source_db
-        self.is_repr = is_repr
+        self.fna_seq_fasta = fna_seq_fasta  # list of paths or links
+        self.fna_seq_ids = fna_seq_ids
+        self.repr_seq_fasta = repr_seq_fasta  # list of paths
+        self.repr_seq_id2profile = repr_seq_id2profile
+        self.extra_info = extra_info
 
     @classmethod
     def attr_scheme(cls):
@@ -990,13 +989,11 @@ class GenomeInfo(JsonEntry):
             "genome_id": (cls.genome_id_key,),
             "org_name": (cls.org_name_key,),
             "taxonomy": (cls.taxonomy_key,),
-            "ncbi_download_prefix": (cls.ncbi_download_prefix_key,),
-            "fna_path": (cls.fna_path_key,),
-            "fna_id_list": (cls.fna_id_list_key,),
-            "btc_seqs_fasta": (cls.btc_seqs_key, cls.btc_seqs_fasta_key,),
-            "btc_seqs_id": (cls.btc_seqs_key, cls.btc_seqs_id_key,),
-            "source_db": (cls.source_db_key,),
-            "is_repr": (cls.is_repr_key,),
+            "fna_seq_fasta": (cls.fna_seqs_key, cls.fna_seq_fasta_key),
+            "fna_seq_ids": (cls.fna_seqs_key, cls.fna_seq_ids_key),
+            "repr_seq_fasta": (cls.repr_seqs_key, cls.repr_seq_fasta_key,),
+            "repr_seq_id2profile": (cls.repr_seqs_key, cls.repr_seq_id2profile_key,),
+            "extra_info": (cls.extra_info_key,),
         }
 
     @classmethod
