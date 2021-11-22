@@ -115,8 +115,8 @@ def hom_search_profile(alns_or_profiles, genomes_list, work_dir="./profile_searc
 def _link_fna_id2org(genome_info):
     assert isinstance(genome_info, GenomeInfo), "ERROR: the value for 'genome_info' argument should be \
                                                  an object of GenomeInfo class"
-    if genome_info.fna_id_list:
-        return {fna_id: genome_info.org_name for fna_id in genome_info.fna_id_list}
+    if genome_info.fna_seqs_ids:
+        return {fna_id: genome_info.org_name for fna_id in genome_info.fna_seqs_ids}
     else:
         return {
             fna_id: genome_info.org_name for fna_id in SeqsDict.load_from_file(genome_info.fna_path).keys()
@@ -156,9 +156,9 @@ def _prepare_genome_db(genome_dict, fna_id2org, work_dir, seq_prot, seq_nucl, **
         orf_ids = get_orfs(in_fasta_path=genome_info.fna_path, 
                            out_fasta_path=genome_db_path["prot"], 
                            minsize=90).keys()
-        if genome_info.fna_id_list:
-            fna_id2org.update({orf_id: genome_info.org_name for orf_id in 
-                               filter(lambda orfid: orfid in genome_info.fna_id_list, orf_ids)})
+        if genome_info.fna_seqs_ids:
+            fna_id2org.update({orf_id: genome_info.org_name for orf_id in
+                               filter(lambda orfid: orfid in genome_info.fna_seqs_ids, orf_ids)})
         else:      
             fna_id2org.update({orf_id: genome_info.org_name for orf_id in orf_ids})
     if seq_nucl:
