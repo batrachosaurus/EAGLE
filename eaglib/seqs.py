@@ -669,8 +669,28 @@ def shred_seqs(seqs, part_l=50000, parts_ov=5000, shredded_seqs_fasta=None):
         return shredded_seqs
 
 
-def load_fasta_to_dict(fasta_path, low_memory="auto", **kwargs):
-    return SeqsDict.load_from_file(fname=fasta_path, format="fasta", low_memory=low_memory, **kwargs)
+def load_fasta_to_dict(fasta_path, **kwargs):
+    # This method is for simple dict obtaining from fasta
+    fasta_dict = dict()
+    with open(fasta_path) as fasta_f:
+        seq_list = list()
+        seq_id = None
+        for line_ in fasta_f:
+            line = None
+            line = line_.strip()
+            if not line:
+                continue
+            if line[0] == ">":
+                if seq_id is not None:
+                    fasta_dict[seq_id] = "".join(seq_list)
+                    seq_list = list()
+                del seq_id
+                seq_id = line[1:]
+            else:
+                seq_list.append(line)
+        if seq_id is not None:
+            fasta_dict[seq_id] = "".join(seq_list)
+    return fasta_dict
 
 
 def dump_fasta_dict(fasta_dict, fasta_path, overwrite=True, **kwargs):

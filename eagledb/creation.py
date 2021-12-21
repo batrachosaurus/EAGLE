@@ -7,6 +7,7 @@ from collections import Iterable, defaultdict
 import pandas as pd
 
 from eaglib._utils.logging import eagle_logger
+from eaglib.seqs import SeqsDict, load_fasta_to_dict
 from eagledb.constants import conf_constants, conf_constants_lib
 from eagledb.scheme import BtaxInfo, GenomeInfo
 
@@ -105,8 +106,6 @@ def get_btax_dict(db_dir,
             fna_seq_fasta=genome_dict["fna_seq"],
             repr_seq_fasta=genome_dict["btc_seqs"]
         )
-        if not genome_info.btc_seqs_id:###
-            continue
 
         btax_name = None
         try:
@@ -117,10 +116,13 @@ def get_btax_dict(db_dir,
         if btax_dict[btax_name].name is None:
             btax_dict[btax_name].name = btax_name
 
-        btc_seqs_fasta_dict = load_fasta_to_dict(genome_info.btc_seqs_fasta)
-        for btc_seq_id in genome_info.btc_seqs_id:
+        repr_fasta_dict = dict()
+        for fasta_path in genome_info.repr_seq_fasta:
+            repr_fasta_dict.update(load_fasta_to_dict(fasta_path))
+        btc_seqs_dict = SeqsDict.load_from_dict(repr_fasta_dict)
+        for btc_seq_id in genome_info.btc_seqs_id:###
             seq_ids_to_orgs[btc_seq_id] = genome_info.org_name
-            btc_fasta_dict[genome_info.btc_seqs_id[btc_seq_id]][btc_seq_id] = btc_seqs_fasta_dict[btc_seq_id]
+            btc_fasta_dict[genome_info.btc_seqs_id[btc_seq_id]][btc_seq_id] = btc_seqs_dict[btc_seq_id]
 
     btc_profile_types = dict()
     for btc_profile_dict in btc_profiles:
