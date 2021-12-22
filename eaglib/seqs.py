@@ -21,8 +21,9 @@ class SeqsDict(object):
     prot_type = "prot"
     nucl_type = "nucl"
     rna_type = "rna"
+    dna_type = "dna"
     prot_types = ("protein", prot_type, "p")
-    nucl_types = ("nucleotide", nucl_type, "n", rna_type)
+    nucl_types = ("nucleotide", nucl_type, "n", rna_type, dna_type)
 
     low_memory0 = False
     _chunk_size0 = 100

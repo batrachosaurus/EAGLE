@@ -1,13 +1,16 @@
 # each path for DB file should be stored as relative path from db_dir
 # each time a DB file is used it should be accessed with os.path.join(db_dir, relative_f_path)
 
+import os
 import argparse
+from copy import deepcopy
 from collections import Iterable, defaultdict
 
 import pandas as pd
 
 from eaglib._utils.logging import eagle_logger
 from eaglib.seqs import SeqsDict, load_fasta_to_dict
+from eaglib.alignment import SeqsProfileInfo
 from eagledb.constants import conf_constants, conf_constants_lib
 from eagledb.scheme import BtaxInfo, GenomeInfo
 
@@ -34,6 +37,7 @@ def create(db_dir: str,
         name
         taxonomy - fixed positions list of taxonomic units
         btc_seqs - list of paths to FASTA with sequences used for basic taxons classification
+                   sequence names are profile names, NO paralogs
                    sequences can be joined into single file or distributed between several files
         fna_seq - list of paths or links to the genome files (FASTA or archived FASTA)
                   sequences can be joined into single file or distributed between several files
@@ -92,10 +96,13 @@ def get_btax_dict(db_dir,
                   btr_profiles=None,
                   **kwargs):
 
-
     btax_dict = defaultdict(BtaxInfo)
     btc_fasta_dict = defaultdict(dict)
-    seq_ids_to_orgs = dict()
+    btc_info_dict = defaultdict(SeqsProfileInfo)
+    for btc_profile_dict in btc_profiles:
+        btc_profile_info = SeqsProfileInfo.load_from_dict(btc_profile_dict)
+        btc_info_dict[btc_profile_info.name] = btc_profile_info
+
     for genome_dict in genomes_list:
         if not genome_dict:
             continue
@@ -107,7 +114,6 @@ def get_btax_dict(db_dir,
             repr_seq_fasta=genome_dict["btc_seqs"]
         )
 
-        btax_name = None
         try:
             btax_name = genome_info.taxonomy[-btax_level]
         except IndexError:
@@ -120,28 +126,25 @@ def get_btax_dict(db_dir,
         for fasta_path in genome_info.repr_seq_fasta:
             repr_fasta_dict.update(load_fasta_to_dict(fasta_path))
         btc_seqs_dict = SeqsDict.load_from_dict(repr_fasta_dict)
-        for btc_seq_id in genome_info.btc_seqs_id:###
-            seq_ids_to_orgs[btc_seq_id] = genome_info.org_name
-            btc_fasta_dict[genome_info.btc_seqs_id[btc_seq_id]][btc_seq_id] = btc_seqs_dict[btc_seq_id]
+        for btc_seq_id in btc_seqs_dict:
+            btc_fasta_dict[btc_seq_id][genome_info.genome_id] = btc_seqs_dict[btc_seq_id]
 
-    btc_profile_types = dict()
-    for btc_profile_dict in btc_profiles:
-        btc_profile_info = SeqProfileInfo.load_from_dict(btc_profile_dict)
-        btc_profile_types[btc_profile_info.name] = btc_profile_info.seq_type
     btc_dist_dict = dict()
     btc_aln_dict = dict()
-    short_to_full_seq_names = dict()
+    short_to_full_seq_names = dict()###
     for btc_profile_name in btc_fasta_dict:
-        btc_mult_aln = construct_mult_aln(seq_dict=btc_fasta_dict[btc_profile_name],
-                                          aln_type=btc_profile_types[btc_profile_name],
-                                          aln_name=btc_profile_name+"_aln",
-                                          tmp_dir=kwargs.get("aln_tmp_dir", "mult_aln_tmp"),
-                                          method=conf_constants.btc_profile_aln_method,
-                                          num_threads=num_threads,
-                                          logger=eagle_logger,
-                                          op=15.0,
-                                          ep=0.1,
-                                          **kwargs)  # low_memory can be set through kwargs
+        btc_mult_aln = SeqsDict.load_from_dict(btc_fasta_dict[btc_profile_name],
+                                               seqs_type=btc_info_dict[btc_profile_name].seq_type,
+                                               logger=eagle_logger,
+                                               **kwargs).construct_mult_aln(
+            aln_name=btc_profile_name+"_aln",
+            tmp_dir=kwargs.get("aln_tmp_dir", "mult_aln_tmp"),
+            method=conf_constants.btc_profile_aln_method,
+            num_threads=conf_constants.num_threads,
+            op=15.0,
+            ep=0.1,
+            **kwargs
+        )
 
         # TODO: only the code from else block should be remained after moving 16S rRNA obtaining out from get_bacteria_from_ncbi
         if btc_profile_name == "16S_rRNA":
@@ -149,18 +152,15 @@ def get_btax_dict(db_dir,
                 reduce_seq_names({re.sub("lcl\|(N(C|Z)_)?", "", seq_name): seq_name for seq_name in btc_mult_aln},
                                  num_letters=10, num_words=1)[0]
         else:
-            btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
+            btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()###
 
-        if btc_mult_aln.aln_type.lower() in MultAln.nucl_types:
-            btc_mult_aln.dist_matr_options.update({"--dna": "p", "-T": num_threads, "-f": 6})
-        btc_mult_aln.improve_aln(inplace=True)
-        btc_mult_aln.remove_paralogs(seq_ids_to_orgs=seq_ids_to_orgs, inplace=True)  # TODO: implement specific positions method
+        if btc_mult_aln.aln_type.lower() in SeqsDict.nucl_types:
+            btc_mult_aln.dist_matr_options.update({"--dna": "p", "-T": conf_constants.num_threads, "-f": 6})
         btc_mult_aln.improve_aln(inplace=True)
         btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()
-        short_to_full_seq_names.update(btc_mult_aln.short_to_full_seq_names)
+        short_to_full_seq_names.update(btc_mult_aln.short_to_full_seq_names)###
         if kwargs.get("save_alignments", False):
-            btc_mult_aln.dump_alignment(aln_path=os.path.join(db_dir, btc_mult_aln.aln_name + ".fasta"))
-        btc_mult_aln.rename_seqs(seq_ids_to_orgs)
+            btc_mult_aln.dump(fname=os.path.join(db_dir, btc_mult_aln.aln_name + ".fasta"), format="fasta")
         btc_aln_dict[btc_profile_name] = deepcopy(btc_mult_aln)
 
     global_dist_matr = get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs)
