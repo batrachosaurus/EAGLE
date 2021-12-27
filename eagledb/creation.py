@@ -2,14 +2,16 @@
 # each time a DB file is used it should be accessed with os.path.join(db_dir, relative_f_path)
 
 import os
+import json
 import argparse
 from copy import deepcopy
 from collections import Iterable, defaultdict
 
+import numpy as np
 import pandas as pd
 
 from eaglib._utils.logging import eagle_logger
-from eaglib.seqs import SeqsDict, load_fasta_to_dict
+from eaglib.seqs import SeqsDict, load_fasta_to_dict, reduce_seq_names
 from eaglib.alignment import SeqsProfileInfo
 from eagledb.constants import conf_constants, conf_constants_lib
 from eagledb.scheme import BtaxInfo, GenomeInfo
@@ -96,72 +98,16 @@ def get_btax_dict(db_dir,
                   btr_profiles=None,
                   **kwargs):
 
-    btax_dict = defaultdict(BtaxInfo)
-    btc_fasta_dict = defaultdict(dict)
     btc_info_dict = defaultdict(SeqsProfileInfo)
     for btc_profile_dict in btc_profiles:
         btc_profile_info = SeqsProfileInfo.load_from_dict(btc_profile_dict)
         btc_info_dict[btc_profile_info.name] = btc_profile_info
 
-    for genome_dict in genomes_list:
-        if not genome_dict:
-            continue
-        genome_info = GenomeInfo(
-            genome_id=genome_dict["id"],
-            org_name=genome_dict["name"],
-            taxonomy=genome_dict["taxonomy"],
-            fna_seq_fasta=genome_dict["fna_seq"],
-            repr_seq_fasta=genome_dict["btc_seqs"]
-        )
-
-        try:
-            btax_name = genome_info.taxonomy[-btax_level]
-        except IndexError:
-            btax_name = genome_info.taxonomy[0]
-        btax_dict[btax_name].genomes.append(genome_info.get_json())
-        if btax_dict[btax_name].name is None:
-            btax_dict[btax_name].name = btax_name
-
-        repr_fasta_dict = dict()
-        for fasta_path in genome_info.repr_seq_fasta:
-            repr_fasta_dict.update(load_fasta_to_dict(fasta_path))
-        btc_seqs_dict = SeqsDict.load_from_dict(repr_fasta_dict)
-        for btc_seq_id in btc_seqs_dict:
-            btc_fasta_dict[btc_seq_id][genome_info.genome_id] = btc_seqs_dict[btc_seq_id]
-
-    btc_dist_dict = dict()
-    btc_aln_dict = dict()
-    short_to_full_seq_names = dict()###
-    for btc_profile_name in btc_fasta_dict:
-        btc_mult_aln = SeqsDict.load_from_dict(btc_fasta_dict[btc_profile_name],
-                                               seqs_type=btc_info_dict[btc_profile_name].seq_type,
-                                               logger=eagle_logger,
-                                               **kwargs).construct_mult_aln(
-            aln_name=btc_profile_name+"_aln",
-            tmp_dir=kwargs.get("aln_tmp_dir", "mult_aln_tmp"),
-            method=conf_constants.btc_profile_aln_method,
-            num_threads=conf_constants.num_threads,
-            op=15.0,
-            ep=0.1,
-            **kwargs
-        )
-
-        # TODO: only the code from else block should be remained after moving 16S rRNA obtaining out from get_bacteria_from_ncbi
-        if btc_profile_name == "16S_rRNA":
-            btc_mult_aln.short_to_full_seq_names = \
-                reduce_seq_names({re.sub("lcl\|(N(C|Z)_)?", "", seq_name): seq_name for seq_name in btc_mult_aln},
-                                 num_letters=10, num_words=1)[0]
-        else:
-            btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()###
-
-        if btc_mult_aln.aln_type.lower() in SeqsDict.nucl_types:
-            btc_mult_aln.dist_matr_options.update({"--dna": "p", "-T": conf_constants.num_threads, "-f": 6})
-        btc_mult_aln.improve_aln(inplace=True)
-        btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()
-        short_to_full_seq_names.update(btc_mult_aln.short_to_full_seq_names)###
-        if kwargs.get("save_alignments", False):
-            btc_mult_aln.dump(fname=os.path.join(db_dir, btc_mult_aln.aln_name + ".fasta"), format="fasta")
-        btc_aln_dict[btc_profile_name] = deepcopy(btc_mult_aln)
+    btax_dict, btc_fasta_dict, genome_keys_dict = genomes2btax(genomes_list=genomes_list, btax_level=btax_level)
+    short_to_full_seq_names = reduce_seq_names(genome_keys_dict, num_letters=10, num_words=3)[1]
+    btc_aln_dict, btc_dist_dict = get_btc_alignments(btc_fasta_dict=btc_fasta_dict, btc_info_dict=btc_info_dict,
+                                                     short_to_full_seq_names=short_to_full_seq_names, db_dir=db_dir,
+                                                     **kwargs)
 
     global_dist_matr = get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs)
     global_dist_matr_path = os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX)
@@ -198,6 +144,160 @@ def get_btax_dict(db_dir,
         btax_dict[btax_name].ref_tree_full_names = \
             {full_to_short_seq_names[btax_org]: btax_org for btax_org in btax_orgs}
         btax_dict[btax_name] = btax_dict[btax_name].get_json()
+    return btax_dict
+
+
+def genomes2btax(genomes_list, btax_level):
+    btax_dict = defaultdict(BtaxInfo)
+    btc_fasta_dict = defaultdict(dict)
+    genome_keys_dict = dict()
+    for genome_dict in genomes_list:
+        if not genome_dict:
+            continue
+        genome_info = GenomeInfo(
+            genome_id=genome_dict["id"],
+            org_name=genome_dict["name"],
+            taxonomy=genome_dict["taxonomy"],
+            fna_seq_fasta=genome_dict["fna_seq"],
+            repr_seq_fasta=genome_dict["btc_seqs"]
+        )
+        genome_key = genome_info.org_name + " " + genome_info.genome_id  # to guarantee unique seq names
+        genome_keys_dict[genome_key] = None
+        try:
+            btax_name = genome_info.taxonomy[-btax_level]
+        except IndexError:
+            btax_name = genome_info.taxonomy[0]
+        btax_dict[btax_name].genomes.append(genome_info.get_json())
+        if btax_dict[btax_name].name is None:
+            btax_dict[btax_name].name = btax_name
+        repr_fasta_dict = dict()
+        for fasta_path in genome_info.repr_seq_fasta:
+            repr_fasta_dict.update(load_fasta_to_dict(fasta_path))
+        btc_seqs_dict = SeqsDict.load_from_dict(repr_fasta_dict)
+        for btc_seq_id in btc_seqs_dict:
+            btc_fasta_dict[btc_seq_id][genome_key] = btc_seqs_dict[btc_seq_id]
+        del genome_key
+    return btax_dict, btc_fasta_dict, genome_keys_dict
+
+
+def get_btc_alignments(btc_fasta_dict, btc_info_dict, short_to_full_seq_names, db_dir, **kwargs):
+    btc_dist_dict = dict()
+    btc_aln_dict = dict()
+    for btc_profile_name in btc_fasta_dict:
+        btc_mult_aln = SeqsDict.load_from_dict(btc_fasta_dict[btc_profile_name],
+                                               seqs_type=btc_info_dict[btc_profile_name].seq_type,
+                                               logger=eagle_logger,
+                                               **kwargs).construct_mult_aln(
+            aln_name=btc_profile_name+"_aln",
+            tmp_dir=kwargs.get("aln_tmp_dir", "mult_aln_tmp"),
+            method=conf_constants.btc_profile_aln_method,
+            num_threads=conf_constants.num_threads,
+            op=15.0,
+            ep=0.1,
+            **kwargs
+        )
+        btc_mult_aln.short_to_full_seq_names = short_to_full_seq_names.copy()
+        if btc_mult_aln.aln_type.lower() in SeqsDict.nucl_types:
+            btc_mult_aln.dist_matr_options.update({"--dna": "p", "-T": conf_constants.num_threads, "-f": 6})
+        btc_mult_aln.improve_aln(inplace=True)
+        btc_dist_dict[btc_profile_name] = btc_mult_aln.get_distance_matrix()
+        if kwargs.get("save_alignments", False):
+            btc_mult_aln.dump(fname=os.path.join(db_dir, btc_mult_aln.aln_name + ".fasta"), format="fasta")
+        btc_aln_dict[btc_profile_name] = deepcopy(btc_mult_aln)
+    return btc_aln_dict, btc_dist_dict
+
+
+def get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs):
+    seqs_order = {org_name: i for i, org_name in enumerate(set(seq_ids_to_orgs.values()))}
+    nseqs = len(seqs_order)
+    global_dist_matrix = DistanceMatrix(seqs_order=seqs_order,
+                                        matr=np.zeros((nseqs, nseqs)),
+                                        aln_type="btc_global")
+    sumw = 0.0
+    for btc_profile in btc_profiles:
+        btc_profile_info = SeqProfileInfo.load_from_dict(btc_profile)
+        btc_profile_matr = btc_dist_dict[btc_profile_info.name]
+        btc_profile_orgs = {seq_ids_to_orgs[btc_seq_name]: btc_seq_name for btc_seq_name in btc_profile_matr.seq_names}
+        dist_0 = btc_profile_matr.mean_dist
+        eagle_logger.info("%s distance mean %s" % (btc_profile_info.name, dist_0))
+        for i, seq_name in enumerate(global_dist_matrix.seq_names):
+            if seq_name in btc_profile_orgs:
+                btc_seq_dist = btc_profile_matr[btc_profile_orgs[seq_name]]
+                seq_dists = pd.Series(([0.0] * i + [btc_seq_dist.get(btc_profile_orgs[seq_name_], dist_0)
+                                           for seq_name_ in global_dist_matrix.seq_names[i:]]),
+                                          index=global_dist_matrix.seq_names)
+            else:
+                seq_dists = pd.Series([0.0] * i + [dist_0] * (nseqs-i), index=global_dist_matrix.seq_names)
+                seq_dists[seq_name] = 0.0
+            global_dist_matrix[seq_name] += seq_dists * float(btc_profile_info.weight)
+        sumw += float(btc_profile_info.weight)
+    global_dist_matrix.matr = global_dist_matrix.matr / sumw
+    return global_dist_matrix
+
+
+def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
+    # TODO: make it parallel
+    if k_max is None:
+        k_max = conf_constants.k_max
+    if k_min is None:
+        k_min = conf_constants.k_min
+
+    assert isinstance(btax_dict, defaultdict) and btax_dict.default_factory is BtaxInfo, \
+        "ERROR: the value for btax_dict should be defaultdict(BtaxInfo)"
+
+    btax_to_merge = set()
+    round1 = True
+    while btax_to_merge or round1:
+        btax_dist_matr0 = None
+        while btax_to_merge:
+            closest_btax_pair = None
+            min_btax_dist = None
+            btax_dist_matr = DistanceMatrix(seqs_order={btax_name_: i for i, btax_name_ in enumerate(btax_dict.keys())},
+                                            matr=np.zeros((len(btax_dict), len(btax_dict))))
+            for btax_name in btax_to_merge:
+                for btax_name_ in btax_dict:
+                    if btax_name != btax_name_ and btax_dist_matr[btax_name][btax_name_] == 0.0:
+                        btax_dists = btax_dist_matr[btax_name]
+                        if btax_dist_matr0 is not None and btax_name in btax_dist_matr0 and btax_name_ in btax_dist_matr0:
+                            btax_dists[btax_name_] = btax_dist_matr0[btax_name][btax_name_]
+                        else:
+                            btax_dists[btax_name_] = get_btax_dist(
+                                btax1_orgs=set(GenomeInfo.org_name_from_dict(genome)
+                                               for genome in btax_dict[btax_name].genomes),
+                                btax2_orgs=set(GenomeInfo.org_name_from_dict(genome)
+                                               for genome in btax_dict[btax_name_].genomes),
+                                global_dist_matr=global_dist_matr
+                            )
+
+                        btax_dist_matr[btax_name] = btax_dists
+                closest_btax_name = None
+                btax_dists = btax_dist_matr[btax_name]
+                closest_btax_name = btax_dists[btax_dists > 0.0].idxmin()
+                if min_btax_dist is None or btax_dists[closest_btax_name] < min_btax_dist:
+                    min_btax_dist = btax_dists[closest_btax_name]
+                    closest_btax_pair = None
+                    closest_btax_pair = (closest_btax_name, btax_name)
+            if closest_btax_pair is not None:
+                btax_dict[closest_btax_pair[0].replace("_related", "")+"_related"] = BtaxInfo(
+                    name=",".join((btax_dict[closest_btax_pair[0]].name, btax_dict[closest_btax_pair[1]].name)),
+                    genomes=btax_dict.pop(closest_btax_pair[0]).genomes + btax_dict.pop(closest_btax_pair[1]).genomes
+                )
+
+                btax_to_merge.remove(closest_btax_pair[1])
+                try:
+                    btax_to_merge.remove(closest_btax_pair[0])
+                except KeyError:
+                    pass
+            btax_dist_matr0 = deepcopy(btax_dist_matr)
+
+        # TODO: the code below can be parallelized
+        for btax_name in btax_dict:
+            btax_dict[btax_name], k = filter_btax(btax_info=btax_dict[btax_name],
+                                                  global_dist_matr=global_dist_matr,
+                                                  k_max=k_max)
+            if k < k_min:
+                btax_to_merge.add(btax_name)
+        round1 = False
     return btax_dict
 
 
