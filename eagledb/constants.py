@@ -7,11 +7,11 @@ from eaglib.constants import conf_constants as conf_constants_lib
 CONSTANTS_PATH = os.path.dirname(os.path.realpath(__file__))
 TEST_DIR = os.path.join(CONSTANTS_PATH, "tests")
 
-BACTERIA_LIST_F_NAME = "bacteria.json"
-PREPARED_BACTERIA_F_NAME = "prepared_bacteria.json"
-BACTERIA_GLOBAL_DIST_MATRIX = "global_dist_matr.phylip"
-BACTERIA_SHORT_TO_FULL_ORG_NAMES = "short_to_full_org_names.json"
-BACT_FAM_F_NAME = "bact_fam.json"
+BACTERIA_LIST_F_NAME = "bacteria.json"###
+PREPARED_BACTERIA_F_NAME = "prepared_bacteria.json"###
+GLOBAL_DIST_MATRIX = "global_dist_matr.phylip"
+SHORT_TO_FULL_ORG_NAMES = "short_to_full_org_names.json"
+BACT_FAM_F_NAME = "bact_fam.json"###
 
 BTAX_JSON_NAME = "btax.json"
 

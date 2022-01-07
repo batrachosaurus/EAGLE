@@ -13,7 +13,8 @@ import pandas as pd
 from eaglib._utils.logging import eagle_logger
 from eaglib.seqs import SeqsDict, load_fasta_to_dict, reduce_seq_names
 from eaglib.alignment import SeqsProfileInfo
-from eagledb.constants import conf_constants, conf_constants_lib
+from eaglib.phylo import DistanceMatrix
+from eagledb.constants import conf_constants, conf_constants_lib, GLOBAL_DIST_MATRIX, SHORT_TO_FULL_ORG_NAMES
 from eagledb.scheme import BtaxInfo, GenomeInfo
 
 
@@ -103,21 +104,21 @@ def get_btax_dict(db_dir,
         btc_profile_info = SeqsProfileInfo.load_from_dict(btc_profile_dict)
         btc_info_dict[btc_profile_info.name] = btc_profile_info
 
-    btax_dict, btc_fasta_dict, genome_keys_dict = genomes2btax(genomes_list=genomes_list, btax_level=btax_level)
-    short_to_full_seq_names = reduce_seq_names(genome_keys_dict, num_letters=10, num_words=3)[1]
+    btax_dict, btc_fasta_dict, genome_keys = genomes2btax(genomes_list=genomes_list, btax_level=btax_level)
+    short_to_full_seq_names = reduce_seq_names({gk: None for gk in genome_keys}, num_letters=10, num_words=3)[1]
     btc_aln_dict, btc_dist_dict = get_btc_alignments(btc_fasta_dict=btc_fasta_dict, btc_info_dict=btc_info_dict,
                                                      short_to_full_seq_names=short_to_full_seq_names, db_dir=db_dir,
                                                      **kwargs)
 
-    global_dist_matr = get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs)
-    global_dist_matr_path = os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX)
-    short_to_full_seq_names_path = os.path.join(db_dir, BACTERIA_SHORT_TO_FULL_ORG_NAMES)
+    global_dist_matr = get_global_dist(btc_dist_dict, btc_profiles, genome_keys)
+    global_dist_matr_path = os.path.join(db_dir, GLOBAL_DIST_MATRIX)
+    short_to_full_seq_names_path = os.path.join(db_dir, SHORT_TO_FULL_ORG_NAMES)
     short_to_full_seq_names = global_dist_matr.dump(matrix_path=global_dist_matr_path, matr_format="phylip")
     with open(short_to_full_seq_names_path, "w") as short_to_full_org_names_f:
         json.dump(short_to_full_seq_names, short_to_full_org_names_f, indent=2)
 
     eagle_logger.info("base taxons standardisation started")
-    btax_dict = standardize_btax(btax_dict=btax_dict, global_dist_matr=global_dist_matr)
+    btax_dict = standardize_btax(btax_dict=btax_dict, global_dist_matr=global_dist_matr)###
     eagle_logger.info("base taxons standardisation finished")
 
     full_to_short_seq_names = {v: k for k, v in short_to_full_seq_names.items()}
@@ -150,7 +151,7 @@ def get_btax_dict(db_dir,
 def genomes2btax(genomes_list, btax_level):
     btax_dict = defaultdict(BtaxInfo)
     btc_fasta_dict = defaultdict(dict)
-    genome_keys_dict = dict()
+    genome_keys = set()
     for genome_dict in genomes_list:
         if not genome_dict:
             continue
@@ -162,7 +163,7 @@ def genomes2btax(genomes_list, btax_level):
             repr_seq_fasta=genome_dict["btc_seqs"]
         )
         genome_key = genome_info.org_name + " " + genome_info.genome_id  # to guarantee unique seq names
-        genome_keys_dict[genome_key] = None
+        genome_keys.add(genome_key)
         try:
             btax_name = genome_info.taxonomy[-btax_level]
         except IndexError:
@@ -177,7 +178,7 @@ def genomes2btax(genomes_list, btax_level):
         for btc_seq_id in btc_seqs_dict:
             btc_fasta_dict[btc_seq_id][genome_key] = btc_seqs_dict[btc_seq_id]
         del genome_key
-    return btax_dict, btc_fasta_dict, genome_keys_dict
+    return btax_dict, btc_fasta_dict, genome_keys
 
 
 def get_btc_alignments(btc_fasta_dict, btc_info_dict, short_to_full_seq_names, db_dir, **kwargs):
@@ -207,25 +208,26 @@ def get_btc_alignments(btc_fasta_dict, btc_info_dict, short_to_full_seq_names, d
     return btc_aln_dict, btc_dist_dict
 
 
-def get_global_dist(btc_dist_dict, btc_profiles, seq_ids_to_orgs):
-    seqs_order = {org_name: i for i, org_name in enumerate(set(seq_ids_to_orgs.values()))}
+def get_global_dist(btc_dist_dict, btc_profiles, genome_keys: set):
+    seqs_order = {gk: i for i, gk in enumerate(genome_keys)}
     nseqs = len(seqs_order)
     global_dist_matrix = DistanceMatrix(seqs_order=seqs_order,
                                         matr=np.zeros((nseqs, nseqs)),
                                         aln_type="btc_global")
+    global_matrix_orgs = global_dist_matrix.seq_names
     sumw = 0.0
     for btc_profile in btc_profiles:
-        btc_profile_info = SeqProfileInfo.load_from_dict(btc_profile)
+        btc_profile_info = SeqsProfileInfo.load_from_dict(btc_profile)
         btc_profile_matr = btc_dist_dict[btc_profile_info.name]
-        btc_profile_orgs = {seq_ids_to_orgs[btc_seq_name]: btc_seq_name for btc_seq_name in btc_profile_matr.seq_names}
+        btc_profile_orgs = btc_profile_matr.seq_names
         dist_0 = btc_profile_matr.mean_dist
         eagle_logger.info("%s distance mean %s" % (btc_profile_info.name, dist_0))
         for i, seq_name in enumerate(global_dist_matrix.seq_names):
             if seq_name in btc_profile_orgs:
-                btc_seq_dist = btc_profile_matr[btc_profile_orgs[seq_name]]
-                seq_dists = pd.Series(([0.0] * i + [btc_seq_dist.get(btc_profile_orgs[seq_name_], dist_0)
-                                           for seq_name_ in global_dist_matrix.seq_names[i:]]),
-                                          index=global_dist_matrix.seq_names)
+                btc_seq_dist = btc_profile_matr[seq_name]
+                seq_dists = pd.Series(([0.0] * i + [btc_seq_dist.get(seq_name_, dist_0)
+                                       for seq_name_ in global_matrix_orgs[i:]]),
+                                      index=global_matrix_orgs)
             else:
                 seq_dists = pd.Series([0.0] * i + [dist_0] * (nseqs-i), index=global_dist_matrix.seq_names)
                 seq_dists[seq_name] = 0.0
