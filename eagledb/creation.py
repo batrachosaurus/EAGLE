@@ -5,12 +5,14 @@ import os
 import json
 import argparse
 from copy import deepcopy
+import multiprocessing as mp
 from collections import Iterable, defaultdict
 
 import numpy as np
 import pandas as pd
 
 from eaglib._utils.logging import eagle_logger
+from eaglib._utils.workers import process_worker
 from eaglib.seqs import SeqsDict, load_fasta_to_dict, reduce_seq_names
 from eaglib.alignment import SeqsProfileInfo
 from eaglib.phylo import DistanceMatrix
@@ -162,7 +164,7 @@ def genomes2btax(genomes_list, btax_level):
             fna_seq_fasta=genome_dict["fna_seq"],
             repr_seq_fasta=genome_dict["btc_seqs"]
         )
-        genome_key = genome_info.org_name + " " + genome_info.genome_id  # to guarantee unique seq names
+        genome_key = genome_info.key  # to guarantee unique seq names
         genome_keys.add(genome_key)
         try:
             btax_name = genome_info.taxonomy[-btax_level]
@@ -238,7 +240,6 @@ def get_global_dist(btc_dist_dict, btc_profiles, genome_keys: set):
 
 
 def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
-    # TODO: make it parallel
     if k_max is None:
         k_max = conf_constants.k_max
     if k_min is None:
@@ -248,10 +249,10 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
         "ERROR: the value for btax_dict should be defaultdict(BtaxInfo)"
 
     btax_to_merge = set()
-    round1 = True
-    while btax_to_merge or round1:
+    do_round = True
+    while do_round:
         btax_dist_matr0 = None
-        while btax_to_merge:
+        while btax_to_merge:###
             closest_btax_pair = None
             min_btax_dist = None
             btax_dist_matr = DistanceMatrix(seqs_order={btax_name_: i for i, btax_name_ in enumerate(btax_dict.keys())},
@@ -292,15 +293,56 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
                     pass
             btax_dist_matr0 = deepcopy(btax_dist_matr)
 
-        # TODO: the code below can be parallelized
-        for btax_name in btax_dict:
-            btax_dict[btax_name], k = filter_btax(btax_info=btax_dict[btax_name],
-                                                  global_dist_matr=global_dist_matr,
-                                                  k_max=k_max)
-            if k < k_min:
-                btax_to_merge.add(btax_name)
-        round1 = False
+        btax_names = tuple(btax_dict.keys())
+        filt_tasks = list()
+        for btax_name in btax_names:
+            filt_tasks.append({"function": filter_btax,
+                               "btax_info": btax_dict[btax_name],
+                               "global_dist_matr": global_dist_matr,
+                               "k_max": k_max})
+        btax_filt_pool = mp.Pool(conf_constants.num_threads)
+        filt_result = btax_filt_pool.map(process_worker, filt_tasks)
+        btax_filt_pool.close()
+        btax_filt_pool.join()
+        for i, btax_info in enumerate(filt_result):
+            btax_dict[btax_names[i]] = btax_info
+            if len(btax_info.genomes) < k_min:
+                btax_to_merge.add(btax_names[i])
+        if btax_to_merge:
+            do_round = True
     return btax_dict
+
+
+def filter_btax(btax_info, global_dist_matr, k_max=None):
+    if k_max is None:
+        k_max = conf_constants.k_max
+    assert isinstance(btax_info, BtaxInfo), \
+        "ERROR: the value for btax_info parameter should be eagledb.scheme.setup_db.BtaxInfo object"
+
+    btax_genome_keys = list()
+    for i, genome_info_dict in enumerate(btax_info.genomes):
+        btax_genome_keys.append(GenomeInfo.load_from_dict(genome_info_dict).key)
+    btax_dist_matr = global_dist_matr[btax_genome_keys]
+    genomes_to_remove = list()
+    while len(btax_genome_keys) > k_max:
+        min_dist_sum = None
+        min_closest_dist = None
+        i_to_remove = None
+        for i, genome_key in enumerate(btax_genome_keys):
+            genome_dist = btax_dist_matr[genome_key][btax_genome_keys]
+            dist_sum = genome_dist.sum()
+            closest_dist = genome_dist[~genome_dist.index.isin([genome_key])].min()
+            if min_closest_dist is None or closest_dist < min_closest_dist or \
+                    (closest_dist == min_closest_dist and dist_sum < min_dist_sum):
+                min_closest_dist = closest_dist
+                min_dist_sum = dist_sum
+                i_to_remove = i
+        if i_to_remove is not None:
+            genomes_to_remove.append(i_to_remove)
+            del btax_genome_keys[i_to_remove]
+    for min_dist_i in genomes_to_remove:
+        del btax_info.genomes[min_dist_i]
+    return btax_info
 
 
 def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, config_path=None):

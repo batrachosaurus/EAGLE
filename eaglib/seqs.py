@@ -1020,3 +1020,7 @@ class GenomeInfo(JsonEntry):
     @classmethod
     def org_name_from_dict(cls, in_dict):
         return in_dict["org_name"]
+
+    @property
+    def key(self):  # can be used for short name generation
+        return self.org_name + " " + self.genome_id
