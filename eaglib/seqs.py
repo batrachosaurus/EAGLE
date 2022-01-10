@@ -1021,6 +1021,18 @@ class GenomeInfo(JsonEntry):
     def org_name_from_dict(cls, in_dict):
         return in_dict["org_name"]
 
+    @classmethod
+    def genome_id_from_dict(cls, in_dict):
+        return in_dict["genome_id"]
+
+    @classmethod
+    def key_from_dict(cls, in_dict):
+        genome_id = cls.genome_id_from_dict(in_dict)
+        org_name = cls.org_name_from_dict(in_dict)
+        if isinstance(org_name, str) and isinstance(genome_id, str):
+            return org_name + " " + genome_id
+
     @property
     def key(self):  # can be used for short name generation
-        return self.org_name + " " + self.genome_id
+        if isinstance(self.org_name, str) and isinstance(self.genome_id, str):
+            return self.org_name + " " + self.genome_id
