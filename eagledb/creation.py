@@ -265,10 +265,10 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
                             btax_dists[btax_name_] = btax_dist_matr0[btax_name][btax_name_]
                         else:
                             btax_dists[btax_name_] = get_btax_dist(
-                                btax1_orgs=set(GenomeInfo.org_name_from_dict(genome)
-                                               for genome in btax_dict[btax_name].genomes),
-                                btax2_orgs=set(GenomeInfo.org_name_from_dict(genome)
-                                               for genome in btax_dict[btax_name_].genomes),
+                                btax1_orgs=[GenomeInfo.key_from_dict(genome)
+                                            for genome in btax_dict[btax_name].genomes],
+                                btax2_orgs=[GenomeInfo.key_from_dict(genome)
+                                            for genome in btax_dict[btax_name_].genomes],
                                 global_dist_matr=global_dist_matr
                             )
 
@@ -343,6 +343,16 @@ def filter_btax(btax_info, global_dist_matr, k_max=None):
     for min_dist_i in genomes_to_remove:
         del btax_info.genomes[min_dist_i]
     return btax_info
+
+
+def get_btax_dist(btax1_orgs, btax2_orgs, global_dist_matr):
+    n = 0
+    sum_dist = 0.0
+    for org in btax1_orgs:
+        for org_ in btax2_orgs:
+            sum_dist += global_dist_matr[org][org_]
+            n += 1
+    return sum_dist / float(n)
 
 
 def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, config_path=None):
