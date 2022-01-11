@@ -251,47 +251,33 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
     btax_to_merge = set()
     do_round = True
     while do_round:
-        btax_dist_matr0 = None
-        while btax_to_merge:###
-            closest_btax_pair = None
-            min_btax_dist = None
+        if btax_to_merge:
+            btax_roots = defaultdict(list)
             btax_dist_matr = DistanceMatrix(seqs_order={btax_name_: i for i, btax_name_ in enumerate(btax_dict.keys())},
-                                            matr=np.zeros((len(btax_dict), len(btax_dict))))
+                                            matr=np.zeros(shape=(len(btax_dict), len(btax_dict))))
             for btax_name in btax_to_merge:
                 for btax_name_ in btax_dict:
                     if btax_name != btax_name_ and btax_dist_matr[btax_name][btax_name_] == 0.0:
                         btax_dists = btax_dist_matr[btax_name]
-                        if btax_dist_matr0 is not None and btax_name in btax_dist_matr0 and btax_name_ in btax_dist_matr0:
-                            btax_dists[btax_name_] = btax_dist_matr0[btax_name][btax_name_]
-                        else:
-                            btax_dists[btax_name_] = get_btax_dist(
-                                btax1_orgs=[GenomeInfo.key_from_dict(genome)
-                                            for genome in btax_dict[btax_name].genomes],
-                                btax2_orgs=[GenomeInfo.key_from_dict(genome)
-                                            for genome in btax_dict[btax_name_].genomes],
-                                global_dist_matr=global_dist_matr
-                            )
-
+                        btax_dists[btax_name_] = get_btax_dist(
+                            btax1_orgs=[GenomeInfo.key_from_dict(genome) for genome in btax_dict[btax_name].genomes],
+                            btax2_orgs=[GenomeInfo.key_from_dict(genome) for genome in btax_dict[btax_name_].genomes],
+                            global_dist_matr=global_dist_matr
+                        )
                         btax_dist_matr[btax_name] = btax_dists
-                closest_btax_name = None
-                btax_dists = btax_dist_matr[btax_name]
-                closest_btax_name = btax_dists[btax_dists > 0.0].idxmin()
-                if min_btax_dist is None or btax_dists[closest_btax_name] < min_btax_dist:
-                    min_btax_dist = btax_dists[closest_btax_name]
-                    closest_btax_pair = None
-                    closest_btax_pair = (closest_btax_name, btax_name)
-            if closest_btax_pair is not None:
-                btax_dict[closest_btax_pair[0].replace("_related", "")+"_related"] = BtaxInfo(
-                    name=",".join((btax_dict[closest_btax_pair[0]].name, btax_dict[closest_btax_pair[1]].name)),
-                    genomes=btax_dict.pop(closest_btax_pair[0]).genomes + btax_dict.pop(closest_btax_pair[1]).genomes
-                )
 
-                btax_to_merge.remove(closest_btax_pair[1])
-                try:
-                    btax_to_merge.remove(closest_btax_pair[0])
-                except KeyError:
-                    pass
-            btax_dist_matr0 = deepcopy(btax_dist_matr)
+                btax_dists = btax_dist_matr[btax_name]
+                btax_roots[btax_dists[btax_dists > 0.0].idxmin()].append(btax_name)
+            btax_to_merge = set()
+
+            for root_btax_name in btax_roots:
+                btax_names = [btax_dict[root_btax_name].name]
+                btax_genomes = btax_dict.pop(btax_dict[root_btax_name]).genomes
+                for btax_name in btax_roots[root_btax_name]:
+                    btax_names.append(btax_dict[btax_name].name)
+                    btax_genomes.extend(btax_dict.pop(btax_dict[btax_name].genomes))
+                btax_dict[root_btax_name.replace("_related", "")+"_related"] = \
+                    BtaxInfo(name=",".join(btax_names), genomes=btax_genomes)
 
         btax_names = tuple(btax_dict.keys())
         filt_tasks = list()
