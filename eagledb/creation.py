@@ -10,6 +10,7 @@ from collections import Iterable, defaultdict
 
 import numpy as np
 import pandas as pd
+import networkx as nx
 
 from eaglib._utils.logging import eagle_logger
 from eaglib._utils.workers import process_worker
@@ -252,7 +253,7 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
     do_round = True
     while do_round:
         if btax_to_merge:
-            btax_roots = defaultdict(list)
+            btax_merge_edges = set()
             btax_dist_matr = DistanceMatrix(seqs_order={btax_name_: i for i, btax_name_ in enumerate(btax_dict.keys())},
                                             matr=np.zeros(shape=(len(btax_dict), len(btax_dict))))
             for btax_name in btax_to_merge:
@@ -267,17 +268,28 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
                         btax_dist_matr[btax_name] = btax_dists
 
                 btax_dists = btax_dist_matr[btax_name]
-                btax_roots[btax_dists[btax_dists > 0.0].idxmin()].append(btax_name)
-            btax_to_merge = set()
+                btax_merge_edges.add(frozenset([btax_name, btax_dists[btax_dists > 0.0].idxmin()]))
 
-            for root_btax_name in btax_roots:
-                btax_names = [btax_dict[root_btax_name].name]
-                btax_genomes = btax_dict.pop(btax_dict[root_btax_name]).genomes
-                for btax_name in btax_roots[root_btax_name]:
-                    btax_names.append(btax_dict[btax_name].name)
-                    btax_genomes.extend(btax_dict.pop(btax_dict[btax_name].genomes))
-                btax_dict[root_btax_name.replace("_related", "")+"_related"] = \
-                    BtaxInfo(name=",".join(btax_names), genomes=btax_genomes)
+            g = nx.Graph()
+            g.add_nodes_from(btax_dist_matr.seq_names)
+            g.add_edges_from(btax_merge_edges)
+
+            for comp in nx.connected_components(g):
+                if len(comp) >= 2:
+                    root_btax_name = None
+                    btax_names = list()
+                    btax_genomes = list()
+                    for btax_name in comp:
+                        if root_btax_name is None and btax_name not in btax_to_merge:
+                            root_btax_name = btax_name
+                        btax_names.append(btax_dict[btax_name].name)
+                        btax_genomes.extend(btax_dict.pop(btax_dict[btax_name].genomes))
+                    if root_btax_name is None:
+                        root_btax_name = sorted(g.degree(comp), key=lambda nd: nd[1], reverse=True)[0][0]
+                    btax_dict[root_btax_name.replace("_related", "") + "_related"] = \
+                        BtaxInfo(name=",".join(btax_names), genomes=btax_genomes)
+                    del root_btax_name
+            btax_to_merge = set()
 
         btax_names = tuple(btax_dict.keys())
         filt_tasks = list()
