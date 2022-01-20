@@ -126,7 +126,8 @@ def get_btax_dict(db_dir,
 
     full_to_short_seq_names = {v: k for k, v in short_to_full_seq_names.items()}
     for btax_name in btax_dict:
-        btax_orgs = set(GenomeInfo.load_from_dict(genome).org_name for genome in btax_dict[btax_name].genomes)
+        btax_keys = [GenomeInfo.key_from_dict(g_dict) for g_dict in btax_dict[btax_name].genomes]
+        ###
         if btr_profiles is not None:
             pass
         else:
@@ -145,8 +146,9 @@ def get_btax_dict(db_dir,
                                                                             db_dir=db_dir,
                                                                             btax_name=btax_name,
                                                                             method="hmmer")
+        ###
         btax_dict[btax_name].ref_tree_full_names = \
-            {full_to_short_seq_names[btax_org]: btax_org for btax_org in btax_orgs}
+            {full_to_short_seq_names[btax_key]: btax_key for btax_key in btax_keys}
         btax_dict[btax_name] = btax_dict[btax_name].get_json()
     return btax_dict
 
@@ -261,8 +263,8 @@ def standardize_btax(btax_dict, global_dist_matr, k_max=None, k_min=None):
                     if btax_name != btax_name_ and btax_dist_matr[btax_name][btax_name_] == 0.0:
                         btax_dists = btax_dist_matr[btax_name]
                         btax_dists[btax_name_] = get_btax_dist(
-                            btax1_orgs=[GenomeInfo.key_from_dict(genome) for genome in btax_dict[btax_name].genomes],
-                            btax2_orgs=[GenomeInfo.key_from_dict(genome) for genome in btax_dict[btax_name_].genomes],
+                            btax1_orgs=[GenomeInfo.key_from_dict(g_dict) for g_dict in btax_dict[btax_name].genomes],
+                            btax2_orgs=[GenomeInfo.key_from_dict(g_dict) for g_dict in btax_dict[btax_name_].genomes],
                             global_dist_matr=global_dist_matr
                         )
                         btax_dist_matr[btax_name] = btax_dists
