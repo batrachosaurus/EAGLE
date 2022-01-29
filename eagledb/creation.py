@@ -61,12 +61,16 @@ def create(db_dir: str,
     if num_threads is not None:
         conf_constants.num_threads = num_threads
 
-    btax_dict = get_btax_dict(db_dir=db_dir,
-                              genomes_list=genomes_table.to_records(),
-                              btax_level=conf_constants.btax_level,
-                              btc_profiles=btax_class_profiles,
-                              btr_profiles=btax_repr_profiles,
-                              num_threads=conf_constants.num_threads)
+    btax_dict, short2full_seq_names = get_btax_dict(db_dir=db_dir,
+                                                    genomes_list=genomes_table.to_records(),
+                                                    btax_level=conf_constants.btax_level,
+                                                    btc_profiles=btax_class_profiles,
+                                                    num_threads=conf_constants.num_threads)
+
+    # TODO: get fna for each genome in btax (single fasta per a genome)
+    # TODO: find, align and get distances for repr_profiles seqs
+    # TODO: build btax repr_profiles
+    # TODO: build btax reference tree
 
     btax_dict = get_btax_blastdb(btax_dict,
                                  db_dir=db_dir,
@@ -99,7 +103,6 @@ def get_btax_dict(db_dir,
                   genomes_list,
                   btax_level,
                   btc_profiles,
-                  btr_profiles=None,
                   **kwargs):
 
     btc_info_dict = defaultdict(SeqsProfileInfo)
@@ -114,6 +117,7 @@ def get_btax_dict(db_dir,
                                                      **kwargs)
 
     global_dist_matr = get_global_dist(btc_dist_dict, btc_profiles, genome_keys)
+    # global_dist_matr is needed only for standardize_btax
     global_dist_matr_path = os.path.join(db_dir, GLOBAL_DIST_MATRIX)
     short_to_full_seq_names_path = os.path.join(db_dir, SHORT_TO_FULL_ORG_NAMES)
     short_to_full_seq_names = global_dist_matr.dump(matrix_path=global_dist_matr_path, matr_format="phylip")
@@ -121,9 +125,18 @@ def get_btax_dict(db_dir,
         json.dump(short_to_full_seq_names, short_to_full_org_names_f, indent=2)
 
     eagle_logger.info("base taxons standardisation started")
-    btax_dict = standardize_btax(btax_dict=btax_dict, global_dist_matr=global_dist_matr)###
+    btax_dict = standardize_btax(btax_dict=btax_dict, global_dist_matr=global_dist_matr)
     eagle_logger.info("base taxons standardisation finished")
 
+    for btax_name in btax_dict:
+        btax_keys = [GenomeInfo.key_from_dict(g_dict) for g_dict in btax_dict[btax_name].genomes]
+        for btc_profile_name in btc_info_dict:
+            btax_dict[btax_name].repr_alns[btc_profile_name] = btc_aln_dict[btc_profile_name][btax_keys]
+            btax_dict[btax_name].repr_dists[btc_profile_name] = btc_dist_dict[btc_profile_name][btax_keys]
+
+    return btax_dict, short_to_full_seq_names
+
+"""
     full_to_short_seq_names = {v: k for k, v in short_to_full_seq_names.items()}
     for btax_name in btax_dict:
         btax_keys = [GenomeInfo.key_from_dict(g_dict) for g_dict in btax_dict[btax_name].genomes]
@@ -131,10 +144,10 @@ def get_btax_dict(db_dir,
         if btr_profiles is not None:
             pass
         else:
-            btax_dict[btax_name].mean_d = global_dist_matr[btax_orgs].mean_dist
-            btax_dict[btax_name].median_d = global_dist_matr[btax_orgs].median_dist
+            btax_dict[btax_name].mean_d = global_dist_matr[btax_orgs].mean_dist###
+            btax_dict[btax_name].median_d = global_dist_matr[btax_orgs].median_dist###
             if len(btax_orgs) > 2:
-                btax_dict[btax_name].ref_tree_newick = build_tree_by_dist(global_dist_matr[btax_orgs],
+                btax_dict[btax_name].ref_tree_newick = build_tree_by_dist(global_dist_matr[btax_orgs],###
                                                                           tree_name=btax_name+"_tree",
                                                                           options={"-T": num_threads}).newick
                 btax_btc_aln_dict = dict()
@@ -151,7 +164,7 @@ def get_btax_dict(db_dir,
             {full_to_short_seq_names[btax_key]: btax_key for btax_key in btax_keys}
         btax_dict[btax_name] = btax_dict[btax_name].get_json()
     return btax_dict
-
+"""
 
 def genomes2btax(genomes_list, btax_level):
     btax_dict = defaultdict(BtaxInfo)
