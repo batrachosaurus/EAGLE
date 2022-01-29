@@ -20,6 +20,8 @@ class BtaxInfo(JsonEntry):
     btax_fna_key = "btax_fna"
     fna_id_key = "fna_id"
     blastdb_key = "blastdb"
+    repr_alns_key = "repr_alns"
+    repr_dists_key = "repr_dists"
     repr_profiles_key = "repr_profiles"
     ref_tree_key = "ref_tree"
     ref_tree_newick_key = "newick"
@@ -34,6 +36,8 @@ class BtaxInfo(JsonEntry):
     btax_fna_0 = None
     fna_id_0 = defaultdict(str)  # {seq_id: fna_path}
     blastdb_0 = None
+    repr_alns_0 = dict()
+    repr_dists_0 = dict()
     repr_profiles_0 = dict()
     ref_tree_newick_0 = None
     ref_tree_full_names_0 = defaultdict(str)  # {short_name: full_name}
@@ -46,6 +50,8 @@ class BtaxInfo(JsonEntry):
                  btax_fna=btax_fna_0,
                  fna_id=None,
                  blastdb=blastdb_0,
+                 repr_alns=None,
+                 repr_dists=None,
                  repr_profiles=None,
                  ref_tree_newick=ref_tree_newick_0,
                  ref_tree_full_names=None,
@@ -57,6 +63,10 @@ class BtaxInfo(JsonEntry):
             genomes = self.genomes_0
         if fna_id is None:
             fna_id = self.fna_id_0
+        if repr_alns is None:
+            repr_alns = self.repr_alns_0
+        if repr_dists is None:
+            repr_dists = self.repr_dists_0
         if repr_profiles is None:
             repr_profiles = self.repr_profiles_0
         if ref_tree_full_names is None:
@@ -67,6 +77,8 @@ class BtaxInfo(JsonEntry):
         self.btax_fna = btax_fna
         self.fna_id = fna_id
         self.blastdb = blastdb
+        self.repr_alns = repr_alns  # contains btc and btr (btc seqs cannot be excluded from repr)
+        self.repr_dists = repr_dists
         self.repr_profiles = repr_profiles
         self.ref_tree_newick = ref_tree_newick
         self.ref_tree_full_names = ref_tree_full_names
@@ -84,6 +96,8 @@ class BtaxInfo(JsonEntry):
             "btax_fna": (cls.btax_fna_key,),
             "fna_id": (cls.fna_id_key,),
             "blastdb": (cls.blastdb_key,),
+            "repr_alns": (cls.repr_alns_key,),
+            "repr_dists": (cls.repr_dists_key,),
             "repr_profiles": (cls.repr_profiles_key,),
             "ref_tree_newick": (cls.ref_tree_key, cls.ref_tree_newick_key,),
             "ref_tree_full_names": (cls.ref_tree_key, cls.ref_tree_full_names_key,),
