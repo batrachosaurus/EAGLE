@@ -18,7 +18,7 @@ class BtaxInfo(JsonEntry):
     name_key = "name"
     genomes_key = "genomes"
     btax_fna_key = "btax_fna"
-    fna_id_key = "fna_id"
+    fna_id2genome_key = "fna_id2genome"
     blastdb_key = "blastdb"
     repr_alns_key = "repr_alns"
     repr_dists_key = "repr_dists"
@@ -34,7 +34,7 @@ class BtaxInfo(JsonEntry):
     name_0 = None
     genomes_0 = list()
     btax_fna_0 = None
-    fna_id_0 = defaultdict(str)  # {seq_id: fna_path}
+    fna_id2genome_0 = defaultdict(tuple)  # {seq_id: (genome_info.key, <any, additional, data>)}
     blastdb_0 = None
     repr_alns_0 = dict()
     repr_dists_0 = dict()
@@ -48,7 +48,7 @@ class BtaxInfo(JsonEntry):
                  name=name_0,
                  genomes=None,
                  btax_fna=btax_fna_0,
-                 fna_id=None,
+                 fna_id2genome=None,
                  blastdb=blastdb_0,
                  repr_alns=None,
                  repr_dists=None,
@@ -61,8 +61,8 @@ class BtaxInfo(JsonEntry):
         # attribute names must match keys form SeqProfileInfo.attr_scheme()
         if genomes is None:
             genomes = self.genomes_0
-        if fna_id is None:
-            fna_id = self.fna_id_0
+        if fna_id2genome is None:
+            fna_id2genome = self.fna_id2genome_0
         if repr_alns is None:
             repr_alns = self.repr_alns_0
         if repr_dists is None:
@@ -75,7 +75,7 @@ class BtaxInfo(JsonEntry):
         self.name = name
         self.genomes=genomes
         self.btax_fna = btax_fna
-        self.fna_id = fna_id
+        self.fna_id2genome = fna_id2genome
         self.blastdb = blastdb
         self.repr_alns = repr_alns  # contains btc and btr (btc seqs cannot be excluded from repr)
         self.repr_dists = repr_dists
@@ -94,7 +94,7 @@ class BtaxInfo(JsonEntry):
             "name": (cls.name_key,),
             "genomes": (cls.genomes_key,),
             "btax_fna": (cls.btax_fna_key,),
-            "fna_id": (cls.fna_id_key,),
+            "fna_id2genome": (cls.fna_id2genome_key,),
             "blastdb": (cls.blastdb_key,),
             "repr_alns": (cls.repr_alns_key,),
             "repr_dists": (cls.repr_dists_key,),
