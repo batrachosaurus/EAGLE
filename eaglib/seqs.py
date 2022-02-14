@@ -963,7 +963,7 @@ class GenomeInfo(JsonEntry):
     org_name_0 = None
     taxonomy_0 = list()
     fna_seq_fasta_0 = list()
-    fna_seq_ids_0 = list()
+    fna_seq_ids_0 = list()  # TODO: link to fasta
     repr_seq_fasta_0 = list()
     repr_seq_id2profile_0 = defaultdict(str)  # {repr_seq_id: repr_seq_profile_name}
     extra_info_0 = dict()
@@ -996,7 +996,7 @@ class GenomeInfo(JsonEntry):
         self.org_name = org_name
         self.taxonomy = taxonomy
         self.fna_seq_fasta = fna_seq_fasta  # list of paths or links
-        self.fna_seq_ids = fna_seq_ids
+        self.fna_seq_ids = fna_seq_ids  # TODO: add more sense for this
         self.repr_seq_fasta = repr_seq_fasta  # list of paths
         self.repr_seq_id2profile = repr_seq_id2profile
         self.extra_info = extra_info

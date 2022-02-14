@@ -67,7 +67,8 @@ def create(db_dir: str,
                                                     btc_profiles=btax_class_profiles,
                                                     num_threads=conf_constants.num_threads)
 
-    # TODO: get fna for each genome in btax (single fasta per a genome)
+    for btax_name in btax_dict:
+        get_btax_fna(btax_info=btax_dict[btax_name], db_dir=db_dir)###
     # TODO: find, align and get distances for repr_profiles seqs
     # TODO: build btax repr_profiles
     # TODO: build btax reference tree
@@ -356,6 +357,41 @@ def filter_btax(btax_info, global_dist_matr, k_max=None):
     for min_dist_i in genomes_to_remove:
         del btax_info.genomes[min_dist_i]
     return btax_info
+
+
+def get_btax_fna(btax_info: BtaxInfo, db_dir: str) -> None:###
+    # Inplace modification of BtaxInfo object
+    btax_fna_path = os.path.join(db_dir, btax_info.name + ".fasta")
+    btax_fna_dict = dict()
+    for btax_genome in btax_info.genomes:
+        genome_info = GenomeInfo.load_from_dict(btax_genome)
+        for seq_fasta in genome_info.fna_seq_fasta:
+            if seq_fasta.startswith("http://") or seq_fasta.startswith("https://") or seq_fasta.startswith("ftp://"):
+                local_seq_fasta = ...###
+                # TODO: download fna
+            else:
+                local_seq_fasta = seq_fasta
+            if local_seq_fasta:# is archive?
+                extracted_seq_fasta = ...###
+                # TODO: extract from archive
+            else:
+                extracted_seq_fasta = local_seq_fasta
+            for seq_id, seq in load_fasta_to_dict(extracted_seq_fasta).items():
+                if seq_id in btax_fna_dict:
+                    btax_seq_id = ...###
+                else:
+                    btax_seq_id = seq_id
+                btax_fna_dict[btax_seq_id] = seq
+                btax_info.fna_id2genome[btax_seq_id] = (genome_info.key, seq_id)
+                del btax_seq_id
+            if seq_fasta != local_seq_fasta:
+                os.remove(local_seq_fasta)
+            if seq_fasta != extracted_seq_fasta:
+                os.remove(extracted_seq_fasta)
+            del local_seq_fasta
+            del extracted_seq_fasta
+
+    SeqsDict.load_from_dict(btax_fna_dict).dump(btax_fna_path, format='fasta')
 
 
 def get_btax_dist(btax1_orgs, btax2_orgs, global_dist_matr):
