@@ -85,6 +85,9 @@ class BtaxInfo(JsonEntry):
         self.mean_d = mean_d
         self.median_d = median_d
 
+        self._genome_key2info = dict()
+        self.update_genome_key2info()
+
     @classmethod
     def attr_scheme(cls):
         # json scheme (the keys must match attribute names defined in __init__)
@@ -104,6 +107,18 @@ class BtaxInfo(JsonEntry):
             "mean_d": (cls.distance_key, cls.mean_d_key,),
             "median_d": (cls.distance_key, cls.median_d_key,),
         }
+
+    def genome_key2info(self, genome_key):
+        if genome_key not in self._genome_key2info:
+            self.update_genome_key2info()
+        elif GenomeInfo.key_from_dict(self.genomes[self._genome_key2info[genome_key]]) != genome_key:
+            self.update_genome_key2info()
+        return GenomeInfo.load_from_dict(self.genomes[self._genome_key2info[genome_key]])
+
+    def update_genome_key2info(self):
+        self._genome_key2info = dict()
+        for i, genome_dict in enumerate(self.genomes):
+            self._genome_key2info[GenomeInfo.key_from_dict(genome_dict)] = i
 
 
 class DBInfo(JsonEntry):
