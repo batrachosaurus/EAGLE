@@ -133,7 +133,7 @@ class SeqsProfile(object):
         if self.method.lower() in (HMMER_KEY, INFERNAL_KEY):
             if not os.path.exists(self.tmp_dir):
                 os.makedirs(self.tmp_dir)
-            if shred_seqdb:  # I don't know if this this functional is needed for all methods
+            if shred_seqdb:  # I don't know if this functional is needed for all methods
                 prepared_seqdb = shred_seqs(seqdb, shredded_seqs_fasta=os.path.join(self.tmp_dir, "seqdb_shred.fasta"),
                                             part_l=50000, parts_ov=5000)
             else:

@@ -47,7 +47,7 @@ class BtaxInfo(JsonEntry):
     def __init__(self,
                  name=name_0,
                  genomes=None,
-                 btax_fna=btax_fna_0,
+                 btax_fna=btax_fna_0,  # path to fasta
                  fna_id2genome=None,
                  blastdb=blastdb_0,
                  repr_alns=None,
