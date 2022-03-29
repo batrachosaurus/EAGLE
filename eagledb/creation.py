@@ -69,9 +69,10 @@ def create(db_dir: str,
 
     for btax_name in btax_dict:
         get_btax_fna(btax_info=btax_dict[btax_name], db_dir=db_dir)###
-    # TODO: find, align and get distances for repr_profiles seqs
-    # TODO: build btax repr_profiles
-    # TODO: build btax reference tree
+        # TODO: find, align and get distances for repr_profiles seqs
+        # TODO: build btax repr_profiles
+        # TODO: build btax reference tree
+        # TODO: build blastdb
 
     btax_dict = get_btax_blastdb(btax_dict,
                                  db_dir=db_dir,
