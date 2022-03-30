@@ -25,24 +25,28 @@ class SeqsProfileInfo(JsonEntry):
     path_key = "path"
     seq_type_key = "type"
     weight_key = "weight"
+    method_key = "method"
 
     # default values
     name_0 = None
     path_0 = None
     seq_type_0 = 'nucl'
     weight_0 = 1.0
+    method_0 = HMMER_KEY
 
     def __init__(self,
                  name=name_0,
                  path=path_0,
                  seq_type=seq_type_0,
-                 weight=weight_0):
+                 weight=weight_0,
+                 method=method_0):
 
         # attribute names must match keys form SeqProfileInfo.attr_scheme()
         self.name = name
         self.path = path
         self.seq_type = seq_type
         self.weight = weight
+        self.method = method
 
     @classmethod
     def attr_scheme(cls):
@@ -54,17 +58,19 @@ class SeqsProfileInfo(JsonEntry):
             "path": (cls.path_key,),
             "seq_type": (cls.seq_type_key,),
             "weight": (cls.weight_key,),
+            "method": (cls.method_key,),
         }
 
 
 class SeqsProfile(object):
 
     def __init__(self, seqs_profile_info: SeqsProfileInfo,
-                 method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None, tmp_dir=None, logger=None):
+                 hmmer_inst_dir=None, infernal_inst_dir=None, tmp_dir=None, logger=None):
         self.name = seqs_profile_info.name
         self.seq_type = seqs_profile_info.seq_type
         self.path = seqs_profile_info.path
         self.weight = seqs_profile_info.weight
+        self.method = seqs_profile_info.method
 
         if hmmer_inst_dir is None:
             hmmer_inst_dir = conf_constants.hmmer_inst_dir
@@ -78,7 +84,6 @@ class SeqsProfile(object):
             else:
                 tmp_dir = "seqs_profile_%s_tmp" % generate_random_string(10)
 
-        self.method = method
         self.hmmer_inst_dir = hmmer_inst_dir
         self.infernal_inst_dir = infernal_inst_dir
         self.tmp_dir = tmp_dir
@@ -120,11 +125,11 @@ class SeqsProfile(object):
             subprocess.call(build_cmd, shell=True)
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        return cls(SeqsProfileInfo(name=name, path=path, seq_type=mult_aln.seqs_type, weight=weight),
-                   method=method, hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir,
-                   tmp_dir=tmp_dir, logger=logger)
+        return cls(SeqsProfileInfo(name=name, path=path, seq_type=mult_aln.seqs_type, weight=weight, method=method),
+                   hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir, tmp_dir=tmp_dir, logger=logger)
 
-    def search(self, seqdb, out_path=None, threads=1, shred_seqdb=False, **kwargs):
+    def search(self, seqdb, out_path=None, threads=1, **kwargs):
+        # All preparations of seqdb like translation or shredding should be done outside the method
         read_output = kwargs.get("read_output", False)
         if out_path is None:
             out_path = os.path.splitext(self.path)[0] + "_out_%s.psr" % generate_random_string(10)
@@ -133,16 +138,15 @@ class SeqsProfile(object):
         if self.method.lower() in (HMMER_KEY, INFERNAL_KEY):
             if not os.path.exists(self.tmp_dir):
                 os.makedirs(self.tmp_dir)
-            if shred_seqdb:  # I don't know if this functional is needed for all methods
-                prepared_seqdb = shred_seqs(seqdb, shredded_seqs_fasta=os.path.join(self.tmp_dir, "seqdb_shred.fasta"),
-                                            part_l=50000, parts_ov=5000)
-            else:
-                prepared_seqdb = seqdb
 
-            if isinstance(prepared_seqdb, SeqsDict):
-                seqdb_path = prepared_seqdb.dump(os.path.join(self.tmp_dir, "seqdb_to_search.fasta"), format="fasta")
+            # The example of shred_seqs function usage, remove this after reimplementation in other modules
+            # prepared_seqdb = shred_seqs(seqdb, shredded_seqs_fasta=os.path.join(self.tmp_dir, "seqdb_shred.fasta"),
+            #                             part_l=50000, parts_ov=5000)
+
+            if isinstance(seqdb, SeqsDict):
+                seqdb_path = seqdb.dump(os.path.join(self.tmp_dir, "seqdb_to_search.fasta"), format="fasta")
             else:
-                seqdb_path = prepared_seqdb
+                seqdb_path = seqdb
 
             if self.method.lower() == HMMER_KEY:
                 search_cmd = os.path.join(self.hmmer_inst_dir, "hmmsearch") + \
@@ -210,7 +214,7 @@ class SeqProfilesDB(object):
         return cls(name=name, method=method, hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir,
                    tmp_dir=tmp_dir, logger=logger)
 
-    def scan(self, in_seqs, num_threads=4, out_path=None, shred_in_seqs=False, **kwargs):
+    def scan(self, in_seqs, num_threads=4, out_path=None, **kwargs):
         read_output = kwargs.get("read_output", False)
         if out_path is None:
             out_path = os.path.splitext(self.name)[0] + "_out_%s.psr" % generate_random_string(10)
@@ -219,17 +223,11 @@ class SeqProfilesDB(object):
         if self.method.lower() in (HMMER_KEY, INFERNAL_KEY):
             if not os.path.exists(self.tmp_dir):
                 os.makedirs(self.tmp_dir)
-            if shred_in_seqs:  # I don't know if this this functional is needed for all methods
-                prepared_in_seqs = shred_seqs(in_seqs,
-                                              shredded_seqs_fasta=os.path.join(self.tmp_dir, "in_seqs_shred.fasta"),
-                                              part_l=50000, parts_ov=5000)
-            else:
-                prepared_in_seqs = in_seqs
 
-            if isinstance(prepared_in_seqs, SeqsDict):
-                in_seqs_path = prepared_in_seqs.dump(os.path.join(self.tmp_dir, "seqs_to_scan.fasta"), format="fasta")
+            if isinstance(in_seqs, SeqsDict):
+                in_seqs_path = in_seqs.dump(os.path.join(self.tmp_dir, "seqs_to_scan.fasta"), format="fasta")
             else:
-                in_seqs_path = prepared_in_seqs
+                in_seqs_path = in_seqs
 
             if self.method.lower() == HMMER_KEY:
                 scan_cmd = os.path.join(self.hmmer_inst_dir, "hmmscan") + \

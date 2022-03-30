@@ -60,6 +60,8 @@ def create(db_dir: str,
         conf_constants_lib.update_by_config(config_path=config_path)
     if num_threads is not None:
         conf_constants.num_threads = num_threads
+    if btax_level is not None:
+        conf_constants.btax_level = btax_level
 
     btax_dict, short2full_seq_names = get_btax_dict(db_dir=db_dir,
                                                     genomes_list=genomes_table.to_records(),
@@ -69,6 +71,7 @@ def create(db_dir: str,
 
     for btax_name in btax_dict:
         get_btax_fna(btax_info=btax_dict[btax_name], db_dir=db_dir)###
+        add_repr_profiles()
         # TODO: find, align and get distances for repr_profiles seqs
         # TODO: build btax repr_profiles
         # TODO: build btax reference tree
@@ -393,6 +396,7 @@ def get_btax_fna(btax_info: BtaxInfo, db_dir: str) -> None:###
             del extracted_seq_fasta
 
     SeqsDict.load_from_dict(btax_fna_dict).dump(btax_fna_path, format='fasta')
+    btax_info.btax_fna = btax_fna_path
 
 
 def get_btax_dist(btax1_orgs, btax2_orgs, global_dist_matr):
@@ -403,6 +407,11 @@ def get_btax_dist(btax1_orgs, btax2_orgs, global_dist_matr):
             sum_dist += global_dist_matr[org][org_]
             n += 1
     return sum_dist / float(n)
+
+
+def add_repr_profiles(btax_info: BtaxInfo, btax_repr_profiles: Iterable):
+    for repr_profile_dict in btax_repr_profiles:
+        SeqsProfileInfo.load_from_dict(repr_profile_dict)
 
 
 def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, config_path=None):
