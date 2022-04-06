@@ -11,7 +11,6 @@ import dendropy
 from deprecated import deprecated
 
 from eagle.constants import conf_constants
-from eaglib.general import filter_list
 from eaglib._utils.strings import generate_random_string, fullmatch_regexp_list
 from eaglib._utils.logging import send_log_message
 from eaglib.seqs import reduce_seq_names
@@ -266,7 +265,7 @@ class DistanceMatrix(object):
                 line = line_.strip()
                 if not line:
                     continue
-                line_list = filter_list(line.split())
+                line_list = list(filter(lambda li: li.strip(), line.split()))
                 if len(line_list) == 1 and not matrix_started:
                     num_seqs = int(line_list[0])
                     continue
@@ -530,7 +529,7 @@ def load_phylip_dist_matrix(matrix_path):
         line = line_.strip()
         if not line:
             continue
-        line_list = filter_list(line.split())
+        line_list = list(filter(lambda li: li.strip(), line.split()))
         if len(line_list) == 1 and not matrix_started:
             num_seqs = int(line_list[0])
             continue
