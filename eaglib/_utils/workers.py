@@ -34,7 +34,6 @@ class AsyncWorker(object):
         self.loop.call_soon_threadsafe(self.loop.stop)
         self._t.join()
         self.loop.close()
-        del self  # TODO: is the result available?
 
     def close(self):
         self._is_closed = True
@@ -97,7 +96,6 @@ class ProcessPool(object):
         for p in self._processes:
             p.terminate()
         self.queue.close()
-        del self
 
     def close(self):
         self._is_closed = True
