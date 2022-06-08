@@ -19,7 +19,6 @@ class BlastDB(object):
                  db_name,
                  blast_inst_dir=None,
                  tmp_dir=None,
-                 logger=None,
                  **kwargs):
 
         if tmp_dir is None:
@@ -31,7 +30,6 @@ class BlastDB(object):
         if self.blast_inst_dir is None:
             self.blast_inst_dir = conf_constants.blast_inst_dir
         self.tmp_dir = tmp_dir
-        self.logger = logger
 
     @classmethod
     def make_blastdb(cls, in_seqs, dbtype, db_name, blast_inst_dir=None, **kwargs):
@@ -61,11 +59,7 @@ class BlastDB(object):
             os.makedirs(self.tmp_dir)
 
         if num_threads > 1 and kwargs.get("split_input", True):
-            send_log_message("splitting '%s' into %s parts" % (query, num_threads), mes_type="info", logger=self.logger)
-            if self.logger is not None:
-                self.logger.info()
-            else:
-                print("INFO: splitting '%s' into %s parts" % (query, num_threads))
+            send_log_message("splitting '%s' into %s parts" % (query, num_threads), mes_type="info")
             if isinstance(query, SeqsDict):
                 query_dict = query
                 query_path = os.path.join(self.tmp_dir, "query.fasta")
@@ -117,11 +111,7 @@ class BlastDB(object):
                                " -num_threads " + str(num_threads) + \
                                " -outfmt " + str(outfmt) + \
                                " -max_hsps " + str(max_hsps)
-            send_log_message("run '%s' command" % blast_search_cmd, mes_type="info", logger=self.logger)
-            if self.logger is not None:
-                self.logger.info()
-            else:
-                print("INFO: run '%s' command" % blast_search_cmd)
+            send_log_message("run '%s' command" % blast_search_cmd, mes_type="info")
             subprocess.call(blast_search_cmd, shell=True)
 
         if kwargs.get("remove_tmp", True):

@@ -42,11 +42,11 @@ def send_log_message(message, mes_type="info", logger=None):
             logger.error(message)
     else:  # TODO: detect logger
         if mes_type.lower() in ("info", "i"):
-            print("INFO: %s" % message)
+            eagle_logger.info(message)
         if mes_type.lower() in ("warning", "warn", "w"):
-            print("WARNING: %s" % message)
+            eagle_logger.warning(message)
         if mes_type.lower() in ("error", "err", "e"):
-            print("ERROR: %s" % message)
+            eagle_logger.error(message)
 
 
 setup_logging(LOG_CONFIG_PATH)

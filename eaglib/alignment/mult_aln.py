@@ -70,8 +70,6 @@ class MultAln(SeqsDict):
         self.fastme_exec_path = fastme_exec_path
         self.kaks_calculator_exec_path = kaks_calculator_exec_path
 
-        self.logger = kwargs.get("logger", None)
-
     def _init_subset(self, seqs_order, seqs_array,
                      seq_info_dict=None,
                      seqs_type=None,
@@ -102,8 +100,6 @@ class MultAln(SeqsDict):
             fastme_exec_path = self.fastme_exec_path
         if kaks_calculator_exec_path is None:
             kaks_calculator_exec_path = self.kaks_calculator_exec_path
-        if kwargs.get("logger", None) is None:
-            kwargs["logger"] = self.logger
 
         mult_aln = super(MultAln, self)._init_subset(seqs_order, seqs_array,
                                                      seq_info_dict=seq_info_dict,
@@ -257,7 +253,7 @@ class MultAln(SeqsDict):
         :return:
         """
         # TODO: write methods for removing gaps between blocks
-        send_log_message("'%s' multiple alignment improvement started" % self.name, mes_type='info', logger=self.logger)
+        send_log_message("'%s' multiple alignment improvement started" % self.name, mes_type='info')
         to_return = None
         if num_threads is None:
             num_threads = num_threads
@@ -301,10 +297,9 @@ class MultAln(SeqsDict):
                 else:
                     to_return = improved_mult_aln
             else:
-                send_log_message("no columns left in '%s' multiple alignment" % self.name,
-                                 mes_type='warning', logger=self.logger)
+                send_log_message("no columns left in '%s' multiple alignment" % self.name, mes_type='warning')
 
-        send_log_message("'%s' multiple alignment improved" % self.name, mes_type='info', logger=self.logger)
+        send_log_message("'%s' multiple alignment improved" % self.name, mes_type='info')
         return to_return
 
     @staticmethod
@@ -331,8 +326,7 @@ class MultAln(SeqsDict):
                                                              method=self.dist_matr_method,
                                                              options=self.dist_matr_options,
                                                              emboss_inst_dir=self.emboss_inst_dir,
-                                                             fastme_exec_path=self.fastme_exec_path,
-                                                             logger=self.logger)
+                                                             fastme_exec_path=self.fastme_exec_path)
         return self._distance_matrix
 
     @deprecated(reason="Use 'calculate_distance_matrix' method")
@@ -352,32 +346,31 @@ class MultAln(SeqsDict):
             aln_fasta_path = os.path.join(self.tmp_dir, self.name+".fasta")
             phylip_matrix_path = os.path.join(self.tmp_dir, self.name+".phylip")
             if not self:
-                send_log_message("no sequences in alignment", mes_type="warning", logger=self.logger)
+                send_log_message("no sequences in alignment", mes_type="warning")
                 return
             self.dump(aln_fasta_path, format="fasta")
             if self.seqs_type.lower() in self.prot_types:
-                send_log_message("protdist is starting", mes_type="info", logger=self.logger)
+                send_log_message("protdist is starting", mes_type="info")
                 phylip_cmd = os.path.join(self.emboss_inst_dir, "fprotdist") + " -sequence " + aln_fasta_path + \
                              " -method d -outfile " + phylip_matrix_path
             else:
-                send_log_message("dnadist is starting", mes_type="info", logger=self.logger)
+                send_log_message("dnadist is starting", mes_type="info")
                 phylip_cmd = os.path.join(self.emboss_inst_dir, "fdnadist") + " -sequence " + aln_fasta_path + \
                              " -method f -outfile " + phylip_matrix_path
             subprocess.call(phylip_cmd, shell=True)
-            send_log_message("distance calculations finished", mes_type="info", logger=self.logger)
+            send_log_message("distance calculations finished", mes_type="info")
             self._distance_matrix = DistanceMatrix.load(matrix_path=phylip_matrix_path,
                                                         matr_format="phylip",
                                                         short_to_full_seq_names=self.short_to_full_seq_names,
                                                         emboss_inst_dir=self.emboss_inst_dir,
                                                         fastme_exec_path=self.fastme_exec_path,
-                                                        logger=self.logger,
                                                         **kwargs)
 
         if method.lower() == "fastme":
             aln_phylip_path = os.path.join(self.tmp_dir, self.name+".phylip")
             phylip_matrix_path = os.path.join(self.tmp_dir, self.name+"_dm.phylip")
             if not self:
-                send_log_message(message="no sequences in alignment", mes_type="e", logger=self.logger)
+                send_log_message(message="no sequences in alignment", mes_type="e")
                 return
             self.dump(aln_phylip_path, format="phylip")
             for option in ("-O", "--output_matrix"):
@@ -387,15 +380,14 @@ class MultAln(SeqsDict):
             else:
                 fastme_options = {"--dna": 4, "-O": phylip_matrix_path}
             fastme_options.update(options)
-            send_log_message(message="distances calculation started", mes_type="i", logger=self.logger)
+            send_log_message(message="distances calculation started", mes_type="i")
             run_fastme(input_data=aln_phylip_path, options=fastme_options, fastme_exec_path=self.fastme_exec_path)
-            send_log_message(message="distances calculation finished", mes_type="i", logger=self.logger)
+            send_log_message(message="distances calculation finished", mes_type="i")
             self._distance_matrix = DistanceMatrix.load(matrix_path=phylip_matrix_path,
                                                         matr_format="phylip",
                                                         short_to_full_seq_names=self.short_to_full_seq_names,
                                                         emboss_inst_dir=self.emboss_inst_dir,
                                                         fastme_exec_path=self.fastme_exec_path,
-                                                        logger=self.logger,
                                                         **kwargs)
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
         self._distance_matrix.aln_name = self.name
@@ -411,7 +403,7 @@ class MultAln(SeqsDict):
         :param inplace:
         :return:
         """
-        send_log_message(message="paralogs removing started", mes_type='i', logger=self.logger)
+        send_log_message(message="paralogs removing started", mes_type='i')
 
         if seq_ids_to_orgs is not None:
             self.seq_ids_to_orgs = seq_ids_to_orgs
@@ -437,7 +429,7 @@ class MultAln(SeqsDict):
 
         if inplace:
             self._inplace(filtered_aln)
-        send_log_message("paralogs removed", "info", logger=self.logger)
+        send_log_message("paralogs removed", "info")
         if not inplace:
             return filtered_aln
 
@@ -452,10 +444,7 @@ class MultAln(SeqsDict):
 
     def nucl_by_prot_aln(self, nucl_fasta_dict=None, nucl_fasta_path=None):
         if self.aln_type.lower() not in self.prot_types:
-            if self.logger:
-                self.logger.error("reference alignment type is not protein")
-            else:
-                print("ERROR: reference alignment type is not protein")
+            send_log_message(message="reference alignment type is not protein", mes_type='e')
             return
 
         if nucl_fasta_dict is not None:
@@ -463,7 +452,7 @@ class MultAln(SeqsDict):
         elif nucl_fasta_path is not None:
             self.nucl_seqs_dict = load_fasta_to_dict(fasta_path=nucl_fasta_path)
         if not self.nucl_seqs_dict:
-            send_log_message(message="no nucleotide sequences are input", mes_type="e", logger=self.logger)
+            send_log_message(message="no nucleotide sequences are input", mes_type="e")
             return
 
         nucl_aln_dict = dict()
@@ -541,10 +530,8 @@ class MultAln(SeqsDict):
 
         if self.seqs_type.lower() in self.prot_types:
             if not self.nucl_seqs_dict:
-                if self.logger:
-                    self.logger.error("protein alignment but no value input for argument 'nucl_seqs_dict'")
-                else:
-                    print("ERROR: protein alignment but no value input for argument 'nucl_seqs_dict'")
+                send_log_message(message="protein alignment but no value input for argument 'nucl_seqs_dict'",
+                                 mes_type='e')
                 return
             nucl_aln = self.nucl_by_prot_aln()
             windows_list = nucl_aln.split_into_windows(window_l=window_l)
@@ -589,8 +576,7 @@ class MultAln(SeqsDict):
         if self.seqs_type.lower() in self.prot_types:
             if not self.nucl_seqs_dict:
                 send_log_message(message="protein alignment but no value input for argument 'nucl_seqs_dict'",
-                                 mes_type="e",
-                                 logger=self.logger)
+                                 mes_type="e")
                 return
             nucl_aln = self.nucl_by_prot_aln()
             return nucl_aln.calculate_KaKs(method=method, max_kaks=max_kaks, only_first_seq=only_first_seq, **kwargs)
@@ -606,10 +592,7 @@ class MultAln(SeqsDict):
             out_path = os.path.join(self.tmp_dir, self.name + ".kaks")
             kaks_calculator_cmd = self.kaks_calculator_exec_path + \
                                   " -i " + pairs_axt_path + " -o " + out_path + " -m YN"
-            if self.logger:
-                self.logger.info("running command: '%s'" % kaks_calculator_cmd)
-            else:
-                print("INFO: running command: '%s'" % kaks_calculator_cmd)
+            send_log_message(message="running command: '%s'" % kaks_calculator_cmd, mes_type='i')
             subprocess.call(kaks_calculator_cmd, shell=True)
             try:
                 kaks_df = pd.read_csv(out_path, sep="\t")
@@ -659,8 +642,7 @@ class MultAln(SeqsDict):
             phylo_tree.tree_name = tree_name
             phylo_tree.full_seq_names = self.short_to_full_seq_names
             phylo_tree.storage_dir = tmp_dir
-            phylo_tree.logger = self.logger
-            send_log_message(message="phylogenetic tree built with FastME", mes_type="i", logger=self.logger)
+            send_log_message(message="phylogenetic tree built with FastME", mes_type="i")
         else:
             return
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -714,7 +696,6 @@ def construct_mult_aln(seqs_dict=None,
                        remove_tmp=True,
                        num_threads=None,
                        config_path=None,
-                       logger=None,
                        **kwargs):
 
     if "seq_dict" in kwargs:
@@ -723,7 +704,7 @@ def construct_mult_aln(seqs_dict=None,
         seqs_type = kwargs["aln_type"]
 
     if seqs_dict is None and fasta_path is not None:
-        seqs_dict = SeqsDict.load_from_file(fasta_path, format="fasta", seqs_type=seqs_type, logger=logger, **kwargs)
+        seqs_dict = SeqsDict.load_from_file(fasta_path, format="fasta", seqs_type=seqs_type, **kwargs)
 
     if isinstance(seqs_dict, SeqsDict):
         return seqs_dict.construct_mult_aln(method=method,

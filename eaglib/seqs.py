@@ -48,7 +48,6 @@ class SeqsDict(object):
             self.seqs_type = seqs_type.lower()
         self.low_memory = low_memory
         self._chunk_size = int(str(seqs_array.dtype).strip("<U"))
-        self.logger = kwargs.get("logger", None)
 
         self._nucl_seqs_dict = dict()
         self._full_to_short_seq_names = dict()
@@ -76,7 +75,6 @@ class SeqsDict(object):
                                    seq_info_dict=seq_info_dict,
                                    seqs_type=seqs_type,
                                    low_memory=low_memory,
-                                   logger=kwargs.pop("logger", self.logger),
                                    **kwargs)
 
         prev_end = 0
@@ -115,8 +113,7 @@ class SeqsDict(object):
     @nucl_seqs_dict.setter
     def nucl_seqs_dict(self, nucl_seqs_dict):
         if self.seqs_type.lower() not in self.prot_types:
-            send_log_message(message="The alignment seems to be nucleotide - not applicable",
-                             mes_type="w", logger=self.logger)
+            send_log_message(message="The alignment seems to be nucleotide - not applicable", mes_type="w")
         else:
             if isinstance(nucl_seqs_dict, dict):
                 nucl_seqs_dict = SeqsDict.load_from_dict(nucl_seqs_dict)
@@ -136,7 +133,7 @@ class SeqsDict(object):
             self._full_to_short_seq_names = full2short_dict
             self._short_to_full_seq_names = {v: k for k, v in full2short_dict}
         else:
-            send_log_message(message="the value to assign should be a dict", mes_type="e", logger=self.logger)
+            send_log_message(message="the value to assign should be a dict", mes_type="e")
 
     @property
     def short_to_full_seq_names(self):
@@ -150,7 +147,7 @@ class SeqsDict(object):
             self._full_to_short_seq_names = {v: k for k, v in short2full_dict}
             self._short_to_full_seq_names = short2full_dict
         else:
-            send_log_message(message="the value to assign should be a dict", mes_type="e", logger=self.logger)
+            send_log_message(message="the value to assign should be a dict", mes_type="e")
 
     @property
     def seq_ids_to_orgs(self):
@@ -161,7 +158,7 @@ class SeqsDict(object):
         if isinstance(sito_dict, dict):  # not exhaustive condition
             self._seq_ids_to_orgs = sito_dict
         else:
-            send_log_message(message="the value to assign should be a dict", mes_type="e", logger=self.logger)
+            send_log_message(message="the value to assign should be a dict", mes_type="e")
 
     @property
     def short_id(self):
@@ -554,29 +551,29 @@ class SeqsDict(object):
         out_fasta_path = os.path.join(tmp_dir, aln_name + ".fasta")
 
         if method.lower() == "muscle":
-            send_log_message("MUSCLE is starting", mes_type="info", logger=self.logger)
+            send_log_message("MUSCLE is starting", mes_type="info")
             muscle_cmd = muscle_exec_path + " -in " + in_fasta_path + " -out " + out_fasta_path
             subprocess.call(muscle_cmd, shell=True)
-            send_log_message("MUSCLE finished", mes_type="info", logger=self.logger)
+            send_log_message("MUSCLE finished", mes_type="info")
             mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
 
         if method.lower() == "mafft":
-            send_log_message("MAFFT is starting", mes_type="info", logger=self.logger)
+            send_log_message("MAFFT is starting", mes_type="info")
             mafft_cmd = mafft_exec_path + " --auto" \
                         " --op " + str(kwargs.get("op", kwargs.get("gap_open_penalty", 1.53))) + \
                         " --ep " + str(kwargs.get("ep", kwargs.get("gap_ext_penalty", 0.123))) + \
                         " --thread " + str(num_threads) + \
                         " " + in_fasta_path + " > " + out_fasta_path
             subprocess.call(mafft_cmd, shell=True)
-            send_log_message("MAFFT finished", mes_type="info", logger=self.logger)
+            send_log_message("MAFFT finished", mes_type="info")
             mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
 
         if method.lower() == "msaprobs":
-            send_log_message("MSAProbs is starting", mes_type="info", logger=self.logger)
+            send_log_message("MSAProbs is starting", mes_type="info")
             msaprobs_cmd = msaprobs_exec_path + " -num_threads " + str(num_threads) + " -v " + \
                            in_fasta_path + " > " + out_fasta_path
             subprocess.call(msaprobs_cmd, shell=True)
-            send_log_message("MSAProbs finished", mes_type="info", logger=self.logger)
+            send_log_message("MSAProbs finished", mes_type="info")
             mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
 
         mult_aln.seqs_type = self.seqs_type
@@ -595,11 +592,11 @@ class SeqsDict(object):
     def to_blastdb(self, dbtype=None, db_name=None, blast_inst_dir=None, **kwargs):
         from eaglib.alignment import BlastDB
 
-        return BlastDB.make_blastdb(db_name=db_name,
+        return BlastDB.make_blastdb(in_seqs=self,
+                                    db_name=db_name,
                                     dbtype=dbtype,
                                     blast_inst_dir=blast_inst_dir,
-                                    tmp_dir=kwargs.get("blast_tmp_dir", None),
-                                    logger=self.logger)
+                                    tmp_dir=kwargs.get("blast_tmp_dir", None))
 
     def to_blast_search(self, blast_type, blast_db, out=None, num_threads=1, outfmt=7, max_hsps=100,
                         **kwargs):
