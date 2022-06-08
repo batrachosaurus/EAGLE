@@ -65,7 +65,7 @@ class SeqsProfileInfo(JsonEntry):
 class SeqsProfile(object):
 
     def __init__(self, seqs_profile_info: SeqsProfileInfo,
-                 hmmer_inst_dir=None, infernal_inst_dir=None, tmp_dir=None, logger=None):
+                 hmmer_inst_dir=None, infernal_inst_dir=None, tmp_dir=None, **kwargs):
         self.name = seqs_profile_info.name
         self.seq_type = seqs_profile_info.seq_type
         self.path = seqs_profile_info.path
@@ -87,11 +87,10 @@ class SeqsProfile(object):
         self.hmmer_inst_dir = hmmer_inst_dir
         self.infernal_inst_dir = infernal_inst_dir
         self.tmp_dir = tmp_dir
-        self.logger = logger
 
     @classmethod
     def build(cls, mult_aln, name=None, path=None, weight=1.0,
-              method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None, tmp_dir=None, logger=None,
+              method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None, tmp_dir=None,
               **kwargs):
         if name is None:
             if path is None:
@@ -126,7 +125,7 @@ class SeqsProfile(object):
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
         return cls(SeqsProfileInfo(name=name, path=path, seq_type=mult_aln.seqs_type, weight=weight, method=method),
-                   hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir, tmp_dir=tmp_dir, logger=logger)
+                   hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir, tmp_dir=tmp_dir)
 
     def search(self, seqdb, out_path=None, threads=1, **kwargs):
         # All preparations of seqdb like translation or shredding should be done outside the method
@@ -174,8 +173,7 @@ class SeqsProfile(object):
 
 class SeqProfilesDB(object):
 
-    def __init__(self, name:str, method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None,
-                 tmp_dir=None, logger=None):
+    def __init__(self, name:str, method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None, tmp_dir=None, **kwargs):
         self.name = name
 
         if hmmer_inst_dir is None:
@@ -189,11 +187,10 @@ class SeqProfilesDB(object):
         self.hmmer_inst_dir = hmmer_inst_dir
         self.infernal_inst_dir = infernal_inst_dir
         self.tmp_dir = tmp_dir
-        self.logger = logger
 
     @classmethod
     def build(cls, profiles, name, method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None,
-              tmp_dir=None, logger=None, **kwargs):
+              tmp_dir=None, **kwargs):
         profile_paths = list()
         for profile_info in profiles:
             if isinstance(profile_info, SeqsProfileInfo):
@@ -212,7 +209,7 @@ class SeqProfilesDB(object):
             subprocess.call(cmpress_cmd, shell=True)
 
         return cls(name=name, method=method, hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir,
-                   tmp_dir=tmp_dir, logger=logger)
+                   tmp_dir=tmp_dir)
 
     def scan(self, in_seqs, num_threads=4, out_path=None, **kwargs):
         read_output = kwargs.get("read_output", False)

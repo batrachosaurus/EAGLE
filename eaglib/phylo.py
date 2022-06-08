@@ -22,8 +22,7 @@ class PhyloTree(object):
                  tree,
                  full_seq_names=None,
                  tree_name="phylo_tree",
-                 tmp_dir=None,
-                 logger=None):
+                 tmp_dir=None):
 
         if tmp_dir is None:
             tmp_dir = generate_random_string(10) + "_phylo_tree_tmp"
@@ -34,7 +33,6 @@ class PhyloTree(object):
         self.full_seq_names = full_seq_names
         self.tree_name = tree_name
         self.tmp_dir = tmp_dir
-        self.logger = logger
 
     def copy(self):
         return self._sub_phylo_tree(tree=self.tree,
@@ -52,21 +50,17 @@ class PhyloTree(object):
                         tree,
                         full_seq_names=None,
                         tree_name="phylo_tree",
-                        tmp_dir=None,
-                        logger=None):
+                        tmp_dir=None):
 
         if full_seq_names is None:
             full_seq_names = self.full_seq_names
         if tmp_dir is None:
             tmp_dir = generate_random_string(10) + "_phylo_tree_tmp"
-        if logger is None:
-            logger = self.logger
 
         return PhyloTree(tree=tree,
                          full_seq_names=full_seq_names,
                          tree_name=tree_name,
-                         tmp_dir=tmp_dir,
-                         logger=logger)
+                         tmp_dir=tmp_dir)
 
     @property
     def names(self):
@@ -168,7 +162,6 @@ class DistanceMatrix(object):
         self.emboss_inst_dir = kwargs.get("emboss_inst_dir", conf_constants.emboss_inst_dir)
         self.fastme_exec_path = kwargs.get("fastme_exec_path", conf_constants.fastme_exec_path)
         self.tmp_dir = kwargs.get("tmp_dir", generate_random_string(10) + "_dm_tmp")
-        self.logger = kwargs.get("logger", None)
 
     @property
     def seq_names(self):
@@ -197,8 +190,7 @@ class DistanceMatrix(object):
                                   aln_type=self.aln_type,
                                   calc_method=self.calc_method,
                                   emboss_inst_dir=self.emboss_inst_dir,
-                                  fastme_exec_path=self.fastme_exec_path,
-                                  logger=self.logger)
+                                  fastme_exec_path=self.fastme_exec_path)
         else:
             return pandas.Series(self.matr[self.seqs_order[item]], index=self.seq_names)
 
@@ -338,8 +330,7 @@ class DistanceMatrix(object):
                                   aln_name=self.aln_name,
                                   aln_type=self.aln_type,
                                   calc_method=self.calc_method,
-                                  emboss_inst_dir=self.emboss_inst_dir,
-                                  logger=self.logger)
+                                  emboss_inst_dir=self.emboss_inst_dir)
 
     def build_tree(self,
                    tree_name="phylo_tree",
@@ -365,8 +356,7 @@ class DistanceMatrix(object):
             phylo_tree.tree_name = tree_name
             phylo_tree.full_seq_names = self.short_to_full_seq_names
             phylo_tree.tmp_dir = tmp_dir
-            phylo_tree.logger = self.logger
-            send_log_message(message="phylogenetic tree built with FastME", mes_type="i", logger=self.logger)
+            send_log_message(message="phylogenetic tree built with FastME", mes_type="i")
         else:
             return
         shutil.rmtree(tmp_dir, ignore_errors=True)

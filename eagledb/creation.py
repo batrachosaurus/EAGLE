@@ -17,7 +17,8 @@ from eaglib._utils.workers import process_worker
 from eaglib.seqs import SeqsDict, load_fasta_to_dict, reduce_seq_names
 from eaglib.alignment import SeqsProfileInfo, SeqsProfile
 from eaglib.phylo import DistanceMatrix
-from eagledb.constants import conf_constants, conf_constants_lib, GLOBAL_DIST_MATRIX, SHORT_TO_FULL_ORG_NAMES
+from eagledb.constants import conf_constants, conf_constants_lib, GLOBAL_DIST_MATRIX, SHORT_TO_FULL_ORG_NAMES, \
+    BTAX_JSON_NAME, DB_INFO_NAME, PROFILES_DB_NAME
 from eagledb.scheme import BtaxInfo, GenomeInfo
 
 
@@ -72,10 +73,10 @@ def create(db_dir: str,
     btax_names = tuple(btax_dict.keys())
     to_complete_tasks = list()
     for btax_name in btax_names:
-        to_complete_tasks = {"function": complete_btax,
-                             "btax_info": btax_dict[btax_name],
-                             "btr_profiles": btax_repr_profiles,
-                             "db_dir": db_dir}###
+        to_complete_tasks.append({"function": complete_btax,###
+                                  "btax_info": btax_dict[btax_name],
+                                  "btr_profiles": btax_repr_profiles,
+                                  "db_dir": db_dir})
     pool = mp.Pool(conf_constants.num_threads)
     complete_result = pool.map(process_worker, to_complete_tasks)
     pool.close()
@@ -83,23 +84,26 @@ def create(db_dir: str,
     for i, btax_info in enumerate(complete_result):
         btax_dict[btax_names[i]] = btax_info
 
+    """
     btax_dict = get_btax_blastdb(btax_dict,
                                  db_dir=db_dir,
                                  btr_profiles=btax_repr_profiles,
                                  num_threads=conf_constants.num_threads)
+    """
 
-    repr_profiles_path = create_profiles_db(btax_dict,
+    repr_profiles_path = create_profiles_db(btax_dict,###
                                             db_dir=db_dir,
                                             profiles_db_name=PROFILES_DB_NAME,
-                                            method="hmmer",
                                             hmmer_inst_dir=conf_constants_lib.hmmer_inst_dir,
                                             config_path=config_path,
                                             logger=eagle_logger)
-    with open(os.path.join(db_dir, BTAX_JSON_NAME), "w") as btax_json_f:
-        json.dump(btax_dict, btax_json_f, indent=2)  # maybe btax_dict will be dumped in get_btax_dict
+
+    btax_json_path = os.path.join(db_dir, BTAX_JSON_NAME)
+    with open(btax_json_path, "w") as btax_json_f:
+        json.dump(btax_dict, btax_json_f, indent=2)
     db_info = DBInfo(
         all_genomes=os.path.join(db_dir, BACTERIA_LIST_F_NAME),
-        btax_json=os.path.join(db_dir, BTAX_JSON_NAME),
+        btax_json=btax_json_path,
         repr_profiles=repr_profiles_path,
         global_dist_matrix=os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX),
         all_org_full_names=os.path.join(db_dir, BACTERIA_SHORT_TO_FULL_ORG_NAMES),
