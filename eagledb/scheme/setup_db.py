@@ -123,7 +123,7 @@ class BtaxInfo(JsonEntry):
 
 class DBInfo(JsonEntry):
 
-    #json keys
+    # json keys
     all_genomes_key = "all_genomes"
     btax_json_key = "btax_json"
     repr_profiles_key = "repr_profiles"
@@ -147,6 +147,7 @@ class DBInfo(JsonEntry):
                  all_org_full_names=all_org_full_names_0,
                  from_root=from_root_0):
 
+        # all attributes are paths
         self.all_genomes = all_genomes
         self.btax_json = btax_json
         self.repr_profiles = repr_profiles

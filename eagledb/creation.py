@@ -102,7 +102,7 @@ def create(db_dir: str,
     with open(btax_json_path, "w") as btax_json_f:
         json.dump(btax_dict, btax_json_f, indent=2)
     db_info = DBInfo(
-        all_genomes=os.path.join(db_dir, BACTERIA_LIST_F_NAME),
+        all_genomes=os.path.join(db_dir, BACTERIA_LIST_F_NAME),  # path to genomes_table dump
         btax_json=btax_json_path,
         repr_profiles=repr_profiles_path,
         global_dist_matrix=os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX),
