@@ -15,7 +15,7 @@ import networkx as nx
 from eaglib._utils.logging import eagle_logger
 from eaglib._utils.workers import process_worker
 from eaglib.seqs import SeqsDict, load_fasta_to_dict, reduce_seq_names
-from eaglib.alignment import SeqsProfileInfo, SeqsProfile
+from eaglib.alignment import SeqsProfileInfo, SeqsProfile, BlastDB
 from eaglib.phylo import DistanceMatrix
 from eagledb.constants import conf_constants, conf_constants_lib, GLOBAL_DIST_MATRIX, SHORT_TO_FULL_ORG_NAMES, \
     BTAX_JSON_NAME, DB_INFO_NAME, PROFILES_DB_NAME
@@ -39,7 +39,7 @@ def create(db_dir: str,
     """
 
     :param db_dir:
-    :param genomes_table:
+    :param genomes_table: (recommended number of genomes < 10^4)
         id
         name
         taxonomy - fixed positions list of taxonomic units
@@ -91,20 +91,19 @@ def create(db_dir: str,
                                  num_threads=conf_constants.num_threads)
     """
 
-    repr_profiles_path = create_profiles_db(btax_dict,###
+    repr_profiles_dict = create_profiles_db(btax_dict,###
                                             db_dir=db_dir,
                                             profiles_db_name=PROFILES_DB_NAME,
                                             hmmer_inst_dir=conf_constants_lib.hmmer_inst_dir,
-                                            config_path=config_path,
                                             logger=eagle_logger)
 
     btax_json_path = os.path.join(db_dir, BTAX_JSON_NAME)
     with open(btax_json_path, "w") as btax_json_f:
         json.dump(btax_dict, btax_json_f, indent=2)
     db_info = DBInfo(
-        all_genomes=os.path.join(db_dir, BACTERIA_LIST_F_NAME),  # path to genomes_table dump
+        all_genomes=os.path.join(db_dir, BACTERIA_LIST_F_NAME),  # path to genomes_table with only remained genomes dump
         btax_json=btax_json_path,
-        repr_profiles=repr_profiles_path,
+        repr_profiles=repr_profiles_dict,  # json with info for each profile DB
         global_dist_matrix=os.path.join(db_dir, BACTERIA_GLOBAL_DIST_MATRIX),
         all_org_full_names=os.path.join(db_dir, BACTERIA_SHORT_TO_FULL_ORG_NAMES),
         from_root=from_root,
@@ -436,21 +435,14 @@ def add_repr_profiles(btax_info: BtaxInfo, btr_profiles: Iterable, btax_dir):
     pass###
 
 
-def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, config_path=None):
-    if config_path:
-        conf_constants_lib.update_by_config(config_path=config_path)
-        conf_constants.update_by_config(config_path=config_path)
-    if not num_threads:
+def get_btax_blastdb(btax_dict, db_dir, num_threads=None):
+    if num_threads is None:
         num_threads = conf_constants.num_threads
-    else:
-        conf_constants.num_threads = num_threads
 
     # Can be parallel
     for btax_name in btax_dict:
         btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
-        btax_info.btax_fna, btax_info.fna_id, downloaded_fna = get_btax_fna(btax_genomes=btax_info.genomes,
-                                                                            btax_name=btax_name,
-                                                                            btax_dir=db_dir)
+        BlastDB.make_blastdb(in_seqs=, dbtype=, db_name=)
         for i, btax_genome in enumerate(btax_info.genomes):
             genome_info = GenomeInfo.load_from_dict(btax_genome)
             if genome_info.genome_id in downloaded_fna:
@@ -461,9 +453,6 @@ def get_btax_blastdb(btax_dict, db_dir, btr_profiles=None, num_threads=None, con
                                                 db_dir=db_dir,
                                                 blast_inst_dir=conf_constants_lib.blast_inst_dir,
                                                 logger=eagle_logger)
-        if btr_profiles is not None:
-            # create repr profile
-            pass
         btax_dict[btax_name] = btax_info.get_json()
     return btax_dict
 
@@ -473,9 +462,8 @@ def create_profiles_db(btax_dict,
                        profiles_db_name=PROFILES_DB_NAME,
                        method="hmmer",
                        hmmer_inst_dir="",
-                       config_path=None,  # TODO: remove this argument
                        logger=None):
-    # Maybe it will be two databases: prot and nucl
+    # builds DBs for each profiles group
 
     profiles_list = list()
     for btax_name in btax_dict:
@@ -488,4 +476,4 @@ def create_profiles_db(btax_dict,
     if method.lower() == "hmmer":
         seq_profiles_db = SeqProfilesDB.build(profiles=profiles_list, name=profiles_db_path,
                                               method="hmmer", hmmer_inst_dir=hmmer_inst_dir, logger=logger)
-    return profiles_db_path
+    return profiles_db_path  # dict with db info
