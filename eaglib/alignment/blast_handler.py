@@ -25,7 +25,7 @@ class BlastDB(object):
             tmp_dir = generate_random_string(10) + "_blast_tmp"
 
         self.dbtype=dbtype
-        self.db_name = db_name
+        self.db_name = db_name  # also the path to db
         self.blast_inst_dir = blast_inst_dir
         if self.blast_inst_dir is None:
             self.blast_inst_dir = conf_constants.blast_inst_dir
