@@ -6,12 +6,13 @@ MUSCLE
 MAFFT  
 MSAProbs  
 HMMER3  
-Infernal >= 1.1.2
-EMBOSS + PHYLIPNEW (EMBASSY package)  
+Infernal >= 1.1.2  
+EMBOSS  
+embassy-phylip    
 FastME >= 2.0  
 Blast+  
 KaKs_Calculator 2.0  
-Python >= 3.6
+Python >= 3.8  
 ### Python packages:  
 &nbsp; - wget >= 3.2  
 &nbsp; - pyaml >= 3.12  

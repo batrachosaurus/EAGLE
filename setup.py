@@ -18,7 +18,6 @@ setup(name='EAGLE',
                     'eaglib.logging': ['eagle_log_conf.yml'],
                     'eagledb': ['org_tables/*', 'tests/*']},
       install_requires=[
-          'wget >= 3.2',
           'pyaml >= 3.12',
           'numpy >= 1.14.3',
           'pandas >= 0.22.0',

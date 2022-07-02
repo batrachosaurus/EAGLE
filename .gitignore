@@ -4,6 +4,7 @@
 *test_results/
 docker_build/EAGLE-*.tar.gz
 dist/
+build/
 EAGLE.egg-info/
 *.log
 *.log.*

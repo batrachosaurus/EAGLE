@@ -5,7 +5,7 @@ import multiprocessing as mp
 import numpy as np
 import pandas as pd
 
-from eagle.constants import conf_constants
+from eaglib.constants import conf_constants
 from eaglib._utils.files import join_files
 from eaglib._utils.workers import process_worker
 from eaglib._utils.logging import send_log_message

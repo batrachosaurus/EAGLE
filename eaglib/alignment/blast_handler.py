@@ -5,7 +5,7 @@ import multiprocessing as mp
 
 from Bio.Blast import NCBIXML
 
-from eagle.constants import conf_constants
+from eaglib.constants import conf_constants
 from eaglib._utils.files import join_files
 from eaglib._utils.strings import generate_random_string
 from eaglib._utils.logging import send_log_message

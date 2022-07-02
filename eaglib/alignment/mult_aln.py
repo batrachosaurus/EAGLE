@@ -11,7 +11,7 @@ import pandas as pd
 from scipy.stats import gmean
 from Bio.Seq import Seq
 
-from eagle.constants import conf_constants
+from eaglib.constants import conf_constants
 from eaglib._utils.strings import generate_random_string, fullmatch_regexp_list
 from eaglib._utils.logging import send_log_message
 from eaglib.seqs import SeqsDict, load_fasta_to_dict, nucl_accord_prot
