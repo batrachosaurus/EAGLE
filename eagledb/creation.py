@@ -3,6 +3,9 @@
 
 import os
 import json
+import gzip
+import shutil
+import urllib.request
 import argparse
 from copy import deepcopy
 import multiprocessing as mp
@@ -14,6 +17,7 @@ import networkx as nx
 
 from eaglib._utils.logging import eagle_logger
 from eaglib._utils.workers import process_worker
+from eaglib._utils.files import gunzip
 from eaglib.seqs import SeqsDict, load_fasta_to_dict, reduce_seq_names
 from eaglib.alignment import SeqsProfileInfo, SeqsProfile, BlastDB
 from eaglib.phylo import DistanceMatrix
@@ -383,35 +387,39 @@ def get_btax_dist(btax1_orgs, btax2_orgs, global_dist_matr):
 def complete_btax(btax_info: BtaxInfo, btr_profiles: Iterable, db_dir):###
     btax_dir = os.path.join(db_dir, btax_info.name)
     os.makedirs(btax_dir)
-    get_btax_fna(btax_info=btax_info, btax_dir=btax_dir)###
-    add_repr_profiles(btax_info=btax_info, btr_profiles=btr_profiles, btax_dir=btax_dir)###
+    btax_info = get_btax_fna(btax_info=btax_info, btax_dir=btax_dir)
+
+    # TODO: add_repr_profiles(btax_info=btax_info, btr_profiles=btr_profiles, btax_dir=btax_dir)
     # TODO: find, align and get distances for repr_profiles seqs
     # TODO: build btax repr_profiles
-    # TODO: build btax reference tree
-    # TODO: build blastdb
+
+    # TODO: build btax reference tree###
+    # TODO: build blastdb###
     return btax_info
 
 
-def get_btax_fna(btax_info: BtaxInfo, btax_dir: str) -> None:###
+def get_btax_fna(btax_info: BtaxInfo, btax_dir: str) -> BtaxInfo:
     # Inplace modification of BtaxInfo object
     btax_fna_path = os.path.join(btax_dir, btax_info.name + ".fasta")
     btax_fna_dict = dict()
     for btax_genome in btax_info.genomes:
         genome_info = GenomeInfo.load_from_dict(btax_genome)
-        for seq_fasta in genome_info.fna_seq_fasta:
+        for i, seq_fasta in enumerate(genome_info.fna_seq_fasta):
             if seq_fasta.startswith("http://") or seq_fasta.startswith("https://") or seq_fasta.startswith("ftp://"):
-                local_seq_fasta = ...###
-                # TODO: download fna
+                local_seq_fasta = os.path.join(btax_dir, seq_fasta.split("/")[-1])
+                with open(local_seq_fasta, 'wb') as seq_fasta_f:
+                    seq_fasta_f.write(urllib.request.urlopen(seq_fasta).read())
             else:
                 local_seq_fasta = seq_fasta
-            if local_seq_fasta:# is archive?
-                extracted_seq_fasta = ...###
-                # TODO: extract from archive
+            seq_fasta_ext = os.path.splitext(local_seq_fasta)
+            if seq_fasta_ext[1] == ".gz":  # TODO: enable other archives
+                extracted_seq_fasta = seq_fasta_ext[0]
+                gunzip(local_seq_fasta, extracted_seq_fasta, remove_input=local_seq_fasta != seq_fasta)
             else:
                 extracted_seq_fasta = local_seq_fasta
             for seq_id, seq in load_fasta_to_dict(extracted_seq_fasta).items():
                 if seq_id in btax_fna_dict:
-                    btax_seq_id = ...###
+                    btax_seq_id = seq_id + "_" + str(i)
                 else:
                     btax_seq_id = seq_id
                 btax_fna_dict[btax_seq_id] = seq
@@ -426,35 +434,29 @@ def get_btax_fna(btax_info: BtaxInfo, btax_dir: str) -> None:###
 
     SeqsDict.load_from_dict(btax_fna_dict).dump(btax_fna_path, format='fasta')
     btax_info.btax_fna = btax_fna_path
+    return btax_info
 
 
-def add_repr_profiles(btax_info: BtaxInfo, btr_profiles: Iterable, btax_dir):
+def add_repr_profiles(btax_info: BtaxInfo, btr_profiles: Iterable, btax_dir):###
     for repr_profile_dict in btr_profiles:
         repr_profile = SeqsProfile(SeqsProfileInfo.load_from_dict(repr_profile_dict),
                                    tmp_dir=os.path.join(btax_dir, "tmp"))
     pass###
 
 
-def get_btax_blastdb(btax_dict, db_dir, num_threads=None):
-    if num_threads is None:
-        num_threads = conf_constants.num_threads
-
-    # Can be parallel
-    for btax_name in btax_dict:
-        btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
-        BlastDB.make_blastdb(in_seqs=, dbtype=, db_name=)
-        for i, btax_genome in enumerate(btax_info.genomes):
-            genome_info = GenomeInfo.load_from_dict(btax_genome)
-            if genome_info.genome_id in downloaded_fna:
-                genome_info.fna_path = downloaded_fna[genome_info.genome_id]
-                btax_info.genomes[i] = genome_info.get_json()
-        btax_info.blastdb = create_btax_blastdb(btax_fna_path=btax_info.btax_fna,
-                                                btax_name=btax_name,
-                                                db_dir=db_dir,
-                                                blast_inst_dir=conf_constants_lib.blast_inst_dir,
-                                                logger=eagle_logger)
-        btax_dict[btax_name] = btax_info.get_json()
-    return btax_dict
+def get_btax_blastdb(btax_info, db_dir):
+    btax_info = BtaxInfo.load_from_dict(btax_dict[btax_name])
+    #BlastDB.make_blastdb(in_seqs=, dbtype=, db_name=)
+    for i, btax_genome in enumerate(btax_info.genomes):
+        genome_info = GenomeInfo.load_from_dict(btax_genome)
+        if genome_info.genome_id in downloaded_fna:
+            genome_info.fna_path = downloaded_fna[genome_info.genome_id]
+            btax_info.genomes[i] = genome_info.get_json()
+    btax_info.blastdb = create_btax_blastdb(btax_fna_path=btax_info.btax_fna,
+                                            btax_name=btax_name,
+                                            db_dir=db_dir,
+                                            blast_inst_dir=conf_constants_lib.blast_inst_dir)
+    return btax_info
 
 
 def create_profiles_db(btax_dict,

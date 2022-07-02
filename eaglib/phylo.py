@@ -10,7 +10,7 @@ import pandas
 import dendropy
 from deprecated import deprecated
 
-from eagle.constants import conf_constants
+from eaglib.constants import conf_constants
 from eaglib._utils.strings import generate_random_string, fullmatch_regexp_list
 from eaglib._utils.logging import send_log_message
 from eaglib.seqs import reduce_seq_names

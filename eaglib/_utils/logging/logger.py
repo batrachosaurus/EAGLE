@@ -4,7 +4,7 @@ import logging.config
 
 import yaml
 
-from eagle.constants import CONSTANTS_PATH
+from eaglib.constants import CONSTANTS_PATH
 
 
 LOG_CONFIG_PATH = os.path.join(CONSTANTS_PATH, "eaglib", "logging", "eagle_log_conf.yml")

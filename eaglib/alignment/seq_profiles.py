@@ -7,7 +7,7 @@ from Bio.SearchIO.HmmerIO.hmmer3_text import Hmmer3TextParser
 
 from jsondler import JsonEntry
 
-from eagle.constants import conf_constants
+from eaglib.constants import conf_constants
 from eaglib._utils.files import join_files
 from eaglib._utils.strings import generate_random_string
 from eaglib.seqs import SeqsDict, shred_seqs
