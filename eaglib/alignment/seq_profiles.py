@@ -3,7 +3,7 @@ import shutil
 import subprocess
 from collections import defaultdict
 
-from Bio.SearchIO.HmmerIO.hmmer3_text import Hmmer3TextParser
+from Bio.SearchIO.HmmerIO.hmmer3_text import Hmmer3TextParser###
 
 from jsondler import JsonEntry
 
@@ -30,7 +30,7 @@ class SeqsProfileInfo(JsonEntry):
     # default values
     name_0 = None
     path_0 = None
-    seq_type_0 = 'nucl'
+    seq_type_0 = 'protein'
     weight_0 = 1.0
     method_0 = HMMER_KEY
 
@@ -92,6 +92,11 @@ class SeqsProfile(object):
     def build(cls, mult_aln, name=None, path=None, weight=1.0,
               method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None, tmp_dir=None,
               **kwargs):
+        if hmmer_inst_dir is None:
+            hmmer_inst_dir = conf_constants.hmmer_inst_dir
+        if infernal_inst_dir is None:
+            infernal_inst_dir = conf_constants.infernal_inst_dir
+
         if name is None:
             if path is None:
                 raise ValueError("")
@@ -111,20 +116,27 @@ class SeqsProfile(object):
             os.makedirs(tmp_dir)
             if isinstance(mult_aln, str) and os.path.exists(mult_aln):
                 mult_aln_path = mult_aln
+                seqs_type = kwargs.get("seqs_type", SeqsProfileInfo.seq_type_0)
             elif isinstance(mult_aln, MultAln):
                 mult_aln_path = mult_aln.dump(os.path.join(tmp_dir, name)+".fasta", format="fasta")
+                seqs_type = kwargs.get("seqs_type", mult_aln.seqs_type)
             else:
                 raise ValueError("the value for argument 'mult_aln' should be an instance of "
                                  "class eagle.eaglib.alignment.MultAln or path to a file with the alignment")
 
             if method.lower() == HMMER_KEY:
-                build_cmd = os.path.join(hmmer_inst_dir, "hmmbuild") + " " + path + " " + mult_aln_path
+                build_cmd = os.path.join(hmmer_inst_dir, "hmmbuild ") + path + " " + mult_aln_path
             if method.lower() == INFERNAL_KEY:
-                build_cmd = os.path.join(infernal_inst_dir, "cmbuild") + " " + path + " " + mult_aln_path
+                if kwargs.get("noss", False):
+                    build_cmd = os.path.join(infernal_inst_dir, "cmbuild --noss ") + path + " " + mult_aln_path
+                else:
+                    build_cmd = os.path.join(infernal_inst_dir, "cmbuild ") + path + " " + mult_aln_path + "&&" + \
+                                os.path.join(infernal_inst_dir, "cmcalibrate ") + path
             subprocess.call(build_cmd, shell=True)
+
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        return cls(SeqsProfileInfo(name=name, path=path, seq_type=mult_aln.seqs_type, weight=weight, method=method),
+        return cls(SeqsProfileInfo(name=name, path=path, seq_type=seqs_type, weight=weight, method=method),
                    hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir, tmp_dir=tmp_dir)
 
     def search(self, seqdb, out_path=None, threads=1, **kwargs):
@@ -148,15 +160,13 @@ class SeqsProfile(object):
                 seqdb_path = seqdb
 
             if self.method.lower() == HMMER_KEY:
-                search_cmd = os.path.join(self.hmmer_inst_dir, "hmmsearch") + \
-                             " " + self.path + \
-                             " " + seqdb_path + \
-                             " --cpu " + str(threads)
+                search_cmd = os.path.join(self.hmmer_inst_dir, "hmmsearch --cpu ") + \
+                             str(threads) + " -o " + out_path + \
+                             " " + self.path + " " + seqdb_path
             if self.method.lower() == INFERNAL_KEY:
-                search_cmd = os.path.join(self.infernal_inst_dir, "cmsearch") + \
-                             " " + self.path + \
-                             " " + seqdb_path + \
-                             " --cpu " + str(threads)
+                search_cmd = os.path.join(self.infernal_inst_dir, "cmsearch --cpu ") + \
+                             str(threads) + " -o " + out_path + \
+                             " " + self.path + " " + seqdb_path
             subprocess.call(search_cmd, shell=True)
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
             if read_output:
@@ -168,7 +178,8 @@ class SeqsProfile(object):
 
     @property
     def info(self):
-        return SeqsProfileInfo(name=self.name, path=self.path, seq_type=self.seq_type, weight=self.weight)
+        return SeqsProfileInfo(name=self.name, path=self.path, seq_type=self.seq_type, weight=self.weight,
+                               method=self.method)
 
 
 class SeqProfilesDB(object):
@@ -191,6 +202,11 @@ class SeqProfilesDB(object):
     @classmethod
     def build(cls, profiles, name, method=HMMER_KEY, hmmer_inst_dir=None, infernal_inst_dir=None,
               tmp_dir=None, **kwargs):
+        if hmmer_inst_dir is None:
+            hmmer_inst_dir = conf_constants.hmmer_inst_dir
+        if infernal_inst_dir is None:
+            infernal_inst_dir = conf_constants.infernal_inst_dir
+
         profile_paths = list()
         for profile_info in profiles:
             if isinstance(profile_info, SeqsProfileInfo):
@@ -202,10 +218,10 @@ class SeqProfilesDB(object):
         join_files(profile_paths, name)
 
         if method.lower() == HMMER_KEY:
-            hmmpress_cmd = os.path.join(hmmer_inst_dir, "hmmpress") + " " + name
+            hmmpress_cmd = os.path.join(hmmer_inst_dir, "hmmpress ") + name
             subprocess.call(hmmpress_cmd, shell=True)
         if method.lower() == INFERNAL_KEY:
-            cmpress_cmd = os.path.join(infernal_inst_dir, "cmmpress") + " " + name
+            cmpress_cmd = os.path.join(infernal_inst_dir, "cmmpress ") + name
             subprocess.call(cmpress_cmd, shell=True)
 
         return cls(name=name, method=method, hmmer_inst_dir=hmmer_inst_dir, infernal_inst_dir=infernal_inst_dir,
@@ -227,12 +243,12 @@ class SeqProfilesDB(object):
                 in_seqs_path = in_seqs
 
             if self.method.lower() == HMMER_KEY:
-                scan_cmd = os.path.join(self.hmmer_inst_dir, "hmmscan") + \
-                           " --cpu " + str(num_threads) + " -o " + out_path + \
+                scan_cmd = os.path.join(self.hmmer_inst_dir, "hmmscan --cpu ") + \
+                           str(num_threads) + " -o " + out_path + \
                            " " + self.name + " " + in_seqs_path
             if self.method.lower() == INFERNAL_KEY:
-                scan_cmd = os.path.join(self.infernal_inst_dir, "cmscan") + \
-                           " --cpu " + str(num_threads) + " -o " + out_path + \
+                scan_cmd = os.path.join(self.infernal_inst_dir, "cmscan --cpu ") + \
+                           str(num_threads) + " -o " + out_path + \
                            " " + self.name + " " + in_seqs_path
             subprocess.call(scan_cmd, shell=True)
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
