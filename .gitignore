@@ -12,5 +12,6 @@ EAGLE.egg-info/
 *Untitled.ipynb
 Research/data/*
 Research/DEG/bacteria/*
+Research/NCBI/archaea/*
 *.dat
 *.fuse_hidden*
