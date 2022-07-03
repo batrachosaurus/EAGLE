@@ -3,6 +3,7 @@ import shutil
 import subprocess
 from collections import defaultdict
 
+import pandas as pd
 from Bio.SearchIO.HmmerIO.hmmer3_text import Hmmer3TextParser###
 
 from jsondler import JsonEntry
@@ -161,17 +162,19 @@ class SeqsProfile(object):
 
             if self.method.lower() == HMMER_KEY:
                 search_cmd = os.path.join(self.hmmer_inst_dir, "hmmsearch --cpu ") + \
-                             str(threads) + " -o " + out_path + \
+                             str(threads) + " --domtblout " + out_path + \
                              " " + self.path + " " + seqdb_path
+                read_out_func = read_hmmer_domtblout
             if self.method.lower() == INFERNAL_KEY:
                 search_cmd = os.path.join(self.infernal_inst_dir, "cmsearch --cpu ") + \
-                             str(threads) + " -o " + out_path + \
+                             str(threads) + " --tblout " + out_path + \
                              " " + self.path + " " + seqdb_path
+                read_out_func = read_infernal_tblout
             subprocess.call(search_cmd, shell=True)
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
             if read_output:
                 with open(out_path) as out_f:
-                    return Hmmer3TextParser(out_f)  # TODO: check if it works for Infernal
+                    return read_out_func(out_path)
             else:
                 return out_path
         return
@@ -244,17 +247,62 @@ class SeqProfilesDB(object):
 
             if self.method.lower() == HMMER_KEY:
                 scan_cmd = os.path.join(self.hmmer_inst_dir, "hmmscan --cpu ") + \
-                           str(num_threads) + " -o " + out_path + \
+                           str(num_threads) + " --domtblout " + out_path + \
                            " " + self.name + " " + in_seqs_path
+                read_out_func = read_hmmer_domtblout
             if self.method.lower() == INFERNAL_KEY:
                 scan_cmd = os.path.join(self.infernal_inst_dir, "cmscan --cpu ") + \
-                           str(num_threads) + " -o " + out_path + \
+                           str(num_threads) + " --tblout " + out_path + \
                            " " + self.name + " " + in_seqs_path
+                read_out_func = read_infernal_tblout
             subprocess.call(scan_cmd, shell=True)
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
             if read_output:
                 with open(out_path) as out_f:
-                    return Hmmer3TextParser(out_f)  # TODO: check if it works for Infernal (and for scan)
+                    return read_out_func(out_path)
             else:
                 return out_path
         return
+
+
+def read_infernal_tblout(tblout_path):
+    with open(tblout_path) as tblout_f:
+        columns_markup = list()
+        hits = list()
+        for i, line in enumerate(tblout_f):
+            if i == 0:
+                columns_line = line.replace("#", " ")
+            if i == 1:
+                columns_markup = get_columns_markup(line)
+                columns = [columns_line[col_cs[0]: col_cs[1]].strip() for col_cs in columns_markup]
+            if line[0] != "#" and columns_markup:
+                hits.append([line[col_cs[0]: col_cs[1]].strip() for col_cs in columns_markup])
+    return pd.DataFrame(hits, columns=columns)
+
+
+def read_hmmer_domtblout(domtblout_path):
+    with open(domtblout_path) as domtblout_f:
+        columns_markup = list()
+        hits = list()
+        for i, line in enumerate(domtblout_f):
+            if i == 1:
+                columns_line = line.replace("#", " ")
+            if i == 2:
+                columns_markup = get_columns_markup(line)
+                columns = [columns_line[col_cs[0]: col_cs[1]].strip() for col_cs in columns_markup]  # TODO: take duplicated col names
+            if line[0] != "#" and columns_markup:
+                hits.append([line[col_cs[0]: col_cs[1]].strip() for col_cs in columns_markup])
+    return pd.DataFrame(hits, columns=columns)
+
+
+def get_columns_markup(markup_line, line_max_len=1000):
+    prev_s = None
+    columns_markup = [[0, 1]]
+    for i, s in enumerate(markup_line):
+        if s == " " and prev_s == "-":
+            columns_markup[-1][1] = i+1
+        if s == "-" and prev_s == " ":
+            columns_markup.append([i, i+1])
+        prev_s = s
+    columns_markup[-1][1] = max(columns_markup[-1][1], line_max_len)
+    return columns_markup

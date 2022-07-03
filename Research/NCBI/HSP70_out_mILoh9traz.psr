@@ -1,0 +1,17 @@
+#                                                                                                  --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name                              accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#                      ------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+lcl|NZ_CP006933.1_prot_WP_048085785.1_2239 -            619 HSP70                PF00012.23   599  1.4e-229  760.4  15.6   1   2   1.6e-24   1.9e-21   73.0   0.1     1    74     7    85     7    88 0.93 [gene=dnaK] [locus_tag=BRM9_RS11300] [db_xref=GeneID:24793409] [protein=molecular chaperone DnaK] [protein_id=WP_048085785.1] [location=2285102..2286961] [gbkey=CDS]
+lcl|NZ_CP006933.1_prot_WP_048085785.1_2239 -            619 HSP70                PF00012.23   599  1.4e-229  760.4  15.6   2   2  2.3e-211  2.7e-208  690.1  12.8   100   599    85   584    82   584 0.99 [gene=dnaK] [locus_tag=BRM9_RS11300] [db_xref=GeneID:24793409] [protein=molecular chaperone DnaK] [protein_id=WP_048085785.1] [location=2285102..2286961] [gbkey=CDS]
+lcl|NZ_CP006933.1_prot_WP_048085701.1_2093 -            357 HSP70                PF00012.23   599   1.2e-14   50.6  10.0   1   2   0.00094       1.1    4.4   0.0     2    53    22    70    21    82 0.69 [locus_tag=BRM9_RS10565] [db_xref=GeneID:24793262] [protein=rod shape-determining protein] [protein_id=WP_048085701.1] [location=2150523..2151596] [gbkey=CDS]
+lcl|NZ_CP006933.1_prot_WP_048085701.1_2093 -            357 HSP70                PF00012.23   599   1.2e-14   50.6  10.0   2   2   3.9e-16   4.6e-13   45.3   8.4   131   373   112   342    93   356 0.77 [locus_tag=BRM9_RS10565] [db_xref=GeneID:24793262] [protein=rod shape-determining protein] [protein_id=WP_048085701.1] [location=2150523..2151596] [gbkey=CDS]
+#
+# Program:         hmmsearch
+# Version:         3.3.2 (Nov 2020)
+# Pipeline mode:   SEARCH
+# Query file:      HSP70.hmm
+# Target file:     archaea/GCF_000762265.1_translated_cds.faa
+# Option settings: hmmsearch --domtblout HSP70_out_mILoh9traz.psr --cpu 4 HSP70.hmm archaea/GCF_000762265.1_translated_cds.faa 
+# Current dir:     /media/olga/Data/Denis/EAGLE/Research/NCBI
+# Date:            Sun Jul  3 20:29:22 2022
+# [ok]
