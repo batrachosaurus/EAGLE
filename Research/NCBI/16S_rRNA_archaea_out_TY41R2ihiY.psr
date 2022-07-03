@@ -1,0 +1,14 @@
+#target name              accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+#------------------------ --------- -------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
+lcl|NZ_CP006933.1_rrna_4  -         RF01959              -         hmm        3     1477        3     1475      +     -    6 0.56  12.7 1293.4         0 !   [locus_tag=BRM9_RS01355] [db_xref=RFAM:RF01959] [product=16S ribosomal RNA] [location=283389..284864] [gbkey=rRNA]
+lcl|NZ_CP006933.1_rrna_25 -         RF01959              -         hmm        3     1477        3     1475      +     -    6 0.56  12.7 1293.4         0 !   [locus_tag=BRM9_RS03745] [db_xref=RFAM:RF01959] [product=16S ribosomal RNA] [location=complement(750440..751915)] [gbkey=rRNA]
+#
+# Program:         cmsearch
+# Version:         1.1.4 (Dec 2020)
+# Pipeline mode:   SEARCH
+# Query file:      16S_rRNA_archaea.cm
+# Target file:     archaea/GCF_000762265.1_rna_from_genomic.fna
+# Option settings: cmsearch --tblout 16S_rRNA_archaea_out_TY41R2ihiY.psr --cpu 4 16S_rRNA_archaea.cm archaea/GCF_000762265.1_rna_from_genomic.fna 
+# Current dir:     /media/olga/Data/Denis/EAGLE/Research/NCBI
+# Date:            Sun Jul  3 21:43:25 2022
+# [ok]
