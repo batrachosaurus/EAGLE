@@ -1,10 +1,9 @@
 import os
 import shutil
 import subprocess
-from collections import defaultdict
+from collections.abc import Iterable
 
 import pandas as pd
-from Bio.SearchIO.HmmerIO.hmmer3_text import Hmmer3TextParser###
 
 from jsondler import JsonEntry
 
@@ -271,7 +270,7 @@ def read_infernal_tblout(tblout_path):
         hits = list()
         for i, line in enumerate(tblout_f):
             if i == 0:
-                columns_line = line.replace("#", " ")
+                columns_line = " " + line[1:]
             if i == 1:
                 columns_markup = get_columns_markup(line)
                 columns = [columns_line[col_cs[0]: col_cs[1]].strip() for col_cs in columns_markup]
@@ -286,22 +285,66 @@ def read_hmmer_domtblout(domtblout_path):
         hits = list()
         for i, line in enumerate(domtblout_f):
             if i == 1:
-                columns_line = line.replace("#", " ")
+                columns_line = " " + line[1:]
             if i == 2:
                 columns_markup = get_columns_markup(line)
-                columns = [columns_line[col_cs[0]: col_cs[1]].strip() for col_cs in columns_markup]  # TODO: take duplicated col names
+                columns = _fix_hmmer_columns(columns_line[col_cs[0]: col_cs[1]].strip() for col_cs in columns_markup)
             if line[0] != "#" and columns_markup:
                 hits.append([line[col_cs[0]: col_cs[1]].strip() for col_cs in columns_markup])
     return pd.DataFrame(hits, columns=columns)
 
 
+def _fix_hmmer_columns(columns: Iterable):
+    fixed_cols = list()
+    score_met = 0
+    bias_met = 0
+    from_met = 0
+    to_met = 0
+    for col in columns:
+        if col == "score":
+            if score_met == 0:
+                fixed_cols.append("seq_score")
+                score_met += 1
+            elif score_met == 1:
+                fixed_cols.append("domain_score")
+        elif col == "bias":
+            if bias_met == 0:
+                fixed_cols.append("seq_bias")
+                bias_met += 1
+            elif bias_met == 1:
+                fixed_cols.append("domain_bias")
+        elif col == "from":
+            if from_met == 0:
+                fixed_cols.append("hmm_from")
+                from_met += 1
+            elif from_met == 1:
+                fixed_cols.append("ali_from")
+                from_met += 1
+            elif from_met == 2:
+                fixed_cols.append("env_from")
+        elif col == "to":
+            if to_met == 0:
+                fixed_cols.append("hmm_to")
+                to_met += 1
+            elif to_met == 1:
+                fixed_cols.append("ali_to")
+                to_met += 1
+            elif to_met == 2:
+                fixed_cols.append("env_to")
+        else:
+            fixed_cols.append(col)
+    return fixed_cols
+
+
 def get_columns_markup(markup_line, line_max_len=1000):
     prev_s = None
+    opened = True
     columns_markup = [[0, 1]]
     for i, s in enumerate(markup_line):
         if s == " " and prev_s == "-":
             columns_markup[-1][1] = i+1
-        if s == "-" and prev_s == " ":
+            opened = False
+        if not opened and s == "-" and prev_s == " ":
             columns_markup.append([i, i+1])
         prev_s = s
     columns_markup[-1][1] = max(columns_markup[-1][1], line_max_len)
