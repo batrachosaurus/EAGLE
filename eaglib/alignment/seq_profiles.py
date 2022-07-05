@@ -177,7 +177,7 @@ class SeqsProfile(object):
                 out_df = read_out_func(out_path)
                 if delete_out_f:
                     os.remove(out_path)
-                return  out_df
+                return out_df.apply(pd.to_numeric, errors='ignore')
             else:
                 return out_path
         return
@@ -266,7 +266,7 @@ class SeqProfilesDB(object):
                 out_df = read_out_func(out_path)
                 if delete_out_f:
                     os.remove(out_path)
-                return out_df
+                return out_df.apply(pd.to_numeric, errors='ignore')
             else:
                 return out_path
         return
