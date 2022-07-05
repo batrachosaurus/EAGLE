@@ -142,9 +142,11 @@ class SeqsProfile(object):
     def search(self, seqdb, out_path=None, threads=1, **kwargs):
         # All preparations of seqdb like translation or shredding should be done outside the method
         read_output = kwargs.get("read_output", False)
+        delete_out_f = False
         if out_path is None:
             out_path = os.path.splitext(self.path)[0] + "_out_%s.psr" % generate_random_string(10)
             read_output = True
+            delete_out_f = True
 
         if self.method.lower() in (HMMER_KEY, INFERNAL_KEY):
             if not os.path.exists(self.tmp_dir):
@@ -172,8 +174,10 @@ class SeqsProfile(object):
             subprocess.call(search_cmd, shell=True)
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
             if read_output:
-                with open(out_path) as out_f:
-                    return read_out_func(out_path)
+                out_df = read_out_func(out_path)
+                if delete_out_f:
+                    os.remove(out_path)
+                return  out_df
             else:
                 return out_path
         return
@@ -231,9 +235,11 @@ class SeqProfilesDB(object):
 
     def scan(self, in_seqs, num_threads=4, out_path=None, **kwargs):
         read_output = kwargs.get("read_output", False)
+        delete_out_f = False
         if out_path is None:
             out_path = os.path.splitext(self.name)[0] + "_out_%s.psr" % generate_random_string(10)
             read_output = True
+            delete_out_f = True
 
         if self.method.lower() in (HMMER_KEY, INFERNAL_KEY):
             if not os.path.exists(self.tmp_dir):
@@ -257,14 +263,16 @@ class SeqProfilesDB(object):
             subprocess.call(scan_cmd, shell=True)
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
             if read_output:
-                with open(out_path) as out_f:
-                    return read_out_func(out_path)
+                out_df = read_out_func(out_path)
+                if delete_out_f:
+                    os.remove(out_path)
+                return out_df
             else:
                 return out_path
         return
 
 
-def read_infernal_tblout(tblout_path):
+def read_infernal_tblout(tblout_path: str) -> pd.DataFrame:
     with open(tblout_path) as tblout_f:
         columns_markup = list()
         hits = list()
@@ -279,7 +287,7 @@ def read_infernal_tblout(tblout_path):
     return pd.DataFrame(hits, columns=columns)
 
 
-def read_hmmer_domtblout(domtblout_path):
+def read_hmmer_domtblout(domtblout_path: str) -> pd.DataFrame:
     with open(domtblout_path) as domtblout_f:
         columns_markup = list()
         hits = list()
@@ -294,7 +302,7 @@ def read_hmmer_domtblout(domtblout_path):
     return pd.DataFrame(hits, columns=columns)
 
 
-def _fix_hmmer_columns(columns: Iterable):
+def _fix_hmmer_columns(columns: Iterable) -> list:
     fixed_cols = list()
     score_met = 0
     bias_met = 0
@@ -336,7 +344,7 @@ def _fix_hmmer_columns(columns: Iterable):
     return fixed_cols
 
 
-def get_columns_markup(markup_line, line_max_len=1000):
+def get_columns_markup(markup_line: str, line_max_len=1000) -> list:
     prev_s = None
     opened = True
     columns_markup = [[0, 1]]
