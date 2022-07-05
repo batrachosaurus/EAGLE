@@ -329,43 +329,53 @@ class SeqsDict(object):
 
         i = 0
         seqs_order = dict()
+        seq_info_dict = dict()
         if format.lower() in ("fasta", "fas", "fa"):
             with open(fname) as fasta_f:
                 seq_list = list()
-                title = None
+                seq_id = None
+                seq_info = None
                 for line_ in fasta_f:
                     line = None
                     line = line_.strip()
                     if not line:
                         continue
                     if line[0] == ">":
-                        if title is not None:
+                        if seq_id is not None:
                             new_seq = None
                             if kwargs.get("restore_stops", False):
                                 new_seq = "".join(seq_list).replace("X", "*")
                             else:
                                 new_seq = "".join(seq_list)
-                            seqs_order[title] = range(i, i + (len(new_seq)-1)//chunk_size + 1)
-                            for n, j in enumerate(seqs_order[title]):
+                            seqs_order[seq_id] = range(i, i + (len(new_seq)-1)//chunk_size + 1)
+                            seq_info_dict[seq_id] = seq_info
+                            for n, j in enumerate(seqs_order[seq_id]):
                                 seqs_array[j] = new_seq[n*chunk_size: (n+1)*chunk_size]
-                            i = seqs_order[title].stop
-                            title = None
-                        title = line[1:]
+                            i = seqs_order[seq_id].stop
+                            seq_id = None
+                            seq_info = None
+                        title_list = line[1:].split(" ")
+                        seq_id = title_list[0]
+                        if len(title_list) > 1:
+                            seq_info = " ".join(title_list[1:])
+                        else:
+                            seq_info = None
                         seq_list = list()
                     else:
                         seq_list.append(line)
-                if title is not None:
+                if seq_id is not None:
                     new_seq = None
                     if kwargs.get("restore_stops", False):
                         new_seq = "".join(seq_list).replace("X", "*")
                     else:
                         new_seq = "".join(seq_list)
-                    seqs_order[title] = range(i, i + (len(new_seq)-1) // chunk_size + 1)
-                    for n, j in enumerate(seqs_order[title]):
+                    seqs_order[seq_id] = range(i, i + (len(new_seq)-1) // chunk_size + 1)
+                    seq_info_dict[seq_id] = seq_info
+                    for n, j in enumerate(seqs_order[seq_id]):
                         seqs_array[j] = new_seq[n * chunk_size: (n + 1) * chunk_size]
-                    i = seqs_order[title].stop
+                    i = seqs_order[seq_id].stop
                     seq_list = list()
-                    title = None
+                    seq_id = None
         return cls(seqs_order, seqs_array,
                    seqs_type=seqs_type,
                    low_memory=low_memory,
@@ -683,7 +693,7 @@ def load_fasta_to_dict(fasta_path, **kwargs):
                     fasta_dict[seq_id] = "".join(seq_list)
                     seq_list = list()
                 del seq_id
-                seq_id = line[1:]
+                seq_id = line[1:].split(" ")[0]
             else:
                 seq_list.append(line)
         if seq_id is not None:
