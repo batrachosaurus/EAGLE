@@ -44,7 +44,7 @@ class SeqsDict(object):
         self.seqs_order = seqs_order
         self.seqs_array = seqs_array
         self.seq_info_dict = seq_info_dict
-        if seqs_type.lower() in self.prot_types + self.nucl_types:
+        if seqs_type is not None and seqs_type.lower() in self.prot_types + self.nucl_types:
             self.seqs_type = seqs_type.lower()
         self.low_memory = low_memory
         self._chunk_size = int(str(seqs_array.dtype).strip("<U"))
@@ -170,7 +170,7 @@ class SeqsDict(object):
             return dict()
 
     def __getitem__(self, item):
-        return "".join(self.seqs_array[i].decode() for i in self.seqs_order[item])
+        return "".join(self.seqs_array[i] for i in self.seqs_order[item])
 
     def get_sample(self, seqs, low_memory='auto', **kwargs):
         if low_memory == "auto":

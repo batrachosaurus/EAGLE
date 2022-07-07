@@ -30,7 +30,7 @@ class SeqsProfileInfo(JsonEntry):
     # default values
     name_0 = None
     path_0 = None
-    seq_type_0 = 'protein'
+    seq_type_0 = None
     weight_0 = 1.0
     method_0 = HMMER_KEY
 
@@ -142,7 +142,7 @@ class SeqsProfile(object):
     def search(self, seqdb, out_path=None, threads=1, **kwargs):
         # All preparations of seqdb like translation or shredding should be done outside the method
         read_output = kwargs.get("read_output", False)
-        delete_out_f = False
+        delete_out_f = kwargs.get("delete_output", False)
         if out_path is None:
             out_path = os.path.splitext(self.path)[0] + "_out_%s.psr" % generate_random_string(10)
             read_output = True
@@ -235,7 +235,7 @@ class SeqProfilesDB(object):
 
     def scan(self, in_seqs, num_threads=4, out_path=None, **kwargs):
         read_output = kwargs.get("read_output", False)
-        delete_out_f = False
+        delete_out_f = kwargs.get("delete_output", False)
         if out_path is None:
             out_path = os.path.splitext(self.name)[0] + "_out_%s.psr" % generate_random_string(10)
             read_output = True
