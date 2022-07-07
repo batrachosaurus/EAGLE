@@ -207,12 +207,11 @@ def genomes2btax(genomes_list, btax_level):
         btax_dict[btax_name].genomes.append(genome_info.get_json())
         if btax_dict[btax_name].name is None:
             btax_dict[btax_name].name = btax_name
-        repr_fasta_dict = dict()
+        btc_seqs_dict = dict()
         for fasta_path in genome_info.repr_seq_fasta:
-            repr_fasta_dict.update(load_fasta_to_dict(fasta_path))
-        btc_seqs_dict = SeqsDict.load_from_dict(repr_fasta_dict)
-        for btc_seq_id in btc_seqs_dict:
-            btc_fasta_dict[btc_seq_id][genome_key] = btc_seqs_dict[btc_seq_id]
+            btc_seqs_dict.update(load_fasta_to_dict(fasta_path))
+        for btc_profile_name in btc_seqs_dict:
+            btc_fasta_dict[btc_profile_name][genome_key] = btc_seqs_dict[btc_profile_name]
         del genome_key
     return btax_dict, btc_fasta_dict, genome_keys
 
