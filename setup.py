@@ -15,7 +15,7 @@ setup(name='EAGLE',
                                      ["eagle.tests", "eaglib.tests", "eagledb.tests", "Research"]),
       package_data={'eagle': ['tests/*'],
                     'eaglib': ['tests/*'],
-                    'eaglib.logging': ['eagle_log_conf.yml'],
+                    'eaglib._utils.logging': ['eagle_log_conf.yml'],
                     'eagledb': ['org_tables/*', 'tests/*']},
       install_requires=[
           'pyaml >= 3.12',

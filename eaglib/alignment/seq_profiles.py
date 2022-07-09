@@ -143,6 +143,7 @@ class SeqsProfile(object):
         # All preparations of seqdb like translation or shredding should be done outside the method
         read_output = kwargs.get("read_output", False)
         delete_out_f = kwargs.get("delete_output", False)
+        full_out_path = kwargs.get("full_out_path", os.path.join(self.tmp_dir, self.name+".psr.f"))
         if out_path is None:
             out_path = os.path.splitext(self.path)[0] + "_out_%s.psr" % generate_random_string(10)
             read_output = True
@@ -162,13 +163,13 @@ class SeqsProfile(object):
                 seqdb_path = seqdb
 
             if self.method.lower() == HMMER_KEY:
-                search_cmd = os.path.join(self.hmmer_inst_dir, "hmmsearch --cpu ") + \
-                             str(threads) + " --domtblout " + out_path + \
+                search_cmd = os.path.join(self.hmmer_inst_dir, "hmmsearch --cpu ") + str(threads) +\
+                             " -o " + full_out_path + " --domtblout " + out_path + \
                              " " + self.path + " " + seqdb_path
                 read_out_func = read_hmmer_domtblout
             if self.method.lower() == INFERNAL_KEY:
-                search_cmd = os.path.join(self.infernal_inst_dir, "cmsearch --cpu ") + \
-                             str(threads) + " --tblout " + out_path + \
+                search_cmd = os.path.join(self.infernal_inst_dir, "cmsearch --cpu ") + str(threads) +\
+                             " -o " + full_out_path + " --tblout " + out_path + \
                              " " + self.path + " " + seqdb_path
                 read_out_func = read_infernal_tblout
             subprocess.call(search_cmd, shell=True)
@@ -236,6 +237,7 @@ class SeqProfilesDB(object):
     def scan(self, in_seqs, num_threads=4, out_path=None, **kwargs):
         read_output = kwargs.get("read_output", False)
         delete_out_f = kwargs.get("delete_output", False)
+        full_out_path = kwargs.get("full_out_path", os.path.join(self.tmp_dir, self.name + ".psr.f"))
         if out_path is None:
             out_path = os.path.splitext(self.name)[0] + "_out_%s.psr" % generate_random_string(10)
             read_output = True
@@ -251,13 +253,13 @@ class SeqProfilesDB(object):
                 in_seqs_path = in_seqs
 
             if self.method.lower() == HMMER_KEY:
-                scan_cmd = os.path.join(self.hmmer_inst_dir, "hmmscan --cpu ") + \
-                           str(num_threads) + " --domtblout " + out_path + \
+                scan_cmd = os.path.join(self.hmmer_inst_dir, "hmmscan --cpu ") + str(num_threads) +\
+                           " -o " + full_out_path + " --domtblout " + out_path + \
                            " " + self.name + " " + in_seqs_path
                 read_out_func = read_hmmer_domtblout
             if self.method.lower() == INFERNAL_KEY:
-                scan_cmd = os.path.join(self.infernal_inst_dir, "cmscan --cpu ") + \
-                           str(num_threads) + " --tblout " + out_path + \
+                scan_cmd = os.path.join(self.infernal_inst_dir, "cmscan --cpu ") + str(num_threads) +\
+                           " -o " + full_out_path + " --tblout " + out_path + \
                            " " + self.name + " " + in_seqs_path
                 read_out_func = read_infernal_tblout
             subprocess.call(scan_cmd, shell=True)
