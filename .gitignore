@@ -13,5 +13,7 @@ EAGLE.egg-info/
 Research/data/*
 Research/DEG/bacteria/*
 Research/NCBI/archaea/*
+Research/NCBI/bacteria/*
+
 *.dat
 *.fuse_hidden*

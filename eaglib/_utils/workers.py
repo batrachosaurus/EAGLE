@@ -19,7 +19,7 @@ class AsyncWorker(object):
     def __getitem__(self, item):
         return self.tasks[item]
 
-    def submit(self, task):
+    def submit(self, coro):
         if self._is_closed:
             raise RuntimeError("A task cannot be submitted into the closed worker")
         if not self.loop.is_running():
@@ -27,7 +27,7 @@ class AsyncWorker(object):
             self._t.start()
 
         task_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(32)])
-        self.tasks[task_id] = asyncio.run_coroutine_threadsafe(task.pop("function")(**task), loop=self.loop)
+        self.tasks[task_id] = asyncio.run_coroutine_threadsafe(coro, loop=self.loop)
         return task_id
 
     def join(self):
