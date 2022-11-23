@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import json
 import zlib
@@ -7,8 +8,6 @@ import urllib.request
 
 import pandas as pd
 from Bio import Entrez
-from Bio import SearchIO
-from Bio.SearchIO.HmmerIO.hmmer3_text import Hmmer3TextParser
 
 from eaglib._utils.logging import eagle_logger
 from eaglib.alignment import SeqsProfileInfo, SeqsProfile
@@ -53,8 +52,9 @@ db_dir = "bacteria"
 
 processed_ac = list()
 bact_df = pd.read_csv(assembly_summary_path, sep="\t", low_memory=False).query("assembly_level=='Complete Genome' & refseq_category!='representative genome'")
-eagle_logger.info(" %s genomes to prepare" % len(bact_df))
-for _, row in bact_df.iterrows():
+bact_df_raref = bact_df.sample(frac=1).groupby("organism_name").head(3).reset_index(drop=True)
+eagle_logger.info(" %s genomes to prepare" % len(bact_df_raref))
+for _, row in bact_df_raref.iterrows():
     ac = row['assembly_accession']  # id field in genomes_table
     asm = row['asm_name']
     taxonomy = get_taxonomy(row['species_taxid'])
