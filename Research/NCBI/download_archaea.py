@@ -53,8 +53,9 @@ db_dir = "archaea"
 
 processed_ac = list()
 arch_df = pd.read_csv(assembly_summary_path, sep="\t", low_memory=False).query("assembly_level=='Complete Genome'")
-eagle_logger.info(" %s genomes to prepare" % len(arch_df))
-for _, row in arch_df.iterrows():
+arch_df_raref = arch_df.sample(frac=1).groupby("organism_name").head(3).reset_index(drop=True)
+eagle_logger.info(" %s genomes to prepare" % len(arch_df_raref))
+for _, row in arch_df_raref.iterrows():
     ac = row['assembly_accession']  # id field in genomes_table
     asm = row['asm_name']
     taxonomy = get_taxonomy(row['species_taxid'])
