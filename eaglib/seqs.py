@@ -515,112 +515,127 @@ class SeqsDict(object):
         rarefied_aln_seqs = SeqsDict.load_from_dict(rarefied_aln_dict)
         return self._init_subset(rarefied_aln_seqs.seqs_order, rarefied_aln_seqs.seqs_array, **kwargs)
 
-    def construct_mult_aln(self,
-                           method="MUSCLE",
-                           muscle_exec_path=None,
-                           mafft_exec_path=None,
-                           msaprobs_exec_path=None,
-                           emboss_inst_dir=None,
-                           hmmer_inst_dir=None,
-                           infernal_inst_dir=None,
-                           fastme_exec_path=None,
-                           kaks_calculator_exec_path=None,
-                           aln_name="mult_aln",
-                           tmp_dir=None,
-                           remove_tmp=True,
-                           num_threads=None,
-                           **kwargs):
-
-        from eaglib.alignment import MultAln
-
-        if muscle_exec_path is None:
-            muscle_exec_path = conf_constants.muscle_exec_path
-        if mafft_exec_path is None:
-            mafft_exec_path = conf_constants.mafft_exec_path
-        if msaprobs_exec_path is None:
-            msaprobs_exec_path = conf_constants.msaprobs_exec_path
-        if emboss_inst_dir is None:
-            emboss_inst_dir = conf_constants.emboss_inst_dir
-        if hmmer_inst_dir is None:
-            hmmer_inst_dir = conf_constants.hmmer_inst_dir
-        if infernal_inst_dir is None:
-            infernal_inst_dir = conf_constants.infernal_inst_dir
-        if fastme_exec_path is None:
-            fastme_exec_path = conf_constants.fastme_exec_path
-        if kaks_calculator_exec_path is None:
-            kaks_calculator_exec_path = conf_constants.fastme_exec_path
-        if tmp_dir is None:
-            tmp_dir = generate_random_string(10) + "_mult_aln_tmp"
-        if num_threads is None:
-            num_threads = conf_constants.num_threads
-
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-
-        in_fasta_path = os.path.join(tmp_dir, "to_align.fasta")
-        out_fasta_path = os.path.join(tmp_dir, aln_name + ".fasta")
-
-        if method.lower() == "muscle":
-            send_log_message("MUSCLE is starting", mes_type="info")
-            muscle_cmd = muscle_exec_path + " -in " + in_fasta_path + " -out " + out_fasta_path
-            subprocess.call(muscle_cmd, shell=True)
-            send_log_message("MUSCLE finished", mes_type="info")
-            mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
-
-        if method.lower() == "mafft":
-            send_log_message("MAFFT is starting", mes_type="info")
-            mafft_cmd = mafft_exec_path + " --auto" \
-                        " --op " + str(kwargs.get("op", kwargs.get("gap_open_penalty", 1.53))) + \
-                        " --ep " + str(kwargs.get("ep", kwargs.get("gap_ext_penalty", 0.123))) + \
-                        " --thread " + str(num_threads) + \
-                        " " + in_fasta_path + " > " + out_fasta_path
-            subprocess.call(mafft_cmd, shell=True)
-            send_log_message("MAFFT finished", mes_type="info")
-            mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
-
-        if method.lower() == "msaprobs":
-            send_log_message("MSAProbs is starting", mes_type="info")
-            msaprobs_cmd = msaprobs_exec_path + " -num_threads " + str(num_threads) + " -v " + \
-                           in_fasta_path + " > " + out_fasta_path
-            subprocess.call(msaprobs_cmd, shell=True)
-            send_log_message("MSAProbs finished", mes_type="info")
-            mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
-
-        mult_aln.seqs_type = self.seqs_type
-        mult_aln.emboss_inst_dir = emboss_inst_dir
-        mult_aln.hmmer_inst_dir = hmmer_inst_dir
-        mult_aln.infernal_inst_dir = infernal_inst_dir
-        mult_aln.fastme_exec_path = fastme_exec_path
-        mult_aln.kaks_calculator_exec_path = kaks_calculator_exec_path
-        mult_aln.name = aln_name
-        mult_aln.storage_dir = tmp_dir
-
-        if remove_tmp:
-            shutil.rmtree(tmp_dir)
-        return mult_aln
-
-    def to_blastdb(self, dbtype=None, db_name=None, blast_inst_dir=None, **kwargs):
-        from eaglib.alignment import BlastDB
-
-        return BlastDB.make_blastdb(in_seqs=self,
-                                    db_name=db_name,
-                                    dbtype=dbtype,
-                                    blast_inst_dir=blast_inst_dir,
-                                    tmp_dir=kwargs.get("blast_tmp_dir", None))
-
-    def to_blast_search(self, blast_type, blast_db, out=None, num_threads=1, outfmt=7, max_hsps=100,
+def construct_mult_aln(self,
+                        method="MUSCLE",
+                        muscle_exec_path=None,
+                        mafft_exec_path=None,
+                        msaprobs_exec_path=None,
+                        hmmalign_exec_path=None,
+                        profile_path=None,
+                        emboss_inst_dir=None,
+                        hmmer_inst_dir=None,
+                        infernal_inst_dir=None,
+                        fastme_exec_path=None,
+                        kaks_calculator_exec_path=None,
+                        aln_name="mult_aln",
+                        tmp_dir=None,
+                        remove_tmp=True,
+                        num_threads=None,
                         **kwargs):
-        from eaglib.alignment import BlastDB
 
-        assert isinstance(blast_db, BlastDB), "ERROR: the value for argument 'blast_db' should be " \
-                                              "an instance of class eagle.eaglib.alignment.BlastDB"
-        return blast_db.run_blast_search(blast_type=blast_type,
-                                         query=self,
-                                         out=out,
-                                         num_threads=num_threads,
-                                         outfmt=outfmt,
-                                         max_hsps=max_hsps,
-                                         **kwargs)
+    from eaglib.alignment import MultAln
+
+    if muscle_exec_path is None:
+        muscle_exec_path = conf_constants.muscle_exec_path
+    if mafft_exec_path is None:
+        mafft_exec_path = conf_constants.mafft_exec_path
+    if msaprobs_exec_path is None:
+        msaprobs_exec_path = conf_constants.msaprobs_exec_path
+    if hmmalign_exec_path is None:
+        hmmalign_exec_path = conf_constants.hmmalign_exec_path
+    if emboss_inst_dir is None:
+        emboss_inst_dir = conf_constants.emboss_inst_dir
+    if hmmer_inst_dir is None:
+        hmmer_inst_dir = conf_constants.hmmer_inst_dir
+    if infernal_inst_dir is None:
+        infernal_inst_dir = conf_constants.infernal_inst_dir
+    if fastme_exec_path is None:
+        fastme_exec_path = conf_constants.fastme_exec_path
+    if kaks_calculator_exec_path is None:
+        kaks_calculator_exec_path = conf_constants.fastme_exec_path
+    if tmp_dir is None:
+        tmp_dir = generate_random_string(10) + "_mult_aln_tmp"
+    if num_threads is None:
+        num_threads = conf_constants.num_threads
+
+    if not os.path.exists(tmp_dir):
+        os.makedirs(tmp_dir)
+
+    in_fasta_path = os.path.join(tmp_dir, "to_align.fasta")
+    out_fasta_path = os.path.join(tmp_dir, aln_name + ".fasta")
+
+    if method.lower() == "muscle":
+        send_log_message("MUSCLE is starting", mes_type="info")
+        muscle_cmd = muscle_exec_path + " -in " + in_fasta_path + " -out " + out_fasta_path
+        subprocess.call(muscle_cmd, shell=True)
+        send_log_message("MUSCLE finished", mes_type="info")
+        mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
+
+    if method.lower() == "mafft":
+        send_log_message("MAFFT is starting", mes_type="info")
+        mafft_cmd = mafft_exec_path + " --auto" + \
+                    " --op " + str(kwargs.get("op", kwargs.get("gap_open_penalty", 1.53))) + \
+                    " --ep " + str(kwargs.get("ep", kwargs.get("gap_ext_penalty", 0.123))) + \
+                    " --thread " + str(num_threads) + \
+                    " " + in_fasta_path + " > " + out_fasta_path
+        subprocess.call(mafft_cmd, shell=True)
+        send_log_message("MAFFT finished", mes_type="info")
+        mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
+
+    if method.lower() == "msaprobs":
+        send_log_message("MSAProbs is starting", mes_type="info")
+        msaprobs_cmd = msaprobs_exec_path + " -num_threads " + str(num_threads) + " -v " + \
+                        in_fasta_path + " > " + out_fasta_path
+        subprocess.call(msaprobs_cmd, shell=True)
+        send_log_message("MSAProbs finished", mes_type="info")
+        mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
+
+    if method.lower() == "hmmalign":
+        send_log_message("hmmalign is starting", mes_type="info")
+        if profile_path is None:
+            send_log_message("No profile path was given. Provide a valid hmm profile path for hmmalign.", mes_type="error")
+            raise TypeError("construct_mult_aln() with method='%s' missing required arguement 'profile_path'" % method)
+        hmmalign_cmd = hmmalign_exec_path + " --outformat afa " + \
+            " -o " + out_fasta_path + " " + profile_path + " " + in_fasta_path
+        subprocess.call(hmmalign_cmd, shell=True)
+        send_log_message("hmmalign finished", mes_type="info")
+        mult_aln = MultAln.load_from_file(out_fasta_path, format="fasta", restore_stops=True, **kwargs)
+
+    mult_aln.seqs_type = self.seqs_type
+    mult_aln.emboss_inst_dir = emboss_inst_dir
+    mult_aln.hmmer_inst_dir = hmmer_inst_dir
+    mult_aln.infernal_inst_dir = infernal_inst_dir
+    mult_aln.fastme_exec_path = fastme_exec_path
+    mult_aln.kaks_calculator_exec_path = kaks_calculator_exec_path
+    mult_aln.name = aln_name
+    mult_aln.storage_dir = tmp_dir
+
+    if remove_tmp:
+        shutil.rmtree(tmp_dir)
+    return mult_aln
+
+def to_blastdb(self, dbtype=None, db_name=None, blast_inst_dir=None, **kwargs):
+    from eaglib.alignment import BlastDB
+
+    return BlastDB.make_blastdb(in_seqs=self,
+                                db_name=db_name,
+                                dbtype=dbtype,
+                                blast_inst_dir=blast_inst_dir,
+                                tmp_dir=kwargs.get("blast_tmp_dir", None))
+
+def to_blast_search(self, blast_type, blast_db, out=None, num_threads=1, outfmt=7, max_hsps=100,
+                    **kwargs):
+    from eaglib.alignment import BlastDB
+
+    assert isinstance(blast_db, BlastDB), "ERROR: the value for argument 'blast_db' should be " \
+                                            "an instance of class eagle.eaglib.alignment.BlastDB"
+    return blast_db.run_blast_search(blast_type=blast_type,
+                                        query=self,
+                                        out=out,
+                                        num_threads=num_threads,
+                                        outfmt=outfmt,
+                                        max_hsps=max_hsps,
+                                        **kwargs)
 
 
 def seq_from_fasta(fasta_path, seq_id, ori=+1, start=1, end=-1):
