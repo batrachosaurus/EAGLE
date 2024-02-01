@@ -564,6 +564,11 @@ def construct_mult_aln(self,
     in_fasta_path = os.path.join(tmp_dir, "to_align.fasta")
     out_fasta_path = os.path.join(tmp_dir, aln_name + ".fasta")
 
+    if not self.num_seqs:
+        send_log_message("The set contains no sequences. Provide sequences for alignment.", mes_type="error")
+        raise ValueError("the SeqsDict is empty")
+    self.dump(in_fasta_path)
+
     if method.lower() == "muscle":
         send_log_message("MUSCLE is starting", mes_type="info")
         muscle_cmd = muscle_exec_path + " -in " + in_fasta_path + " -out " + out_fasta_path
