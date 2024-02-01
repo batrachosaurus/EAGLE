@@ -15,7 +15,6 @@ class ConfConstants(object):
         self.muscle_exec_path = "muscle"
         self.mafft_exec_path = "mafft"
         self.msaprobs_exec_path = "msaprobs"
-        self.hmmalign_exec_path = "hmmalign"
         self.emboss_inst_dir = ""
         self.hmmer_inst_dir = ""
         self.infernal_inst_dir = ""
@@ -37,8 +36,6 @@ class ConfConstants(object):
         self.num_threads = int(config.get(section="EAGleLIB", option="num_threads", fallback=self.num_threads))
         self.muscle_exec_path = config.get(section="EAGleLIB", option="muscle_exec_path",
                                            fallback=self.muscle_exec_path)
-        self.hmmalign_exec_path = config.get(section="EAGleLIB", option="hmmalign_exec_path",
-                                           fallback=self.hmmalign_exec_path)
         self.mafft_exec_path = config.get(section="EAGleLIB", option="mafft_exec_path", fallback=self.mafft_exec_path)
         self.emboss_inst_dir = config.get(section="EAGleLIB", option="emboss_inst_dir", fallback=self.emboss_inst_dir)
         self.hmmer_inst_dir = config.get(section="EAGleLIB", option="hmmer_inst_dir", fallback=self.hmmer_inst_dir)
