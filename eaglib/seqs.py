@@ -520,13 +520,12 @@ def construct_mult_aln(self,
                         muscle_exec_path=None,
                         mafft_exec_path=None,
                         msaprobs_exec_path=None,
-                        hmmalign_exec_path=None,
-                        profile_path=None,
                         emboss_inst_dir=None,
                         hmmer_inst_dir=None,
                         infernal_inst_dir=None,
                         fastme_exec_path=None,
                         kaks_calculator_exec_path=None,
+                        seqs_profile=None,
                         aln_name="mult_aln",
                         tmp_dir=None,
                         remove_tmp=True,
@@ -534,6 +533,7 @@ def construct_mult_aln(self,
                         **kwargs):
 
     from eaglib.alignment import MultAln
+    from eaglib.alignment.seq_profiles import SeqsProfile
 
     if muscle_exec_path is None:
         muscle_exec_path = conf_constants.muscle_exec_path
@@ -541,8 +541,6 @@ def construct_mult_aln(self,
         mafft_exec_path = conf_constants.mafft_exec_path
     if msaprobs_exec_path is None:
         msaprobs_exec_path = conf_constants.msaprobs_exec_path
-    if hmmalign_exec_path is None:
-        hmmalign_exec_path = conf_constants.hmmalign_exec_path
     if emboss_inst_dir is None:
         emboss_inst_dir = conf_constants.emboss_inst_dir
     if hmmer_inst_dir is None:
@@ -597,10 +595,13 @@ def construct_mult_aln(self,
 
     if method.lower() == "hmmalign":
         send_log_message("hmmalign is starting", mes_type="info")
+        profile_path = kwargs.get("profile_path")
+        if isinstance(seqs_profile, SeqsProfile):
+            profile_path = seqs_profile.path
         if profile_path is None:
             send_log_message("No profile path was given. Provide a valid hmm profile path for hmmalign.", mes_type="error")
             raise TypeError("construct_mult_aln() with method='%s' missing required arguement 'profile_path'" % method)
-        hmmalign_cmd = hmmalign_exec_path + " --outformat afa " + \
+        hmmalign_cmd = os.path.join(hmmer_inst_dir, "hmmalign") + " --outformat afa " + \
             " -o " + out_fasta_path + " " + profile_path + " " + in_fasta_path
         subprocess.call(hmmalign_cmd, shell=True)
         send_log_message("hmmalign finished", mes_type="info")
