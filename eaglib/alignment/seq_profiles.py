@@ -182,6 +182,12 @@ class SeqsProfile(object):
             else:
                 return out_path
         return
+    
+    def align(self, seqs_dict):
+        if not isinstance(seqs_dict, SeqsDict):
+            raise TypeError("seqs_dict is not a SeqsDict object")
+        mult_aln = seqs_dict.construct_mult_aln(method="hmmalign", seqs_profile=self)
+        return mult_aln
 
     @property
     def info(self):
